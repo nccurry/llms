@@ -1,0 +1,4 @@
+interface:
+  display_name: "Audit Test Coverage"
+  short_description: "Audit changed code for test gaps"
+  default_prompt: "Use $audit-tests to review the current branch or diff for missing unit, integration, and e2e test coverage."

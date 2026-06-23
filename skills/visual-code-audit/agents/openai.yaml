@@ -1,0 +1,4 @@
+interface:
+  display_name: "Visual Code Audit"
+  short_description: "Audit code for visual readability"
+  default_prompt: "Use $visual-code-audit to review the current changes for visual readability, spacing, comments, and style fit."

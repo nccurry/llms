@@ -1,0 +1,4 @@
+interface:
+  display_name: "Abstraction Quality Audit"
+  short_description: "Audit code abstraction and ownership"
+  default_prompt: "Use $abstraction-quality-audit to review the current changes for abstraction quality, naming, and responsibility boundaries."

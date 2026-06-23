@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dependency Auditor"
+  short_description: "Audit dependency security and risk"
+  default_prompt: "Use $dependency-auditor to review this project for dependency security, update, license, and maintenance risks."

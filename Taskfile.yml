@@ -1,0 +1,34 @@
+version: '3'
+
+silent: true
+
+tasks:
+  skills:list:
+    desc: List managed skills and resolved install targets.
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --command list
+
+  skills:validate:
+    desc: Validate managed skill folder shape and metadata.
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --command validate
+
+  skills:dry-run:
+    desc: Show what skill installation would change.
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target all --dry-run
+
+  skills:install:
+    desc: Install managed skills for Codex and Claude.
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target all
+
+  skills:install:codex:
+    desc: Install managed skills for Codex only.
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target codex
+
+  skills:install:claude:
+    desc: Install managed skills for Claude only.
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target claude

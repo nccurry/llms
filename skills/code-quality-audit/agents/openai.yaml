@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Quality Audit"
+  short_description: "Audit code for clarity and idiomatic design"
+  default_prompt: "Use $code-quality-audit to review the current changes for idiomatic, simple, maintainable code."

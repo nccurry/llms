@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dead Code Audit"
+  short_description: "Audit code for unused and obsolete paths"
+  default_prompt: "Use $dead-code-audit to review the current codebase for unused code, obsolete abstractions, and production code only exercised by tests."

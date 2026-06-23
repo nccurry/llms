@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Quality Audit"
+  short_description: "Audit tests for meaningful confidence"
+  default_prompt: "Use $test-quality-audit to review the unit and e2e tests for meaningful coverage and trustworthy test design."
