@@ -1,0 +1,4 @@
+interface:
+  display_name: "Figma Implement Design"
+  short_description: "Build UI from Figma designs"
+  default_prompt: "Use $figma-implement-design to implement this Figma design in the repository with visual fidelity."

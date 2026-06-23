@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Readiness"
+  short_description: "Prepare release notes and checks"
+  default_prompt: "Use $release-readiness to audit this repository for release readiness and draft human-facing release notes."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Design"
+  short_description: "Design distinctive frontend UI"
+  default_prompt: "Use $frontend-design to create a polished, distinctive frontend interface for this product."

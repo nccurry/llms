@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Design Review"
+  short_description: "Review rendered UI quality"
+  default_prompt: "Use $frontend-design-review to review this UI for design quality, accessibility, responsiveness, and polish."

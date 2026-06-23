@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install and validate the curated audit skills.
+"""Install and validate the curated skills.
 
 AI_CONTEXT:
   Use --output json for machine-readable results.
@@ -27,6 +27,11 @@ MANAGED_SKILLS = [
     "code-quality-audit",
     "dead-code-audit",
     "dependency-auditor",
+    "docs-sync",
+    "figma-implement-design",
+    "frontend-design",
+    "frontend-design-review",
+    "release-readiness",
     "test-quality-audit",
     "visual-code-audit",
 ]

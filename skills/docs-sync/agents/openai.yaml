@@ -1,0 +1,4 @@
+interface:
+  display_name: "Docs Sync"
+  short_description: "Sync docs with code changes"
+  default_prompt: "Use $docs-sync to check whether documentation needs updates for the current changes."
