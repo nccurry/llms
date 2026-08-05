@@ -3,8 +3,8 @@
 
 AI_CONTEXT:
   Use --output json for machine-readable results.
-  Use --dry-run before installing to preview target changes.
-  Exit code 0 means success; 1 means validation or installation failed.
+  Use --dry-run before installation.
+  Exit code 0 means success. Exit code 1 means validation or installation failed.
 """
 
 from __future__ import annotations
@@ -23,20 +23,48 @@ from typing import Any
 
 MANAGED_SKILLS = [
     "abstraction-quality-audit",
+    "audit-codebase",
     "audit-tests",
     "code-quality-audit",
+    "correctness-reliability-audit",
     "dead-code-audit",
     "dependency-auditor",
     "docs-sync",
     "figma-implement-design",
     "frontend-design",
     "frontend-design-review",
+    "performance-audit",
     "release-readiness",
     "test-quality-audit",
     "visual-code-audit",
 ]
 
 NAME_RE = re.compile(r"^[a-z0-9-]{1,64}$")
+LEGACY_BACKUP_RE = re.compile(
+    r"^(?P<skill>[a-z0-9-]+)\.backup-(?P<timestamp>\d{8}-\d{6})(?:-\d+)?$"
+)
+INTERFACE_FIELD_RE = re.compile(
+    r"^  (?P<key>display_name|short_description|default_prompt): (?P<value>.+)$"
+)
+PLAIN_SCALAR_FORBIDDEN_PREFIXES = (
+    "- ",
+    "? ",
+    ": ",
+    "{",
+    "}",
+    "[",
+    "]",
+    ",",
+    "&",
+    "*",
+    "#",
+    "!",
+    "|",
+    ">",
+    "%",
+    "@",
+    "`",
+)
 
 
 def repo_root() -> Path:
@@ -48,13 +76,12 @@ def default_source() -> Path:
 
 
 def display_path(path: Path) -> str:
-    return str(path.resolve())
+    return str(path.expanduser().absolute())
 
 
 def parse_frontmatter(skill_md: Path) -> tuple[dict[str, str], list[str]]:
     errors: list[str] = []
-    text = skill_md.read_text(encoding="utf-8")
-    lines = text.splitlines()
+    lines = skill_md.read_text(encoding="utf-8").splitlines()
 
     if not lines or lines[0].strip() != "---":
         return {}, ["SKILL.md must start with YAML frontmatter"]
@@ -78,11 +105,85 @@ def parse_frontmatter(skill_md: Path) -> tuple[dict[str, str], list[str]]:
         key, value = raw_line.split(":", 1)
         key = key.strip()
         value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
-            value = value[1:-1]
+        if key in data:
+            errors.append(f"duplicate frontmatter key: {key}")
+            continue
+        if value.startswith(("'", '"')) or value.endswith(("'", '"')):
+            parsed_value = parse_quoted_scalar(value)
+            if parsed_value is None:
+                errors.append(f"frontmatter {key} must be a valid quoted string")
+                continue
+            value = parsed_value
+        elif (
+            value.startswith(PLAIN_SCALAR_FORBIDDEN_PREFIXES)
+            or ": " in value
+            or value.endswith(":")
+            or " #" in value
+        ):
+            errors.append(f"frontmatter {key} is not a valid plain string")
+            continue
         data[key] = value
 
     return data, errors
+
+
+def parse_quoted_scalar(raw_value: str) -> str | None:
+    if raw_value.startswith('"'):
+        try:
+            value = json.loads(raw_value)
+        except json.JSONDecodeError:
+            return None
+        return value if isinstance(value, str) else None
+
+    if not raw_value.startswith("'") or not raw_value.endswith("'"):
+        return None
+
+    inner = raw_value[1:-1]
+    if "'" in inner.replace("''", ""):
+        return None
+    return inner.replace("''", "'")
+
+
+def parse_openai_interface(openai_yaml: Path) -> tuple[dict[str, str], list[str]]:
+    fields: dict[str, str] = {}
+    errors: list[str] = []
+    lines = openai_yaml.read_text(encoding="utf-8").splitlines()
+
+    required = {"display_name", "short_description", "default_prompt"}
+    interface_seen = False
+    for line in lines:
+        if not line.strip():
+            continue
+        if line == "interface:":
+            if interface_seen:
+                errors.append("agents/openai.yaml contains duplicate interface:")
+            interface_seen = True
+            continue
+
+        match = INTERFACE_FIELD_RE.fullmatch(line)
+        if not match:
+            errors.append(f"unsupported agents/openai.yaml line: {line!r}")
+            continue
+        key = match.group("key")
+        if key in fields:
+            errors.append(f"agents/openai.yaml contains duplicate {key}")
+            continue
+        value = parse_quoted_scalar(match.group("value"))
+        if value is None:
+            errors.append(f"agents/openai.yaml {key} must be a valid quoted string")
+            continue
+        if not interface_seen:
+            errors.append(f"agents/openai.yaml {key} must be nested under interface:")
+            continue
+        fields[key] = value
+
+    if not interface_seen:
+        errors.append("agents/openai.yaml is missing interface:")
+
+    for key in sorted(required - set(fields)):
+        errors.append(f"agents/openai.yaml is missing {key}")
+
+    return fields, errors
 
 
 def validate_skill(source: Path, name: str) -> dict[str, Any]:
@@ -124,12 +225,15 @@ def validate_skill(source: Path, name: str) -> dict[str, Any]:
     if not openai_yaml.is_file():
         errors.append("agents/openai.yaml is missing")
     else:
-        openai_text = openai_yaml.read_text(encoding="utf-8")
-        for required in ["interface:", "display_name:", "short_description:", "default_prompt:"]:
-            if required not in openai_text:
-                errors.append(f"agents/openai.yaml is missing {required}")
-        if f"${name}" not in openai_text:
-            errors.append(f"agents/openai.yaml default_prompt must mention ${name}")
+        interface, interface_errors = parse_openai_interface(openai_yaml)
+        errors.extend(interface_errors)
+        short_description = interface.get("short_description", "")
+        if short_description and not 25 <= len(short_description) <= 64:
+            errors.append("short_description must contain 25 to 64 characters")
+        default_prompt = interface.get("default_prompt", "")
+        skill_token = re.compile(rf"\${re.escape(name)}(?![a-z0-9-])")
+        if default_prompt and not skill_token.search(default_prompt):
+            errors.append(f"default_prompt must mention ${name} as an exact skill token")
 
     return {"skill": name, "valid": not errors, "errors": errors}
 
@@ -200,18 +304,146 @@ def digest_path(path: Path) -> str | None:
     return digest.hexdigest()
 
 
-def next_backup_path(destination: Path, timestamp: str) -> Path:
-    base = destination.with_name(f"{destination.name}.backup-{timestamp}")
+def backup_root(target_dir: Path) -> Path:
+    return target_dir.parent / "skill-backups"
+
+
+def staging_root(target_dir: Path) -> Path:
+    return target_dir.parent / ".skill-staging"
+
+
+def next_available_path(base: Path) -> Path:
     if not base.exists():
         return base
     for counter in range(2, 1000):
-        candidate = destination.with_name(f"{destination.name}.backup-{timestamp}-{counter}")
+        candidate = base.with_name(f"{base.name}-{counter}")
         if not candidate.exists():
             return candidate
-    raise RuntimeError(f"could not find free backup path for {destination}")
+    raise RuntimeError(f"could not find a free path for {base}")
 
 
-def copy_skill(source_skill: Path, destination: Path, dry_run: bool, timestamp: str) -> dict[str, Any]:
+def remove_empty_parents(path: Path, stop: Path) -> None:
+    current = path
+    while current.exists():
+        try:
+            current.rmdir()
+        except OSError:
+            break
+        if current == stop:
+            break
+        current = current.parent
+
+
+def remove_path(path: Path) -> None:
+    if path.is_dir():
+        shutil.rmtree(path)
+    elif path.exists():
+        path.unlink()
+
+
+def rollback_skill(result: dict[str, Any], timestamp: str, target_name: str) -> None:
+    action = result["action"]
+    if action not in {"created", "updated"}:
+        return
+
+    destination = Path(result["destination"])
+    backup = Path(result["backup"]) if result["backup"] else None
+    errors: list[str] = []
+
+    if destination.exists():
+        failed_path = next_available_path(
+            backup_root(destination.parent)
+            / timestamp
+            / target_name
+            / f"{destination.name}.failed"
+        )
+        try:
+            failed_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(destination), str(failed_path))
+        except Exception as error:
+            try:
+                remove_path(destination)
+            except Exception as cleanup_error:
+                errors.append(f"could not quarantine failed installation: {error}")
+                errors.append(f"could not clear failed installation: {cleanup_error}")
+
+    if action == "updated" and backup:
+        if destination.exists():
+            errors.append("could not restore backup because the destination still exists")
+        elif not backup.exists():
+            errors.append(f"backup is missing: {backup}")
+        else:
+            try:
+                shutil.move(str(backup), str(destination))
+                if digest_path(destination) != result["destination_digest_before"]:
+                    errors.append("restored backup digest does not match the prior installation")
+            except Exception as error:
+                errors.append(f"could not restore backup: {error}")
+
+    if errors:
+        raise RuntimeError("; ".join(errors))
+
+
+def archive_legacy_backups(
+    target_name: str,
+    target_dir: Path,
+    dry_run: bool,
+) -> list[dict[str, Any]]:
+    if not target_dir.is_dir():
+        return []
+
+    results: list[dict[str, Any]] = []
+    managed = set(MANAGED_SKILLS)
+    for candidate in sorted(target_dir.iterdir()):
+        if not candidate.is_dir():
+            continue
+        match = LEGACY_BACKUP_RE.fullmatch(candidate.name)
+        if not match or match.group("skill") not in managed:
+            continue
+
+        skill_name = match.group("skill")
+        timestamp = match.group("timestamp")
+        destination = next_available_path(
+            backup_root(target_dir) / timestamp / target_name / skill_name
+        )
+        source_digest = digest_path(candidate)
+        action = "would_archive" if dry_run else "archived"
+        archived_digest = None
+        verified = False
+
+        if not dry_run:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(candidate), str(destination))
+            archived_digest = digest_path(destination)
+            verified = source_digest == archived_digest
+            if not verified:
+                candidate.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(destination), str(candidate))
+                raise RuntimeError(f"legacy backup digest mismatch for {candidate}")
+
+        results.append(
+            {
+                "skill": skill_name,
+                "source": display_path(candidate),
+                "destination": display_path(destination),
+                "action": action,
+                "source_digest": source_digest,
+                "archived_digest": archived_digest,
+                "verified": verified if not dry_run else None,
+            }
+        )
+
+    return results
+
+
+def install_skill(
+    source_skill: Path,
+    destination: Path,
+    target_name: str,
+    dry_run: bool,
+    timestamp: str,
+    run_id: str,
+) -> dict[str, Any]:
     source_digest = digest_path(source_skill)
     destination_digest = digest_path(destination)
     backup_path: Path | None = None
@@ -219,18 +451,72 @@ def copy_skill(source_skill: Path, destination: Path, dry_run: bool, timestamp: 
     if destination_digest == source_digest:
         action = "would_skip" if dry_run else "skipped"
     elif destination.exists():
-        backup_path = next_backup_path(destination, timestamp)
+        backup_path = next_available_path(
+            backup_root(destination.parent) / timestamp / target_name / destination.name
+        )
         action = "would_update" if dry_run else "updated"
     else:
         action = "would_create" if dry_run else "created"
 
-    if not dry_run and action in {"created", "updated"}:
-        destination.parent.mkdir(parents=True, exist_ok=True)
+    if dry_run or action == "skipped":
+        return {
+            "skill": source_skill.name,
+            "source": display_path(source_skill),
+            "destination": display_path(destination),
+            "action": action,
+            "backup": display_path(backup_path) if backup_path else None,
+            "source_digest": source_digest,
+            "destination_digest_before": destination_digest,
+            "installed_digest": destination_digest,
+            "verified": None if dry_run else destination_digest == source_digest,
+        }
+
+    stage_base = (
+        staging_root(destination.parent) / run_id / target_name / source_skill.name
+    )
+    stage_path = next_available_path(stage_base)
+    previous_moved = False
+    promotion_attempted = False
+
+    try:
+        stage_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(source_skill, stage_path)
+        if digest_path(stage_path) != source_digest:
+            raise RuntimeError(f"staged skill digest mismatch for {source_skill.name}")
+
         if destination.exists():
             if backup_path is None:
-                raise RuntimeError(f"backup path was not computed for {destination}")
+                raise RuntimeError(f"backup path is missing for {destination}")
+            backup_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(destination), str(backup_path))
-        shutil.copytree(source_skill, destination)
+            previous_moved = True
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        promotion_attempted = True
+        stage_path.rename(destination)
+        installed_digest = digest_path(destination)
+        if installed_digest != source_digest:
+            raise RuntimeError(f"installed skill digest mismatch for {source_skill.name}")
+    except Exception as error:
+        if previous_moved or promotion_attempted:
+            rollback_result = {
+                "action": "updated" if previous_moved else "created",
+                "destination": display_path(destination),
+                "backup": display_path(backup_path) if backup_path else None,
+                "destination_digest_before": destination_digest,
+            }
+            try:
+                rollback_skill(rollback_result, timestamp, target_name)
+            except Exception as rollback_error:
+                raise RuntimeError(
+                    f"installation failed for {source_skill.name}: {error}; "
+                    f"rollback failed: {rollback_error}"
+                ) from error
+        raise
+    finally:
+        if stage_path.exists():
+            shutil.rmtree(stage_path)
+        remove_empty_parents(stage_path.parent, staging_root(destination.parent))
 
     return {
         "skill": source_skill.name,
@@ -238,26 +524,65 @@ def copy_skill(source_skill: Path, destination: Path, dry_run: bool, timestamp: 
         "destination": display_path(destination),
         "action": action,
         "backup": display_path(backup_path) if backup_path else None,
+        "source_digest": source_digest,
+        "destination_digest_before": destination_digest,
+        "installed_digest": installed_digest,
+        "verified": installed_digest == source_digest,
     }
 
 
-def install_skills(source: Path, targets: dict[str, Path], dry_run: bool) -> dict[str, Any]:
+def install_skills(
+    source: Path,
+    targets: dict[str, Path],
+    dry_run: bool,
+) -> dict[str, Any]:
     timestamp = time.strftime("%Y%m%d-%H%M%S")
+    run_id = f"{timestamp}-{os.getpid()}-{time.time_ns()}"
     target_results: dict[str, Any] = {}
 
-    for target_name, target_dir in targets.items():
-        skills = []
-        for skill_name in MANAGED_SKILLS:
-            skills.append(copy_skill(source / skill_name, target_dir / skill_name, dry_run, timestamp))
-        target_results[target_name] = {
-            "target_dir": display_path(target_dir),
-            "skills": skills,
-        }
+    completed: list[tuple[str, dict[str, Any]]] = []
+    try:
+        for target_name, target_dir in targets.items():
+            legacy_backups = archive_legacy_backups(target_name, target_dir, dry_run)
+            skills: list[dict[str, Any]] = []
+            for skill_name in MANAGED_SKILLS:
+                result = install_skill(
+                    source / skill_name,
+                    target_dir / skill_name,
+                    target_name,
+                    dry_run,
+                    timestamp,
+                    run_id,
+                )
+                skills.append(result)
+                if not dry_run and result["action"] in {"created", "updated"}:
+                    completed.append((target_name, result))
+
+            target_results[target_name] = {
+                "target_dir": display_path(target_dir),
+                "backup_root": display_path(backup_root(target_dir)),
+                "legacy_backups": legacy_backups,
+                "skills": skills,
+            }
+    except Exception as error:
+        rollback_errors: list[str] = []
+        for completed_target, result in reversed(completed):
+            try:
+                rollback_skill(result, timestamp, completed_target)
+            except Exception as rollback_error:
+                rollback_errors.append(f"{result['skill']}: {rollback_error}")
+        if rollback_errors:
+            raise RuntimeError(
+                f"installation failed: {error}; transaction rollback failed: "
+                + "; ".join(rollback_errors)
+            ) from error
+        raise
 
     return {
         "command": "install",
         "dry_run": dry_run,
         "source": display_path(source),
+        "timestamp": timestamp,
         "targets": target_results,
     }
 
@@ -267,7 +592,13 @@ def list_skills(source: Path, targets: dict[str, Path]) -> dict[str, Any]:
         "command": "list",
         "source": display_path(source),
         "managed_skills": MANAGED_SKILLS,
-        "targets": {name: display_path(path) for name, path in targets.items()},
+        "targets": {
+            name: {
+                "skills_dir": display_path(path),
+                "backup_root": display_path(backup_root(path)),
+            }
+            for name, path in targets.items()
+        },
     }
 
 
@@ -280,8 +611,9 @@ def emit(result: dict[str, Any], output: str) -> None:
     if command == "list":
         print(f"Source: {result['source']}")
         print("Targets:")
-        for name, path in result["targets"].items():
-            print(f"  {name}: {path}")
+        for name, target in result["targets"].items():
+            print(f"  {name}: {target['skills_dir']}")
+            print(f"    backups: {target['backup_root']}")
         print("Skills:")
         for skill in result["managed_skills"]:
             print(f"  {skill}")
@@ -301,20 +633,23 @@ def emit(result: dict[str, Any], output: str) -> None:
         print(f"{prefix}source {result['source']}")
         for target_name, target in result["targets"].items():
             print(f"{target_name}: {target['target_dir']}")
+            for legacy in target["legacy_backups"]:
+                print(f"  {legacy['action']}: {Path(legacy['source']).name}")
             for skill in target["skills"]:
                 line = f"  {skill['action']}: {skill['skill']}"
                 if skill["backup"]:
                     line += f" (backup: {skill['backup']})"
+                if skill["verified"] is not None:
+                    line += f" verified={str(skill['verified']).lower()}"
                 print(line)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Install and validate curated audit skills.",
+        description="Install and validate the curated skills.",
         epilog=(
             "AI_CONTEXT: Use --output json for parsing. Use --dry-run before "
-            "installation. Exit code 0 means success; 1 means validation or "
-            "installation failed."
+            "installation. Exit code 0 means success. Exit code 1 means failure."
         ),
     )
     parser.add_argument("--command", choices=["list", "validate", "install"], default="install")
@@ -334,8 +669,7 @@ def main(argv: list[str]) -> int:
 
     try:
         if args.command == "list":
-            result = list_skills(source, targets)
-            emit(result, args.output)
+            emit(list_skills(source, targets), args.output)
             return 0
 
         validation = validate_source(source)
@@ -350,12 +684,12 @@ def main(argv: list[str]) -> int:
         result = install_skills(source, targets, args.dry_run)
         emit(result, args.output)
         return 0
-    except Exception as exc:
-        error = {"command": args.command, "error": str(exc)}
+    except Exception as error:
+        failure = {"command": args.command, "error": str(error)}
         if args.output == "json":
-            print(json.dumps(error, indent=2, sort_keys=True))
+            print(json.dumps(failure, indent=2, sort_keys=True))
         else:
-            print(f"error: {exc}", file=sys.stderr)
+            print(f"error: {error}", file=sys.stderr)
         return 1
 
 

@@ -1,60 +1,67 @@
 ---
 name: code-quality-audit
-description: Audit recent or proposed code for idiomatic style, simplicity, clear comments, intuitive structure, unnecessary abstractions, excessive call chains, deep nesting, and maintainability. Use when the user asks whether delivered code is clean, elegant, intuitive, over-engineered, idiomatic for the project language/framework, or ready to continue building on.
+description: Audit recent or proposed code for idiomatic design, simple control flow, cohesive units, useful comments, intuitive names, and maintainability. Use when the user asks whether code is clean, elegant, easy to follow, or ready for more work.
 ---
 
 # Code Quality Audit
 
 ## Workflow
 
-1. Identify the review scope from the user's request. If the scope is not explicit, inspect `git status`, `git diff --stat`, and changed files.
-2. Read local project instructions first, such as `AGENTS.md`, style guides, formatter or lint config, and nearby code patterns.
-3. Read each changed file with enough surrounding context to understand the design, not just the edited lines.
-4. Judge the code against concrete quality signals. Prefer specific findings over broad taste statements.
-5. If the user asked for a review, lead with findings ordered by severity and cite file/line references.
-6. If the user asked to fix issues, make the smallest cleanup that improves readability or correctness, then run focused validation.
+1. Identify the review scope from the user request or current changes.
+2. Read local instructions, style guides, formatter rules, and nearby code patterns.
+3. Read each target file with enough context to understand its role.
+4. Judge the code against the repository's language and framework idioms.
+5. Route specialist concerns to the skills listed below.
+6. Report concrete findings before general observations.
 
 ## Routing Boundaries
 
-- Use this skill for broad code quality, idiom, readability, control flow, maintainability, and comments.
-- Use `abstraction-quality-audit` when ownership, layering, naming, dependency direction, or indirection is the central concern.
-- Use `visual-code-audit` when the request is mainly about visual polish, spacing, line shape, and scan path.
-- Use `test-quality-audit` when the request is mainly about test design quality.
+- Use this skill for idiom, cohesion, control flow, necessity, comments, and general maintainability.
+- Use `abstraction-quality-audit` for file-tree structure, ownership, layering, naming systems, and indirection.
+- Use `visual-code-audit` for whitespace, line shape, comment placement, and scan path.
+- Use `correctness-reliability-audit` for behavior, state, errors, lifecycle, and recovery.
+- Use `performance-audit` for measurable runtime or resource cost.
+- Use `test-quality-audit` for test design and assertion quality.
 
 ## Review Criteria
 
 Check whether the code:
 
-- Follows the language, framework, and repository idioms already in use.
-- Solves the problem with the least useful amount of code and abstraction.
-- Keeps control flow easy to scan, using guard clauses or early exits when they reduce nesting.
-- Avoids wrapper methods, helper classes, service layers, or indirection that do not remove real complexity.
-- Avoids "function calls function calls function" designs where behavior becomes harder to trace than the original logic.
-- Uses names that make the code readable without explanatory comments.
-- Keeps comments concise and factual; remove comments that explain prompt history, obvious code, or intent already clear from names.
-- Uses straightforward loops and conditionals when they are clearer than complex fluent or query chains.
-- Keeps methods cohesive without splitting every small step into a separate private method.
-- Keeps data structures, state ownership, errors, nullability, lifecycle, and edge cases obvious and consistent with nearby code.
-- Has tests or manual validation appropriate to the risk of the change.
+- Uses common names for the language, framework, and design pattern.
+- Makes control flow easy to scan.
+- Uses guard clauses when they remove meaningful nesting.
+- Keeps methods and classes cohesive without splitting every step into a helper.
+- Avoids unnecessary functions, methods, classes, interfaces, wrappers, and call chains.
+- Uses straightforward loops and conditions when they communicate intent better than a clever expression.
+- Keeps data structures, nullability, errors, and lifecycle expectations visible.
+- Adds comments for contracts, invariants, ownership, units, lifecycle, tradeoffs, and surprising decisions.
+- Removes comments that restate code, preserve prompt history, or compensate for poor names.
+- Fits the repository's established conventions without copying a local defect.
+- Includes validation that matches the risk of the change.
 
-## C# And Game Code Notes
+## C# and Game-Code Notes
 
-When reviewing C# game code:
-
-- Prefer idiomatic modern C# that remains readable to the project team.
-- Avoid clever allocation-heavy patterns in hot update paths.
-- Prefer `for` or `foreach` loops over complex LINQ in gameplay code.
-- Keep MonoGame lifecycle methods, draw/update code, and asset ownership easy to follow.
-- In Friflo ECS query loops, flag structural changes or callbacks that may cause structural changes during `ForEachEntity`; collect work during the query and apply it after the loop.
+- Prefer modern C# that remains familiar to the project team.
+- Route hot-path allocations and repeated update or draw work to `performance-audit`.
+- Route unsafe structural changes during ECS iteration to `correctness-reliability-audit`.
+- Keep asset ownership and lifecycle code easy to follow.
 
 ## Output Contract
 
-Lead with findings ordered by impact:
+Lead with findings in impact order:
 
-- `P1`: Risk likely to cause incorrect behavior, data loss, unsafe behavior, or blocked work.
-- `P2`: Maintainability issue likely to make future work harder.
-- `P3`: Readability, naming, comment, or simplification issue worth cleaning up.
+- `P1`: A quality defect makes behavior unsafe, blocks change, or creates severe maintenance risk.
+- `P2`: A defect makes important code difficult to understand or modify safely.
+- `P3`: A concrete idiom, naming, comment, or simplification defect violates an established standard.
 
-Each finding must include a tight file and line reference, the concrete issue, why it matters, evidence inspected, and a specific edit direction.
+Use high confidence for direct evidence. Use medium confidence for a strong inference from the inspected code. Put low-confidence candidates under blind spots.
 
-If no meaningful issues are found, say so clearly, name the scope inspected, and mention residual test or design risk. Report validation performed or validation still needed.
+For each finding, include a tight file and line reference, evidence, impact, and a specific correction.
+
+If no actionable findings exist, say so. Name the files inspected, validation results, and blind spots.
+
+## Correction Guidance
+
+If fixes are authorized, make the smallest coherent change that produces clean code. Use a larger rewrite when a local edit preserves the root defect.
+
+Request direction before a rewrite changes a public contract, schema, unrelated subsystem, or unauthorized user-visible behavior.

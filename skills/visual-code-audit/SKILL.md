@@ -1,64 +1,64 @@
 ---
 name: visual-code-audit
-description: Audit source code for visual readability and polish: repository style fit, spacing, grouping, line length, comments on structs, classes, fields, and tricky sections, and an easy visual reading path. Use when the user asks for a visual code audit, readability polish, style pass, comment pass, eye-glide review, or whether code looks nice and legible.
+description: Audit source code for crisp visual readability, useful comments, meaningful whitespace, calm indentation, consistent line shape, and an obvious scan path. Use for a visual code audit, readability pass, comment pass, style pass, eye-glide review, or wall-of-code review.
 ---
 
 # Visual Code Audit
 
-Use this skill to audit how source code reads at a glance. Focus on visual rhythm, local style consistency, comment coverage, line shape, and whether related ideas are grouped so maintainers can scan the file comfortably.
-
 ## Workflow
 
-1. Identify the review scope from the user's request. If the scope is not explicit, inspect `git status`, `git diff --stat`, and changed files.
-2. Read local project instructions first, such as `AGENTS.md`, formatter config, lint config, style guides, and nearby code in the same package or feature area.
-3. Sample existing files that maintainers would treat as idiomatic. Notice naming rhythm, blank-line usage, wrapping style, comment style, and declaration order.
-4. Read the target code top to bottom as a visual pass before judging details. Look for places where the eye has to stop, jump backward, or chase unrelated ideas.
-5. Check comments on structs, classes, fields, exported members, and tricky sections against the repository's expectations. Prefer concise comments that reveal purpose, invariants, units, ownership, or lifecycle.
-6. Report concrete findings with tight file and line references. If the user asked for fixes, make the smallest readability-only edits, then run the formatter and focused validation when practical.
+1. Identify the review scope from the user request or current changes.
+2. Read local instructions, formatter rules, lint rules, and nearby idiomatic files.
+3. Inspect each target file from top to bottom before you judge individual lines.
+4. Find places where the reader must stop, jump backward, or decode unrelated ideas.
+5. Distinguish visual defects from deeper ownership or control-flow defects.
+6. Report only corrections that improve a concrete reading path.
 
 ## Routing Boundaries
 
-- Use this skill for visual polish, spacing, grouping, line length, comments, declaration order, and scan path.
-- Use `code-quality-audit` for broader maintainability, control flow, idiom, and correctness-adjacent readability.
-- Use `abstraction-quality-audit` when the shape problem is primarily ownership, naming, layering, or indirection.
+- Use this skill for whitespace, grouping, declaration order, line shape, indentation, comments, and scan path.
+- Use `code-quality-audit` for idiom, cohesion, control flow, and necessity.
+- Use `abstraction-quality-audit` for file-tree structure, ownership, layering, and modularity.
+- Use a formatter for mechanical style that the repository already defines.
 
 ## Audit Criteria
 
 Check whether the code:
 
-- Matches the repository's existing language, framework, formatter, naming, and comment conventions.
-- Uses blank lines to separate unlike ideas while keeping related statements, declarations, and setup close together.
-- Orders declarations, fields, constructors, helpers, and tests in a way that matches nearby code and creates a natural reading path.
-- Breaks long lines at meaningful boundaries instead of forcing horizontal scrolling or dense wrapping.
-- Keeps chained calls, literals, conditionals, and parameter lists shaped consistently with nearby code.
-- Comments all structs, classes, fields, exported members, and tricky code sections when the repository expects documentation or when purpose is not obvious from names.
-- Explains invariants, ownership, units, concurrency expectations, lifecycle, generated data, external contracts, and surprising control flow.
-- Avoids comments that restate obvious code, preserve prompt history, or compensate for poor naming.
-- Uses spacing inside functions to group setup, validation, main work, side effects, and return handling without creating decorative gaps.
-- Keeps indentation and nesting visually calm; prefer guard clauses or small local helpers when they make the scan path cleaner.
-- Leaves tests, fixtures, and examples with the same visual polish as production code.
+- Matches repository conventions for formatting, naming rhythm, comments, and declaration order.
+- Uses blank lines to separate different ideas and keep one idea together.
+- Presents declarations and methods in a predictable reading order.
+- Breaks long lines at meaningful boundaries.
+- Keeps indentation and nesting visually calm.
+- Shapes chains, literals, conditions, and parameter lists consistently.
+- Uses comments only for non-obvious purpose, contracts, invariants, ownership, units, lifecycle, or tradeoffs.
+- Documents public or exported members when repository or language conventions require it.
+- Keeps setup, validation, main work, side effects, and return handling easy to distinguish.
+- Gives tests, fixtures, and examples the same visual care as production code.
 
-## Visual Friction Smells
+## Avoid Fake Crispness
 
-Flag code where:
-
-- A file looks like one unbroken block of text.
-- Blank lines split a single idea or merge unrelated ideas.
-- Similar declarations use different shapes without a local reason.
-- Comment coverage is uneven across adjacent structs, classes, fields, or tricky branches.
-- A line is long because it combines multiple decisions, transformations, or side effects.
-- A reader must repeatedly scan far up or down to connect a value with its use.
-- Dense literals, tables, or test cases would be clearer with aligned grouping or named intermediate values.
-- A cleanup would be purely mechanical and should be handled by the formatter instead of manual taste edits.
+- Do not split cohesive code into trivial one-use helpers to reduce line count.
+- Do not add comments that restate names or statements.
+- Do not add decorative blank lines.
+- Do not enforce a universal line or method limit without a repository standard.
+- Do not align code by hand when the formatter will undo it.
+- Route a wall caused by mixed responsibilities to `code-quality-audit` or `abstraction-quality-audit`.
 
 ## Output Contract
 
-Lead with findings ordered by impact:
+Lead with findings in impact order:
 
-- `P1`: Visual or documentation issue likely to hide incorrect behavior or misuse.
-- `P2`: Readability issue likely to slow future maintainers or reviewers.
-- `P3`: Polish issue worth fixing when touching the code.
+- `P1`: A visual or documentation defect hides unsafe behavior or a required contract.
+- `P2`: A defect materially slows reading, review, or maintenance.
+- `P3`: A concrete polish defect violates a user, repository, language, or framework standard.
 
-Each finding must include a file and line reference, the visual readability problem, why it interrupts scanning or maintainability, evidence inspected, and a concrete edit direction.
+Use high confidence for direct evidence. Use medium confidence for a strong inference from nearby conventions. Put low-confidence candidates under blind spots.
 
-If there are no meaningful issues, say so clearly, name the scope inspected, and report validation run or validation still needed. Avoid vague "looks good" answers without naming what was checked.
+For each finding, include a tight file and line reference, the interrupted reading path, evidence, and a concrete correction.
+
+If no actionable findings exist, say so. Name the files, conventions, and scan paths inspected.
+
+## Correction Guidance
+
+If fixes are authorized, use the smallest coherent readability change. Route deeper design defects instead of hiding them with formatting.

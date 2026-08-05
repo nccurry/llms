@@ -1,0 +1,4 @@
+interface:
+  display_name: "Correctness and Reliability Audit"
+  short_description: "Audit behavioral correctness and reliability"
+  default_prompt: "Use $correctness-reliability-audit to review the current changes for behavioral correctness and reliability."

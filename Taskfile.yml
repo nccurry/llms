@@ -13,10 +13,20 @@ tasks:
     cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --command validate
 
+  skills:test:
+    desc: Run the installer unit tests.
+    cmds:
+      - python -m unittest discover -s tests -p "test_*.py"
+
   skills:dry-run:
     desc: Show what skill installation would change.
     cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target all --dry-run
+
+  skills:dry-run:codex:
+    desc: Show what the Codex skill installation would change.
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target codex --dry-run
 
   skills:install:
     desc: Install managed skills for Codex and Claude.

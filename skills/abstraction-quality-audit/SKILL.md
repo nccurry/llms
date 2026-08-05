@@ -1,65 +1,71 @@
 ---
 name: abstraction-quality-audit
-description: Review code structure, naming, responsibility boundaries, dependency direction, and abstraction complexity. Use when evaluating whether code is too abstract, over-layered, poorly named, hard to trace, misplaced, or organized around vague Manager, Service, Helper, Handler, or Processor concepts instead of real ownership.
+description: Review file-tree structure, naming, ownership, responsibility boundaries, dependency direction, modularity, and abstraction cost. Use when code is hard to locate, trace, or change. Also use for vague catch-all types or folders.
 ---
 
 # Abstraction Quality Audit
 
 ## Workflow
 
-1. Identify the review scope from the user request. If the scope is not explicit, inspect `git status`, diffs, changed files, and nearby package or folder structure.
-2. Read local repo instructions first, such as `AGENTS.md`, architecture notes, style guides, and nearby code patterns.
-3. Trace at least one representative workflow from entry point to data access, UI, external call, or other side effect.
-4. Inspect names across folders, files, types, methods, parameters, interfaces, and tests.
-5. Look for abstractions whose cost is higher than the complexity, boundary, or duplication they remove.
-6. Report concrete findings with tight file and line references.
+1. Identify the review scope from the user request or current changes.
+2. Read local repository instructions and architecture guidance.
+3. Inspect the repository root and every ancestor folder of the target files.
+4. Decide whether each folder and file has a clear purpose and owner.
+5. Trace one representative workflow from its entry point to its observable effect.
+6. Inspect names across folders, files, types, methods, parameters, interfaces, and tests.
+7. Compare each abstraction's cost with the complexity, boundary, or duplication that it removes.
+8. Report concrete findings with tight file and line references.
 
 ## Routing Boundaries
 
-- Use this skill for ownership, layering, naming, dependency direction, and indirection problems.
-- Use `code-quality-audit` for broader idiom, control flow, readability, and maintainability review.
-- Use `visual-code-audit` for spacing, comment coverage, line shape, and scan path polish.
-- Use `dead-code-audit` when the main question is whether code can be removed.
+- Use this skill for ownership, file-tree structure, layering, naming, dependency direction, modularity, and indirection.
+- Use `code-quality-audit` for idiom, cohesion, control flow, comments, and general maintainability.
+- Use `visual-code-audit` for whitespace, line shape, comment placement, and scan path.
+- Use `dead-code-audit` when the main question is whether code can be removed safely.
+- Use `correctness-reliability-audit` when a boundary causes incorrect state or failure behavior.
 
-## Review Criteria
+## File-Tree Criteria
+
+Check whether the structure:
+
+- Makes the application's major capabilities visible at the repository root.
+- Gives each folder one predictable purpose and ownership boundary.
+- Places files where a maintainer will look for them first.
+- Uses feature, domain, layer, or platform organization consistently.
+- Avoids vague catch-all folders such as `Common`, `Utils`, `Helpers`, `Managers`, or `Services`.
+- Keeps related implementation, contracts, and tests close when repository conventions allow it.
+- Avoids directory depth that hides the user-facing capability.
+- Uses standard language, framework, and design-pattern names instead of invented synonyms.
+
+## Abstraction Criteria
 
 Check whether the code:
 
-- Uses abstractions to hide real complexity, enforce useful boundaries, or remove meaningful duplication.
-- Avoids pass-through layers, unnecessary interfaces, wrappers, factories, registries, and helpers.
-- Keeps behavior traceable without long chains of tiny methods that only restate each other.
-- Prefers cohesive methods over splitting every small step into private methods.
-- Uses names that describe real behavior and ownership, not vague roles like Manager, Handler, Processor, Service, or Helper.
-- Places files and folders where maintainers would naturally look.
-- Avoids god objects or modules with unrelated reasons to change.
-- Keeps dependency direction clean; lower-level or domain code should not leak adapter, host, persistence, UI, or third-party concerns.
-- Uses dependency injection, config, generics, inheritance, and composition only when they clearly pay for themselves.
-
-## Red Flags
-
-Flag designs where:
-
-- One class or module coordinates many unrelated workflows.
-- A change requires touching many files with similar edits.
-- Names are broad enough to absorb almost anything.
-- Methods mostly call through to the next method in a chain.
-- Interfaces have one implementation and no clear boundary or testing value.
-- Folder structure hides the domain or user-facing capability.
-- Tests know too much about internal orchestration.
-- Abstractions appear before multiple concrete use cases exist.
+- Uses abstractions to hide real complexity or enforce a useful boundary.
+- Avoids pass-through layers, speculative interfaces, wrappers, factories, registries, and helpers.
+- Keeps behavior traceable without long chains of small methods.
+- Prefers cohesive units over fragmentation into one-use functions or classes.
+- Gives each module one coherent reason to change.
+- Keeps lower-level code independent from host, adapter, persistence, UI, and third-party details.
+- Uses dependency injection, generics, inheritance, and composition only when their cost is justified.
+- Treats modularity as clear ownership, not a high count of modules.
 
 ## Output Contract
 
-Lead with findings ordered by impact:
+Lead with findings in impact order:
 
-- `P1`: Risk likely to cause incorrect behavior, unsafe coupling, or blocked change.
-- `P2`: Maintainability issue likely to make future work harder.
-- `P3`: Naming, organization, or simplification issue worth cleaning up.
+- `P1`: The structure creates unsafe coupling, incorrect ownership, or a blocked change.
+- `P2`: The structure makes important work hard to locate, trace, or modify.
+- `P3`: A concrete naming, placement, or simplification defect violates an established standard.
 
-Each finding must include a file and line reference, the problem, why it costs more than it buys, the evidence inspected, and a concrete simplification, rename, or move direction.
+Use high confidence for direct structural evidence. Use medium confidence for a strong inference from the traced workflow. Put low-confidence candidates under blind spots.
 
-If no meaningful issues are found, say so clearly, name the scope inspected, and mention any blind spots. Report validation run or validation still needed.
+For each finding, include the file and line, evidence, cost, and a concrete rename, move, consolidation, or rewrite direction.
 
-## Cleanup Guidance
+If no actionable findings exist, say so. Name the tree areas, workflows, and boundaries inspected.
 
-When fixing issues, make the smallest change that reduces real complexity. Delete pass-through layers before adding new structure. Rename things for current behavior, not future intent. Move files only when ownership becomes easier to predict. Update tests when names, layout, or behavior change.
+## Correction Guidance
+
+If fixes are authorized, make the smallest coherent change that produces the right ownership model. Rewrite the affected subsystem when local edits preserve the wrong boundary.
+
+Request direction before a rewrite changes a public contract, schema, unrelated subsystem, or unauthorized user-visible behavior.

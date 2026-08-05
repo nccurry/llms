@@ -1,0 +1,4 @@
+interface:
+  display_name: "Audit Codebase"
+  short_description: "Run the full code craftsmanship gate"
+  default_prompt: "Use $audit-codebase to run the full craftsmanship audit before continuing."

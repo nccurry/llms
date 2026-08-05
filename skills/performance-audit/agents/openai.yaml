@@ -1,0 +1,4 @@
+interface:
+  display_name: "Performance Audit"
+  short_description: "Audit code for measurable performance risks"
+  default_prompt: "Use $performance-audit to review the current changes for measurable performance risks."
