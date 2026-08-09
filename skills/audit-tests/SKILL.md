@@ -43,6 +43,8 @@ Lead with findings in impact order:
 
 Use high confidence when no relevant test reaches the changed path. Use medium confidence when existing coverage appears indirect. Put low-confidence candidates under blind spots.
 
-For each finding, include the changed location, existing tests inspected, missing behavior, proposed test name, and key assertions.
+For each finding, include severity, confidence, the changed location, existing tests inspected, evidence, impact, a concrete correction, proposed test name, and key assertions. For P3 findings, cite the governing user, repository, language, or framework standard.
 
 State the comparison range, commands, results, and test-discovery blind spots. If no actionable gaps exist, say so.
+
+When `audit-codebase` invokes this skill, return scoped findings and validation evidence to the orchestrator. Do not choose the aggregate verdict or expand its scope.

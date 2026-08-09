@@ -60,9 +60,11 @@ Lead with findings in impact order:
 
 Use high confidence for direct structural evidence. Use medium confidence for a strong inference from the traced workflow. Put low-confidence candidates under blind spots.
 
-For each finding, include the file and line, evidence, cost, and a concrete rename, move, consolidation, or rewrite direction.
+For each finding, include severity, confidence, a tight file and line reference, evidence, impact, and a concrete correction. For P3 findings, cite the governing user, repository, language, or framework standard.
 
 If no actionable findings exist, say so. Name the tree areas, workflows, and boundaries inspected.
+
+When `audit-codebase` invokes this skill, return scoped findings and validation evidence to the orchestrator. Do not choose the aggregate verdict or expand its scope.
 
 ## Correction Guidance
 

@@ -34,6 +34,7 @@ MANAGED_SKILLS = [
     "frontend-design",
     "frontend-design-review",
     "performance-audit",
+    "plc-planning",
     "release-readiness",
     "test-quality-audit",
     "visual-code-audit",

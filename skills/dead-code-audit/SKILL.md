@@ -54,6 +54,8 @@ Lead with findings in impact order:
 
 Use high confidence for direct reference evidence. Use medium confidence when dynamic reachability is reasonably excluded. Put low-confidence candidates under blind spots.
 
-For each finding, include tight locations, reference evidence, caveats, and a concrete removal or consolidation path.
+For each finding, include severity, confidence, tight locations, reference evidence, impact, caveats, and a concrete correction. For P3 findings, cite the governing user, repository, language, or framework standard.
 
 If no actionable findings exist, say so. Name the areas and reachability mechanisms inspected.
+
+When `audit-codebase` invokes this skill, return scoped findings and validation evidence to the orchestrator. Do not choose the aggregate verdict or expand its scope.

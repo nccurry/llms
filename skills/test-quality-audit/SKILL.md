@@ -58,6 +58,8 @@ Lead with findings in impact order:
 
 Use high confidence for direct evidence. Use medium confidence for a strong inference from the test and production path. Put low-confidence candidates under blind spots.
 
-For each finding, include the test location, what it proves, what it misses, evidence, and a concrete correction.
+For each finding, include severity, confidence, the test location, what it proves, what it misses, evidence, impact, and a concrete correction. For P3 findings, cite the governing user, repository, language, or framework standard.
 
 If no actionable findings exist, say so. Name the tests, production paths, and validation results.
+
+When `audit-codebase` invokes this skill, return scoped findings and validation evidence to the orchestrator. Do not choose the aggregate verdict or expand its scope.

@@ -54,9 +54,11 @@ Lead with findings in impact order:
 - `P2`: The defect can break an important edge case, failure path, or state transition.
 - `P3`: The defect affects a smaller behavior or resilience contract that has clear evidence.
 
-For each finding, include confidence, a tight file and line reference, the failing path, evidence, impact, and a concrete correction.
+For each finding, include severity, confidence, a tight file and line reference, the failing path, evidence, impact, and a concrete correction. For P3 findings, cite the governing user, repository, language, or framework standard.
 
 If no actionable findings exist, say so. Name the paths inspected, validation results, and blind spots.
+
+When `audit-codebase` invokes this skill, return scoped findings and validation evidence to the orchestrator. Do not choose the aggregate verdict or expand its scope.
 
 ## Correction Guidance
 

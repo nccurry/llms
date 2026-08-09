@@ -53,9 +53,11 @@ Lead with findings in impact order:
 - `P2`: The cost is material on a known or clearly implied workload.
 - `P3`: The cost is smaller but supported by a repository requirement or measurement.
 
-For each finding, include confidence, a tight file and line reference, the workload, the cost mechanism, evidence, and a concrete correction.
+For each finding, include severity, confidence, a tight file and line reference, the workload, the cost mechanism, evidence, impact, and a concrete correction. For P3 findings, cite the governing user, repository, language, or framework standard.
 
 If no actionable findings exist, say so. Name the paths inspected, measurements or checks, and blind spots.
+
+When `audit-codebase` invokes this skill, return scoped findings and validation evidence to the orchestrator. Do not choose the aggregate verdict or expand its scope.
 
 ## Correction Guidance
 

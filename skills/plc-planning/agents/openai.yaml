@@ -1,0 +1,4 @@
+interface:
+  display_name: "PLC Planning"
+  short_description: "Draft SRD/SADD-backed plan-led changes"
+  default_prompt: "Use $plc-planning to draft an SRD and SADD for a large feature."
