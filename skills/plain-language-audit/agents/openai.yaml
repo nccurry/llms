@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plain-Language Audit"
+  short_description: "Find vague prose and non-idiomatic names"
+  default_prompt: "Use $plain-language-audit to review this code and documentation for vague wording and non-idiomatic names."
