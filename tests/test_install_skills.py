@@ -25,6 +25,7 @@ class InstallSkillsTests(unittest.TestCase):
         self.source = self.root / "source"
         self.codex_dir = self.root / "codex" / "skills"
         self.claude_dir = self.root / "claude" / "skills"
+        self.pi_dir = self.root / "pi" / "agent" / "skills"
         self.skill_name = "sample-skill"
         self.managed_patch = mock.patch.object(
             install_skills,
@@ -300,6 +301,31 @@ class InstallSkillsTests(unittest.TestCase):
         self.assertIn("codex", codex_backup.parts)
         self.assertIn("claude", claude_backup.parts)
         self.assertNotEqual(codex_backup, claude_backup)
+
+    def test_pi_target_installs_and_uses_its_own_backup_directory(self) -> None:
+        targets = {"pi": self.pi_dir}
+        first = install_skills.install_skills(self.source, targets, dry_run=False)
+        self.assertEqual("created", first["targets"]["pi"]["skills"][0]["action"])
+
+        self.write_skill("version two")
+        updated = install_skills.install_skills(self.source, targets, dry_run=False)
+        backup = Path(updated["targets"]["pi"]["skills"][0]["backup"])
+        self.assertIn("pi", backup.parts)
+        self.assertTrue(updated["targets"]["pi"]["skills"][0]["verified"])
+
+    def test_pi_target_resolution_honors_flag_and_environment(self) -> None:
+        from_flag = self.root / "custom-pi-skills"
+        args = install_skills.parse_args(["--target", "pi", "--pi-dir", str(from_flag)])
+        self.assertEqual(from_flag, install_skills.resolve_targets(args)["pi"])
+
+        from_environment = self.root / "environment-pi-skills"
+        with mock.patch.dict(
+            install_skills.os.environ,
+            {"PI_SKILLS_DIR": str(from_environment)},
+            clear=False,
+        ):
+            args = install_skills.parse_args(["--target", "pi"])
+            self.assertEqual(from_environment, install_skills.resolve_targets(args)["pi"])
 
     def test_json_output_contains_verification_fields(self) -> None:
         result = self.install_codex()

@@ -274,7 +274,14 @@ def resolve_targets(args: argparse.Namespace) -> dict[str, Path]:
         if os.environ.get("CLAUDE_SKILLS_DIR")
         else home / ".claude" / "skills"
     )
-    return {"codex": codex_dir, "claude": claude_dir}
+    pi_dir = (
+        Path(args.pi_dir).expanduser()
+        if args.pi_dir
+        else Path(os.environ["PI_SKILLS_DIR"]).expanduser()
+        if os.environ.get("PI_SKILLS_DIR")
+        else home / ".pi" / "agent" / "skills"
+    )
+    return {"codex": codex_dir, "claude": claude_dir, "pi": pi_dir}
 
 
 def selected_targets(targets: dict[str, Path], selected: str) -> dict[str, Path]:
@@ -655,10 +662,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         ),
     )
     parser.add_argument("--command", choices=["list", "validate", "install"], default="install")
-    parser.add_argument("--target", choices=["all", "codex", "claude"], default="all")
+    parser.add_argument("--target", choices=["all", "codex", "claude", "pi"], default="all")
     parser.add_argument("--source", default=str(default_source()))
     parser.add_argument("--codex-dir")
     parser.add_argument("--claude-dir")
+    parser.add_argument("--pi-dir")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--output", choices=["text", "json"], default="text")
     return parser.parse_args(argv)

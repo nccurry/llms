@@ -28,8 +28,13 @@ tasks:
     cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target codex --dry-run
 
+  skills:dry-run:pi:
+    desc: Show what the Pi skill installation would change.
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target pi --dry-run
+
   skills:install:
-    desc: Install managed skills for Codex and Claude.
+    desc: Install managed skills for Codex, Claude, and Pi.
     cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target all
 
@@ -42,3 +47,8 @@ tasks:
     desc: Install managed skills for Claude only.
     cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target claude
+
+  skills:install:pi:
+    desc: Install managed skills for Pi only.
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target pi
