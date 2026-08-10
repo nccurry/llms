@@ -1,6 +1,6 @@
 ---
 name: audit-codebase
-description: Run the complete code craftsmanship gate across current changes and affected structure. Use when the user says "run all audit skills" or "run the audits before continuing." Also use for a full code audit or craftsmanship pass. This skill combines structure, correctness, code quality, visual clarity, dead code, tests, and performance.
+description: Run the complete code craftsmanship gate across current changes and affected structure. Use when the user says "run all audit skills" or "run the audits before continuing." Also use for a full code audit or craftsmanship pass. This skill combines structure, plain-language clarity, correctness, code quality, visual clarity, dead code, tests, and performance.
 ---
 
 # Audit Codebase
@@ -34,13 +34,14 @@ Always inspect the repository root and relevant ancestor folders. Use them to ju
 Apply these skills in order:
 
 1. `abstraction-quality-audit`: ownership, file-tree structure, boundaries, naming, and modularity.
-2. `correctness-reliability-audit`: behavior, state, errors, lifecycle, concurrency, and recovery.
-3. `code-quality-audit`: idiom, cohesion, control flow, necessity, and maintainability.
-4. `visual-code-audit`: scan path, whitespace, comments, indentation, and line shape.
-5. `dead-code-audit`: unused or obsolete code that can be removed safely.
-6. `audit-tests`: missing coverage for the selected change.
-7. `test-quality-audit`: weak assertions, poor test design, and flaky risk.
-8. `performance-audit`: measurable or strongly evidenced runtime and resource costs.
+2. `plain-language-audit`: word salad, vague prose, terminology, and conventional names.
+3. `correctness-reliability-audit`: behavior, state, errors, lifecycle, concurrency, and recovery.
+4. `code-quality-audit`: idiom, cohesion, control flow, necessity, and maintainability.
+5. `visual-code-audit`: scan path, whitespace, comments, indentation, and line shape.
+6. `dead-code-audit`: unused or obsolete code that can be removed safely.
+7. `audit-tests`: missing coverage for the selected change.
+8. `test-quality-audit`: weak assertions, poor test design, and flaky risk.
+9. `performance-audit`: measurable or strongly evidenced runtime and resource costs.
 
 If a required specialist is unavailable, return `INCOMPLETE`. Name the missing skill and do not claim a complete audit.
 
