@@ -10,6 +10,24 @@ This repository contains two provider-neutral projects:
 Repository-wide commands live in [`Taskfile.yml`](Taskfile.yml). Each project owns its source,
 tests, configuration, and documentation beneath its own directory.
 
+## Development
+
+The repository pins [Task](https://taskfile.dev/) and [uv](https://docs.astral.sh/uv/) with mise.
+Python remains owned by uv and each Python project's `.python-version` file.
+
+```bash
+mise install --locked
+mise exec -- task test
+mise exec -- task check
+mise exec -- task ci
+```
+
+If compatible Task and uv versions are already on `PATH`, the shorter `task test`, `task check`,
+and `task ci` commands work without mise. `task test` runs deterministic tests across both
+projects. `task check` adds formatting, lint, typing, coverage, and skill validation. `task ci`
+also builds piw and smoke-tests the installed wheel. Run `task --list` for the granular,
+project-prefixed commands.
+
 ## piw
 
 Install the `piw` subproject from a checkout:
@@ -85,11 +103,15 @@ actions, backup paths, digests, and verification results.
 
 ### Direct usage
 
-The PowerShell wrapper selects an available Python runtime:
+Use uv to provide the pinned Python runtime without relying on a system virtual environment:
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --command install --target pi --dry-run --output json
+```bash
+uv run --isolated --python 3.14 python scripts/install_skills.py \
+  --command install --target pi --dry-run --output json
 ```
+
+Windows users without uv can use `scripts/run_install_skills.ps1`, which selects an available
+Python runtime.
 
 Pi installs to `~/.pi/agent/skills` by default. Set `CODEX_SKILLS_DIR`, `CLAUDE_SKILLS_DIR`, or
 `PI_SKILLS_DIR` to override a default target. You can also use `--codex-dir`, `--claude-dir`, or

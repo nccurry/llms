@@ -142,6 +142,33 @@ def test_state_write_failure_has_stable_error(tmp_path: Path) -> None:
     assert captured.value.detail.kind == "session_state_write_failed"
 
 
+def test_state_delete_failure_has_stable_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """State deletion reports a typed error and retains the retryable record."""
+
+    store = StateStore(tmp_path)
+    store.save(record())
+    state_path = store.path_for("sample")
+    original_unlink = Path.unlink
+
+    def fail_current_state(path: Path, *, missing_ok: bool = False) -> None:
+        """Reject deletion only for the state file under test."""
+
+        if path == state_path:
+            raise PermissionError("permission denied")
+        original_unlink(path, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", fail_current_state)
+
+    with pytest.raises(PiwError) as captured:
+        store.delete("sample")
+
+    assert captured.value.detail.kind == "session_state_delete_failed"
+    assert state_path.is_file()
+
+
 def secret_record() -> SecretRecord:
     """Create redacted secret synchronization metadata."""
 

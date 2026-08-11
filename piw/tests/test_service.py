@@ -474,6 +474,46 @@ def test_clean_removes_a_chat_after_its_sandbox_was_lost(
     assert not service.store.exists("stale-chat")
 
 
+def test_chat_cleanup_failure_retains_retryable_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A workspace deletion failure leaves state that a later cleanup can retry."""
+
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
+    service, runner, _ = make_service(tmp_path)
+    service.chat(
+        "retry-cleanup",
+        service.effective_session_config(),
+        temporary=False,
+        batch=True,
+        dry_run=False,
+    )
+    record = service.store.load("retry-cleanup")
+
+    def fail_workspace_delete(_path: str | Path) -> None:
+        """Simulate an operating-system refusal to delete the workspace."""
+
+        raise PermissionError("permission denied")
+
+    with monkeypatch.context() as cleanup_patch:
+        cleanup_patch.setattr(
+            "piw.service.shutil.rmtree",
+            fail_workspace_delete,
+        )
+        with pytest.raises(PiwError) as captured:
+            service.clean("retry-cleanup", dry_run=False, force=False)
+
+    assert captured.value.detail.kind == "workspace_cleanup_failed"
+    assert record.sandbox not in runner.sandboxes
+    assert Path(record.workspace).is_dir()
+    assert service.store.exists("retry-cleanup")
+
+    assert service.clean("retry-cleanup", dry_run=False, force=False)["action"] == "removed"
+    assert not Path(record.workspace).exists()
+    assert not service.store.exists("retry-cleanup")
+
+
 def test_clean_refuses_an_unmanaged_chat_workspace(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

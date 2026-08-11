@@ -278,11 +278,27 @@ copied model and settings metadata before starting the session.
 
 ### Development
 
+From the repository root, use the namespaced tasks:
+
 ```bash
-task piw:sync
+task piw:test
 task piw:check
-task piw:build
+task piw:test:package
 ```
 
-The implementation uses Python 3.14, strict Pyright, Ruff, pytest, PyYAML, and the native uv build
+From `piw/`, the same tasks are available without the `piw:` prefix. Normal tests use deterministic
+subprocess fakes and require neither Docker nor network access. The live lifecycle test is separate
+because it creates and removes a real sandbox and may download or build the reusable Pi template:
+
+```bash
+task piw:test:live
+```
+
+The live test uses the sandbox profile from the user configuration. Set `PIW_LIVE_PROFILE` to
+override it in CI. It deliberately ignores configured providers, secrets, MCPs, references, and
+skills.
+
+`task piw:ci` runs the complete piw gate: lockfile validation, formatting, lint, strict typing,
+tests, branch coverage, package build, and an isolated installed-command smoke test. The
+implementation uses Python 3.14, strict Pyright, Ruff, pytest, PyYAML, and uv's native build
 backend.

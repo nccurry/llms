@@ -1,0 +1,5 @@
+# Development-tool pins. Python remains owned by uv and piw/.python-version.
+
+[tools]
+task = "3.52.0"
+uv = "0.12.3"
