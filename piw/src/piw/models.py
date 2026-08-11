@@ -32,6 +32,14 @@ class BranchMode(StrEnum):
     EXISTING = "existing"
 
 
+class AttachMode(StrEnum):
+    """How Pi chooses a conversation when attaching to a sandbox."""
+
+    CONTINUE = "continue"
+    NEW = "new"
+    SELECT = "select"
+
+
 class ThinkingLevel(StrEnum):
     """Thinking levels accepted by Pi."""
 
