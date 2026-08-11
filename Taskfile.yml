@@ -5,24 +5,28 @@ silent: true
 tasks:
   piw:sync:
     desc: Create the Python 3.14 development environment from the lockfile.
+    dir: piw
     cmds:
       - uv sync --locked
 
   piw:check:
     desc: Run formatting, lint, strict typing, tests, and coverage.
+    dir: piw
     cmds:
-      - uv run ruff format --check src tests/piw piw
-      - uv run ruff check src tests/piw piw
+      - uv run ruff format --check src tests piw
+      - uv run ruff check src tests piw
       - uv run pyright
-      - uv run pytest tests/piw --cov=piw --cov-report=term-missing
+      - uv run pytest tests --cov=piw --cov-report=term-missing
 
   piw:test:
     desc: Run piw's deterministic test suite.
+    dir: piw
     cmds:
-      - uv run pytest tests/piw
+      - uv run pytest tests
 
   piw:build:
     desc: Build the piw source distribution and wheel.
+    dir: piw
     cmds:
       - uv build --no-sources
 
@@ -38,8 +42,10 @@ tasks:
 
   skills:test:
     desc: Run the installer unit tests.
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
     cmds:
-      - python -m unittest discover -s tests -p "test_*.py"
+      - uv run --isolated --python 3.14 python -m unittest discover -s tests -p "test_*.py"
 
   skills:dry-run:
     desc: Show what skill installation would change.

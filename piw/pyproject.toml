@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "piw-agent-workflow"
 version = "0.1.0"
-description = "Run persistent Pi coding-agent workflows in isolated Docker Sandboxes."
+description = "Run persistent branch and repository-free Pi sessions in Docker Sandboxes."
 readme = "README.md"
 requires-python = ">=3.14"
 license = "MIT"
@@ -19,7 +19,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Typing :: Typed",
 ]
-dependencies = []
+dependencies = ["pyyaml>=6.0.3"]
 
 [project.scripts]
 piw = "piw.cli:main"
@@ -30,13 +30,14 @@ dev = [
   "pytest>=8.4.0",
   "pytest-cov>=6.2.1",
   "ruff>=0.12.0",
+  "types-pyyaml>=6.0.12.20260724",
 ]
 
 [tool.uv.build-backend]
 module-name = "piw"
 
 [tool.pyright]
-include = ["src", "tests/piw"]
+include = ["src", "tests"]
 pythonVersion = "3.14"
 typeCheckingMode = "strict"
 reportUnnecessaryTypeIgnoreComment = "error"
@@ -56,7 +57,7 @@ show_missing = true
 skip_covered = true
 
 [tool.ruff]
-include = ["src/**/*.py", "tests/piw/**/*.py", "piw"]
+include = ["src/**/*.py", "tests/**/*.py", "piw"]
 line-length = 100
 target-version = "py314"
 

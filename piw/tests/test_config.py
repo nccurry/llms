@@ -33,16 +33,25 @@ def test_parse_complete_config_expands_paths(
             "sandbox": {
                 "profile": "developer",
                 "read_only_refs": ["$PIW_TEST_ROOT"],
-                "mcp_servers": ["jira"],
                 "cpus": 4,
                 "memory": "8g",
                 "timeout_seconds": 42,
+                "secrets": [
+                    {
+                        "source_env": "HOST_TOKEN",
+                        "sandbox_env": "EXAMPLE_API_KEY",
+                        "hosts": ["api.example.test", "*.example.test"],
+                        "placeholder": "sk-{rand}",
+                        "required": False,
+                    }
+                ],
             },
             "pi": {
                 "package": "pi@example",
                 "model": "provider/model",
                 "thinking": "xhigh",
                 "extensions": ["npm:extension@1"],
+                "mcp_file": "$PIW_TEST_ROOT/mcp.json",
                 "skill_paths": ["$PIW_TEST_ROOT"],
             },
             "template": {"prefix": "test-pi", "node_version": "v22.19.0"},
@@ -52,8 +61,12 @@ def test_parse_complete_config_expands_paths(
     assert config.sandbox.read_only_refs == (tmp_path,)
     assert config.sandbox.cpus == 4
     assert config.sandbox.memory == "8g"
+    assert config.sandbox.secrets[0].source_env == "HOST_TOKEN"
+    assert config.sandbox.secrets[0].sandbox_env == "EXAMPLE_API_KEY"
+    assert config.sandbox.secrets[0].required is False
     assert config.pi.thinking is ThinkingLevel.XHIGH
     assert config.pi.extensions == ("npm:extension@1",)
+    assert config.pi.mcp_file == tmp_path / "mcp.json"
 
 
 @pytest.mark.parametrize(
@@ -65,6 +78,74 @@ def test_parse_complete_config_expands_paths(
         {"pi": {"thinking": "infinite"}},
         {"pi": {"extensions": ["same", "same"]}},
         {"sandbox": []},
+        {"sandbox": {"secrets": "wrong"}},
+        {"sandbox": {"secrets": ["wrong"]}},
+        {"sandbox": {"mcp_servers": ["tools"]}},
+        {"sandbox": {"mcp_registrations": []}},
+        {"sandbox": {"mcp_gateway_url": "https://example.test/mcp"}},
+        {"sandbox": {"secrets": [{"source_env": "TOKEN", "sandbox_env": "TOKEN"}]}},
+        {
+            "sandbox": {
+                "secrets": [
+                    {
+                        "source_env": "BAD-NAME",
+                        "sandbox_env": "TOKEN",
+                        "hosts": ["api.example.test"],
+                    }
+                ]
+            }
+        },
+        {
+            "sandbox": {
+                "secrets": [
+                    {
+                        "source_env": "TOKEN",
+                        "sandbox_env": "TOKEN",
+                        "hosts": ["https://api.example.test/path"],
+                    }
+                ]
+            }
+        },
+        {
+            "sandbox": {
+                "secrets": [
+                    {
+                        "source_env": "TOKEN",
+                        "sandbox_env": "TOKEN",
+                        "hosts": ["api.example.test"],
+                        "placeholder": "literal",
+                    }
+                ]
+            }
+        },
+        {
+            "sandbox": {
+                "secrets": [
+                    {
+                        "source_env": "TOKEN",
+                        "sandbox_env": "TOKEN",
+                        "hosts": ["api.example.test"],
+                        "required": "yes",
+                    }
+                ]
+            }
+        },
+        {
+            "sandbox": {
+                "secrets": [
+                    {
+                        "source_env": "ONE",
+                        "sandbox_env": "TOKEN",
+                        "hosts": ["one.example.test"],
+                    },
+                    {
+                        "source_env": "TWO",
+                        "sandbox_env": "TOKEN",
+                        "hosts": ["two.example.test"],
+                    },
+                ]
+            }
+        },
         {"pi": {"model": ""}},
         {"pi": {"package": ""}},
         {"pi": {"extensions": "wrong"}},

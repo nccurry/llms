@@ -5,13 +5,16 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+import yaml
 
 from piw.cli import build_parser, emit, main
-from piw.errors import ExitCode
+from piw.errors import ExitCode, PiwError
 from piw.models import (
     AppConfig,
     DoctorCheck,
-    EffectiveTaskConfig,
+    EffectiveBranchConfig,
+    EffectiveSessionConfig,
+    HostChangesPolicy,
     OutputFormat,
     ThinkingLevel,
 )
@@ -25,14 +28,34 @@ class FakeService:
 
     def __init__(self, repo: Path) -> None:
         self.repo = repo
+        self.branch_kwargs: dict[str, object] = {}
+        self.chat_args: tuple[object, ...] = ()
+        self.chat_kwargs: dict[str, object] = {}
+
+    def effective_session_config(self, **kwargs: object) -> EffectiveSessionConfig:
+        del kwargs
+        return EffectiveSessionConfig(
+            read_only_refs=(),
+            skill_paths=(),
+            model=None,
+            thinking=ThinkingLevel.HIGH,
+            profile=None,
+            extensions=(),
+            models_file=None,
+            settings_file=None,
+            mcp_file=None,
+            cpus=0,
+            memory=None,
+            timeout_seconds=60,
+        )
 
     def doctor(self, *, live: bool, timeout_seconds: int) -> list[DoctorCheck]:
         del live, timeout_seconds
         return [DoctorCheck("fake", "pass", "ready")]
 
-    def effective_task_config(self, **kwargs: object) -> EffectiveTaskConfig:
+    def effective_branch_config(self, **kwargs: object) -> EffectiveBranchConfig:
         del kwargs
-        return EffectiveTaskConfig(
+        return EffectiveBranchConfig(
             repo=self.repo,
             base_ref="HEAD",
             branch="piw/task",
@@ -40,49 +63,73 @@ class FakeService:
             skill_paths=(),
             model=None,
             thinking=ThinkingLevel.HIGH,
-            mcp_servers=(),
             profile=None,
             extensions=(),
             models_file=None,
             settings_file=None,
+            mcp_file=None,
             cpus=0,
             memory=None,
             timeout_seconds=60,
         )
 
-    def start(self, **kwargs: object) -> dict[str, object]:
-        del kwargs
+    def create_branch(self, **kwargs: object) -> dict[str, object]:
+        self.branch_kwargs = kwargs
         return {"action": "created"}
 
-    def resume(self, task: str, *, timeout_seconds: int) -> dict[str, object]:
-        del task, timeout_seconds
+    def chat(
+        self,
+        name: str | None,
+        session_config: EffectiveSessionConfig,
+        *,
+        temporary: bool,
+        batch: bool,
+        dry_run: bool,
+    ) -> dict[str, object]:
+        self.chat_args = (name, session_config)
+        self.chat_kwargs = {
+            "temporary": temporary,
+            "batch": batch,
+            "dry_run": dry_run,
+        }
+        return {"action": "created", "name": name, "temporary": temporary}
+
+    def resume(self, name: str, *, timeout_seconds: int) -> dict[str, object]:
+        del name, timeout_seconds
         return {"action": "resumed"}
 
-    def list_tasks(self) -> list[dict[str, object]]:
-        return [{"task": "task", "status": "running"}]
+    def list_sessions(self) -> list[dict[str, object]]:
+        return [{"name": "task", "type": "branch", "status": "running"}]
 
-    def status(self, task: str) -> dict[str, object]:
-        return {"task": task, "status": "running"}
+    def status(self, name: str) -> dict[str, object]:
+        return {"name": name, "status": "running"}
 
-    def shell(self, task: str, cwd: Path | None = None) -> None:
-        del task, cwd
+    def shell(self, name: str, cwd: Path | None = None) -> None:
+        del name, cwd
 
     def execute(
         self,
-        task: str,
+        name: str,
         command: tuple[str, ...],
         cwd: Path | None = None,
     ) -> dict[str, object]:
-        del task, cwd
+        del name, cwd
         return {"returncode": 3 if command == ("false",) else 0}
 
-    def stop(self, task: str, *, dry_run: bool) -> dict[str, object]:
-        del task, dry_run
+    def stop(self, name: str, *, dry_run: bool) -> dict[str, object]:
+        del name, dry_run
         return {"action": "stopped"}
 
-    def clean(self, task: str, *, dry_run: bool, force: bool) -> dict[str, object]:
-        del task, dry_run, force
+    def clean(self, name: str, *, dry_run: bool, force: bool) -> dict[str, object]:
+        del name, dry_run, force
         return {"action": "removed"}
+
+    def secret_status(self) -> list[dict[str, object]]:
+        return [{"sandbox_env": "EXAMPLE_API_KEY", "status": "synced"}]
+
+    def sync_secrets(self, *, dry_run: bool, force: bool) -> list[dict[str, object]]:
+        del dry_run, force
+        return [{"sandbox_env": "EXAMPLE_API_KEY", "action": "unchanged"}]
 
     def template_status(self) -> dict[str, object]:
         return {"installed": True}
@@ -117,7 +164,11 @@ def test_parser_exposes_complete_command_tree() -> None:
     examples = [
         ["init", "--dry-run"],
         ["doctor"],
-        ["start", "task", "--batch", "--dry-run"],
+        ["branch", "task", "--batch", "--dry-run"],
+        ["branch", "task", "--ignore-host-changes", "--dry-run"],
+        ["branch", "task", "--carry-host-changes", "--dry-run"],
+        ["chat", "research", "--batch", "--dry-run"],
+        ["chat", "--temporary", "--dry-run"],
         ["resume", "task"],
         ["list"],
         ["status", "task"],
@@ -125,6 +176,8 @@ def test_parser_exposes_complete_command_tree() -> None:
         ["exec", "task", "--", "true"],
         ["stop", "task", "--dry-run"],
         ["clean", "task", "--dry-run"],
+        ["secrets", "status"],
+        ["secrets", "sync", "--dry-run"],
         ["config", "path"],
         ["config", "show", "--effective"],
         ["config", "validate"],
@@ -136,6 +189,84 @@ def test_parser_exposes_complete_command_tree() -> None:
     ]
     for argv in examples:
         assert parser.parse_args(argv).command
+
+
+def test_start_is_not_a_compatibility_alias() -> None:
+    """The public command vocabulary has one unambiguous branch entry point."""
+
+    with pytest.raises(PiwError):
+        build_parser().parse_args(["start", "task"])
+
+
+def test_branch_host_change_flags_are_explicit_and_mutually_exclusive() -> None:
+    """Branch defaults to fail-closed and accepts exactly one override policy."""
+
+    parser = build_parser()
+    assert parser.parse_args(["branch", "task"]).host_changes is HostChangesPolicy.FAIL
+    assert (
+        parser.parse_args(["branch", "task", "--ignore-host-changes"]).host_changes
+        is HostChangesPolicy.IGNORE
+    )
+    assert (
+        parser.parse_args(["branch", "task", "--carry-host-changes"]).host_changes
+        is HostChangesPolicy.CARRY
+    )
+    with pytest.raises(PiwError) as captured:
+        parser.parse_args(["branch", "task", "--ignore-host-changes", "--carry-host-changes"])
+    assert "not allowed with argument" in str(captured.value)
+
+
+def test_branch_dispatch_forwards_host_change_policy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The parsed override reaches branch orchestration as a typed policy."""
+
+    fake = FakeService(tmp_path)
+    install_fake_service(monkeypatch, fake)
+    code = main(
+        [
+            "branch",
+            "task",
+            "--carry-host-changes",
+            "--batch",
+            "--config",
+            str(tmp_path / "missing.toml"),
+        ]
+    )
+    assert code == ExitCode.SUCCESS
+    assert fake.branch_kwargs["host_changes"] is HostChangesPolicy.CARRY
+    capsys.readouterr()
+
+
+def test_chat_dispatch_forwards_lifecycle_options(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Chat names and persistence flags reach orchestration unchanged."""
+
+    fake = FakeService(tmp_path)
+    install_fake_service(monkeypatch, fake)
+    code = main(
+        [
+            "chat",
+            "research",
+            "--batch",
+            "--config",
+            str(tmp_path / "missing.toml"),
+        ]
+    )
+
+    assert code == ExitCode.SUCCESS
+    assert fake.chat_args[0] == "research"
+    assert fake.chat_kwargs == {
+        "temporary": False,
+        "batch": True,
+        "dry_run": False,
+    }
+    capsys.readouterr()
 
 
 def test_init_dry_run_has_stable_json_envelope(
@@ -209,6 +340,27 @@ def test_usage_failure_is_json_when_requested(capsys: pytest.CaptureFixture[str]
     assert payload["error"]["kind"] == "invalid_usage"
 
 
+def test_success_and_parser_failures_support_yaml(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """YAML uses the same stable envelope for successful commands and early failures."""
+
+    config = tmp_path / "config.toml"
+    assert main(["config", "path", "--config", str(config), "--output", "yaml"]) == 0
+    success: object = yaml.safe_load(capsys.readouterr().out)
+    assert isinstance(success, dict)
+    assert success["command"] == "config path"
+    assert success["data"] == str(config)
+
+    code = main(["--output=yaml", "not-a-command"])
+    failure: object = yaml.safe_load(capsys.readouterr().out)
+    assert code == ExitCode.USAGE
+    assert isinstance(failure, dict)
+    assert failure["ok"] is False
+    assert failure["error"]["kind"] == "invalid_usage"
+
+
 def test_equals_output_form_and_invalid_timeout_keep_json_errors(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -253,7 +405,9 @@ def test_config_path_for_missing_file_is_not_an_error(
     ("argv", "expected_code"),
     [
         (["doctor"], 0),
-        (["start", "task", "--batch"], 0),
+        (["branch", "task", "--batch"], 0),
+        (["chat", "research"], 0),
+        (["chat", "--temporary"], 0),
         (["resume", "task"], 0),
         (["list"], 0),
         (["status", "task"], 0),
@@ -262,6 +416,8 @@ def test_config_path_for_missing_file_is_not_an_error(
         (["exec", "task", "--", "false"], ExitCode.COMMAND),
         (["stop", "task", "--yes"], 0),
         (["clean", "task", "--yes"], 0),
+        (["secrets", "status"], 0),
+        (["secrets", "sync", "--dry-run"], 0),
         (["template", "status"], 0),
         (["template", "ensure"], 0),
         (["template", "rebuild", "--yes"], 0),

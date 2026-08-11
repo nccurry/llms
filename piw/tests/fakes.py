@@ -19,6 +19,14 @@ def _string_set() -> set[str]:
     return set()
 
 
+def _strings() -> list[str]:
+    return []
+
+
+def _custom_secrets() -> dict[str, tuple[str, tuple[str, ...]]]:
+    return {}
+
+
 @dataclass(slots=True)
 class ScenarioRunner:
     """Small in-memory model of the Git and sbx commands piw invokes."""
@@ -27,8 +35,12 @@ class ScenarioRunner:
     calls: list[tuple[str, ...]] = field(default_factory=_calls)
     sandboxes: dict[str, str] = field(default_factory=_string_dict)
     templates: set[str] = field(default_factory=_string_set)
-    registered_mcp: set[str] = field(default_factory=_string_set)
     host_clean: bool = True
+    host_conflicts: tuple[str, ...] = ()
+    host_patch: str = ""
+    host_patch_paths: tuple[str, ...] = ()
+    applied_host_patches: list[str] = field(default_factory=_strings)
+    host_patch_apply_error: bool = False
     sandbox_dirty: bool = False
     head_commit: str = "a" * 40
     upstream_exists: bool = True
@@ -36,8 +48,12 @@ class ScenarioRunner:
     rev_list_error: bool = False
     snapshot_error: bool = False
     create_error: bool = False
+    secret_error: bool = False
     pi_config_error: str | None = None
+    pi_exit_code: int = 0
     seeded_files: dict[str, str] = field(default_factory=_string_dict)
+    custom_secrets: dict[str, tuple[str, tuple[str, ...]]] = field(default_factory=_custom_secrets)
+    secret_inputs: list[str] = field(default_factory=_strings)
     executables: set[str] = field(default_factory=lambda: {"git", "sbx", "uv"})
     sandbox_list_output: str | None = None
 
@@ -75,7 +91,7 @@ class ScenarioRunner:
         if argv[:2] == ("sbx", "version"):
             return self._result(argv, stdout="sbx version: v0.test\n")
         if argv[:4] == ("sbx", "create", "shell", "--help"):
-            return self._result(argv, stdout="--clone --profile --static-mcp")
+            return self._result(argv, stdout="--clone --profile")
         if argv[:3] == ("sbx", "ls", "--json"):
             if self.sandbox_list_output is not None:
                 return self._result(argv, stdout=self.sandbox_list_output)
@@ -101,8 +117,21 @@ class ScenarioRunner:
                     }
                 )
             return self._result(argv, stdout=json.dumps({"images": images}))
-        if argv[:3] == ("sbx", "mcp", "inspect"):
-            return self._result(argv, code=0 if argv[3] in self.registered_mcp else 1)
+        if argv[:4] == ("sbx", "secret", "ls", "--global"):
+            lines = [
+                f"global {' '.join(hosts)} {sandbox_env} {placeholder} ********"
+                for sandbox_env, (placeholder, hosts) in sorted(self.custom_secrets.items())
+            ]
+            return self._result(argv, stdout="\n".join(lines))
+        if argv[:3] == ("sbx", "secret", "set-custom"):
+            if self.secret_error:
+                return self._result(argv, code=1, stderr="secret write failed")
+            sandbox_env = argv[argv.index("--env") + 1]
+            placeholder = argv[argv.index("--placeholder") + 1]
+            hosts = tuple(argv[index + 1] for index, part in enumerate(argv) if part == "--host")
+            self.custom_secrets[sandbox_env] = (placeholder, hosts)
+            self.secret_inputs.append((input_text or "").rstrip("\n"))
+            return self._result(argv, stdout="secret configured\n")
         if argv[:2] == ("sbx", "create"):
             name = argv[argv.index("--name") + 1]
             self.sandboxes[name] = "running"
@@ -138,12 +167,26 @@ class ScenarioRunner:
         if argv[-2:] == ("rev-parse", "--show-toplevel"):
             return self._result(argv, stdout=f"{self.repo}\n")
         if "status" in argv:
-            return self._result(argv, stdout="dirty\n" if not self.host_clean else "")
+            if self.host_conflicts:
+                status = "".join(f"UU {path}\0" for path in self.host_conflicts)
+                return self._result(argv, stdout=status)
+            if not self.host_clean:
+                return self._result(argv, stdout="?? host-change.txt\0")
+            return self._result(argv)
         if "check-ref-format" in argv:
             valid = ".." not in argv[-1] and not any(part.isspace() for part in argv[-1])
             return self._result(argv, code=0 if valid else 1)
         if "rev-parse" in argv:
+            if argv[-2:] == ("--git-path", "objects"):
+                return self._result(argv, stdout=f"{self.repo / '.git' / 'objects'}\n")
             return self._result(argv, stdout=f"{self.head_commit}\n")
+        if "diff" in argv and "--name-only" in argv:
+            return self._result(
+                argv,
+                stdout="".join(f"{path}\0" for path in self.host_patch_paths),
+            )
+        if "diff" in argv and "--binary" in argv:
+            return self._result(argv, stdout=self.host_patch)
         return self._result(argv)
 
     @staticmethod
@@ -162,6 +205,13 @@ class ScenarioRunner:
         self.sandboxes[sandbox] = "running"
         if command[:2] == ("git", "switch"):
             return self._result(argv)
+        if command[:2] == ("git", "apply"):
+            self.applied_host_patches.append(input_text or "")
+            return self._result(
+                argv,
+                code=1 if self.host_patch_apply_error else 0,
+                stderr="patch does not apply" if self.host_patch_apply_error else "",
+            )
         if command[:2] == ("git", "status"):
             return self._result(argv, stdout="dirty\n" if self.sandbox_dirty else "")
         if command[:3] == ("git", "rev-parse", "HEAD"):
@@ -181,12 +231,18 @@ class ScenarioRunner:
             )
         if command[:2] == ("pi", "--list-models"):
             return self._result(argv, stderr=self.pi_config_error or "")
+        if command and command[0] == "pi":
+            return self._result(
+                argv,
+                code=self.pi_exit_code,
+                stderr="Pi failed" if self.pi_exit_code else "",
+            )
         if command[:2] == ("sh", "-lc") and "cat >" in command[2]:
             filename = command[2].split("/")[-1].rstrip('"')
             self.seeded_files[filename] = input_text or ""
             return self._result(argv)
         if command[:2] == ("sh", "-lc") and "settings.json" in command[2]:
             return self._result(argv, stdout='{"packages":["existing"]}')
-        if command and command[0] in {"bash", "pi", "true", "sh", "printf"}:
+        if command and command[0] in {"bash", "true", "sh", "printf"}:
             return self._result(argv, stdout="ok\n")
         return self._result(argv, stdout="command output\n")

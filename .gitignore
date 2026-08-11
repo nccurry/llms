@@ -1,4 +1,5 @@
 .coverage
+.idea/
 .pytest_cache/
 .pyright/
 .ruff_cache/

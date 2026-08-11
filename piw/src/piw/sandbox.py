@@ -8,7 +8,14 @@ from pathlib import Path
 from typing import cast
 
 from piw.errors import ExitCode, PiwError
-from piw.models import AppConfig, CommandResult, EffectiveTaskConfig, TaskPhase
+from piw.models import (
+    AppConfig,
+    CommandResult,
+    EffectiveBranchConfig,
+    EffectiveSessionConfig,
+    SandboxPhase,
+    SandboxSecretConfig,
+)
 from piw.process import Runner
 
 
@@ -17,7 +24,7 @@ class SandboxInfo:
     """Relevant fields returned by ``sbx ls --json``."""
 
     name: str
-    status: TaskPhase
+    status: SandboxPhase
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,26 +73,28 @@ def desired_template(config: AppConfig) -> str:
 
 
 def read_only_exposure(
-    repo: Path,
+    writable_root: Path,
     references: tuple[Path, ...],
     skills: tuple[Path, ...],
 ) -> ReadOnlyExposure:
-    """Expand ancestors into disjoint directory mounts and file snapshots."""
+    """Expose references without mounting over the writable workspace."""
 
     mounts: set[Path] = set()
     snapshots: set[Path] = set()
     for reference in (*references, *skills):
-        if reference == repo or reference.is_relative_to(repo):
+        if reference == writable_root or reference.is_relative_to(writable_root):
             continue
         try:
-            relative_repo = repo.relative_to(reference)
+            relative_root = writable_root.relative_to(reference)
         except ValueError:
             mounts.add(reference)
             continue
 
         current = reference
         try:
-            for segment in relative_repo.parts:
+            for segment in relative_root.parts:
+                if not current.is_dir():
+                    break
                 for child in current.iterdir():
                     if child.name == segment:
                         continue
@@ -100,6 +109,7 @@ def read_only_exposure(
                 code=ExitCode.CONFIG,
                 kind="unreadable_reference",
             ) from error
+
     disjoint_mounts = {
         mount
         for mount in mounts
@@ -110,10 +120,13 @@ def read_only_exposure(
         for snapshot in snapshots
         if not any(snapshot.is_relative_to(mount) for mount in disjoint_mounts)
     }
+
     return ReadOnlyExposure(tuple(sorted(disjoint_mounts)), tuple(sorted(disjoint_snapshots)))
 
 
 def _decode_object(output: str, label: str) -> dict[str, object]:
+    """Decode an sbx JSON response and require a top-level object."""
+
     try:
         value = cast("object", json.loads(output))
     except json.JSONDecodeError as error:
@@ -122,12 +135,14 @@ def _decode_object(output: str, label: str) -> dict[str, object]:
             code=ExitCode.SANDBOX,
             kind="invalid_sbx_output",
         ) from error
+
     if not isinstance(value, dict):
         raise PiwError(
             f"{label} returned a non-object JSON value",
             code=ExitCode.SANDBOX,
             kind="invalid_sbx_output",
         )
+
     return cast("dict[str, object]", value)
 
 
@@ -147,6 +162,8 @@ class SbxClient:
         interactive: bool = False,
         timeout_seconds: int | None = None,
     ) -> CommandResult:
+        """Run an sbx command and translate timeouts into piw errors."""
+
         try:
             return self.runner.run(
                 argv,
@@ -163,6 +180,8 @@ class SbxClient:
 
     @staticmethod
     def _require(result: CommandResult, kind: str) -> CommandResult:
+        """Return a successful sbx result or raise the requested error kind."""
+
         if result.returncode == 0:
             return result
         message = result.stderr.strip() or result.stdout.strip() or "sbx command failed"
@@ -180,7 +199,7 @@ class SbxClient:
             self._run(("sbx", "create", "shell", "--help"), timeout_seconds=30),
             "sbx_help_failed",
         )
-        flags = {flag for flag in ("--clone", "--profile", "--static-mcp") if flag in result.stdout}
+        flags = {flag for flag in ("--clone", "--profile") if flag in result.stdout}
         return frozenset(flags)
 
     def list_sandboxes(self) -> tuple[SandboxInfo, ...]:
@@ -198,25 +217,34 @@ class SbxClient:
                 code=ExitCode.SANDBOX,
                 kind="invalid_sbx_output",
             )
+
         sandboxes: list[SandboxInfo] = []
         for value in cast("list[object]", values):
             if not isinstance(value, dict):
                 continue
+
             item = cast("dict[str, object]", value)
             raw_name = item.get("name")
             if not isinstance(raw_name, str):
                 continue
+
             raw_status = item.get("status")
             try:
-                status = TaskPhase(raw_status) if isinstance(raw_status, str) else TaskPhase.UNKNOWN
+                status = (
+                    SandboxPhase(raw_status)
+                    if isinstance(raw_status, str)
+                    else SandboxPhase.UNKNOWN
+                )
             except ValueError:
-                status = TaskPhase.UNKNOWN
+                status = SandboxPhase.UNKNOWN
+
             sandboxes.append(
                 SandboxInfo(
                     name=raw_name,
                     status=status,
                 )
             )
+
         return tuple(sandboxes)
 
     def list_templates(self) -> tuple[TemplateInfo, ...]:
@@ -234,10 +262,12 @@ class SbxClient:
                 code=ExitCode.SANDBOX,
                 kind="invalid_sbx_output",
             )
+
         templates: list[TemplateInfo] = []
         for value in cast("list[object]", values):
             if not isinstance(value, dict):
                 continue
+
             item = cast("dict[str, object]", value)
             repository = item.get("repository")
             tag = item.get("tag")
@@ -248,6 +278,7 @@ class SbxClient:
                         tag=cast("str", tag),
                     )
                 )
+
         return tuple(templates)
 
     def has_template(self, reference: str) -> bool:
@@ -259,32 +290,67 @@ class SbxClient:
         self,
         *,
         name: str,
-        task_config: EffectiveTaskConfig,
+        branch_config: EffectiveBranchConfig,
         template: str,
         timeout_seconds: int,
     ) -> CommandResult:
-        """Create a detached clone-mode task sandbox."""
+        """Create a detached clone-mode branch sandbox."""
 
-        argv = ["sbx", "create", "--clone", "--name", name, "--template", template]
-        if task_config.cpus:
-            argv.extend(("--cpus", str(task_config.cpus)))
-        if task_config.memory:
-            argv.extend(("--memory", task_config.memory))
-        if task_config.profile:
-            argv.extend(("--profile", task_config.profile))
-        for server in task_config.mcp_servers:
-            argv.extend(("--static-mcp", server))
-        argv.extend(("shell", str(task_config.repo)))
+        argv = self._create_argv(name, branch_config, template=template, clone=True)
+        argv.extend(("shell", str(branch_config.repo)))
+
         exposure = read_only_exposure(
-            task_config.repo,
-            task_config.read_only_refs,
-            task_config.skill_paths,
+            branch_config.repo,
+            branch_config.read_only_refs,
+            branch_config.skill_paths,
         )
-        argv.extend(f"{path}:ro" for path in exposure.mounts)
+
+        result = self._create_with_exposure(
+            tuple(argv),
+            name=name,
+            exposure=exposure,
+            timeout_seconds=timeout_seconds,
+        )
+        return result
+
+    @staticmethod
+    def _create_argv(
+        name: str,
+        session_config: EffectiveSessionConfig,
+        *,
+        template: str,
+        clone: bool,
+    ) -> list[str]:
+        """Build common resource and governance flags for a sandbox."""
+
+        argv = ["sbx", "create"]
+        if clone:
+            argv.append("--clone")
+        argv.extend(("--name", name, "--template", template))
+        if session_config.cpus:
+            argv.extend(("--cpus", str(session_config.cpus)))
+        if session_config.memory:
+            argv.extend(("--memory", session_config.memory))
+        if session_config.profile:
+            argv.extend(("--profile", session_config.profile))
+        return argv
+
+    def _create_with_exposure(
+        self,
+        argv: tuple[str, ...],
+        *,
+        name: str,
+        exposure: ReadOnlyExposure,
+        timeout_seconds: int,
+    ) -> CommandResult:
+        """Create a sandbox and copy reference files that cannot be mounted."""
+
+        command = (*argv, *(f"{path}:ro" for path in exposure.mounts))
         result = self._require(
-            self._run(tuple(argv), timeout_seconds=timeout_seconds),
+            self._run(command, timeout_seconds=timeout_seconds),
             "sandbox_create_failed",
         )
+
         for source in exposure.snapshots:
             self._require(
                 self._run(
@@ -299,7 +365,33 @@ class SbxClient:
                 ),
                 "reference_snapshot_failed",
             )
+
         return result
+
+    def create_workspace(
+        self,
+        *,
+        name: str,
+        workspace: Path,
+        session_config: EffectiveSessionConfig,
+        template: str,
+        timeout_seconds: int,
+    ) -> CommandResult:
+        """Create a non-clone sandbox around an empty writable workspace."""
+
+        argv = self._create_argv(name, session_config, template=template, clone=False)
+        argv.extend(("shell", str(workspace)))
+        exposure = read_only_exposure(
+            workspace,
+            session_config.read_only_refs,
+            session_config.skill_paths,
+        )
+        return self._create_with_exposure(
+            tuple(argv),
+            name=name,
+            exposure=exposure,
+            timeout_seconds=timeout_seconds,
+        )
 
     def create_bootstrap(
         self,
@@ -392,8 +484,29 @@ class SbxClient:
             "template_remove_failed",
         )
 
-    def inspect_mcp(self, name: str) -> bool:
-        """Return whether an MCP server alias is registered."""
+    def list_global_secrets(self) -> str:
+        """Return the global Docker Sandbox secret inventory for reconciliation."""
 
-        result = self._run(("sbx", "mcp", "inspect", name), timeout_seconds=30)
-        return result.returncode == 0
+        result = self._require(
+            self._run(("sbx", "secret", "ls", "--global"), timeout_seconds=30),
+            "secret_list_failed",
+        )
+        return result.stdout
+
+    def set_custom_secret(
+        self,
+        declaration: SandboxSecretConfig,
+        *,
+        placeholder: str,
+        value: str,
+    ) -> CommandResult:
+        """Set one custom secret while keeping its value out of process arguments."""
+
+        argv = ["sbx", "secret", "set-custom"]
+        for host in declaration.hosts:
+            argv.extend(("--host", host))
+        argv.extend(("--env", declaration.sandbox_env, "--placeholder", placeholder))
+        return self._require(
+            self._run(tuple(argv), input_text=f"{value}\n", timeout_seconds=60),
+            "secret_sync_failed",
+        )
