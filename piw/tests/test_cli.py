@@ -33,6 +33,8 @@ class FakeService:
         self.branch_kwargs: dict[str, object] = {}
         self.chat_args: tuple[object, ...] = ()
         self.chat_kwargs: dict[str, object] = {}
+        self.attach_args: tuple[object, ...] = ()
+        self.attach_kwargs: dict[str, object] = {}
 
     def effective_session_config(self, **kwargs: object) -> EffectiveSessionConfig:
         del kwargs
@@ -101,9 +103,27 @@ class FakeService:
         }
         return {"action": "created", "name": name, "temporary": temporary}
 
-    def resume(self, name: str, *, timeout_seconds: int) -> dict[str, object]:
-        del name, timeout_seconds
-        return {"action": "resumed"}
+    def attach(
+        self,
+        name: str,
+        *,
+        new: str | None,
+        select: bool,
+        model: str | None,
+        thinking: ThinkingLevel | None,
+        prompt: str | None,
+        timeout_seconds: int,
+    ) -> dict[str, object]:
+        self.attach_args = (name,)
+        self.attach_kwargs = {
+            "new": new,
+            "select": select,
+            "model": model,
+            "thinking": thinking,
+            "prompt": prompt,
+            "timeout_seconds": timeout_seconds,
+        }
+        return {"action": "attached"}
 
     def list_sessions(self) -> list[dict[str, object]]:
         return [{"name": "task", "type": "branch", "status": "running"}]
@@ -177,7 +197,9 @@ def test_parser_exposes_complete_command_tree() -> None:
         ["branch", "task", "--carry-host-changes", "--dry-run"],
         ["chat", "research", "--batch", "--dry-run"],
         ["chat", "--temporary", "--dry-run"],
-        ["resume", "task"],
+        ["attach", "task"],
+        ["attach", "task", "--new", "reviewer", "--model", "provider/model"],
+        ["attach", "task", "--select"],
         ["list"],
         ["status", "task"],
         ["shell", "task"],
@@ -204,6 +226,21 @@ def test_start_is_not_a_compatibility_alias() -> None:
 
     with pytest.raises(PiwError):
         build_parser().parse_args(["start", "task"])
+
+
+def test_resume_is_not_a_compatibility_alias() -> None:
+    """Attach is the only command for entering an existing session."""
+
+    with pytest.raises(PiwError):
+        build_parser().parse_args(["resume", "task"])
+
+
+def test_attach_conversation_modes_are_mutually_exclusive() -> None:
+    """One attachment cannot both create and select a conversation."""
+
+    with pytest.raises(PiwError) as captured:
+        build_parser().parse_args(["attach", "task", "--new", "reviewer", "--select"])
+    assert "not allowed with argument" in str(captured.value)
 
 
 def test_branch_host_change_flags_are_explicit_and_mutually_exclusive() -> None:
@@ -303,6 +340,47 @@ def test_chat_dispatch_forwards_lifecycle_options(
         "temporary": False,
         "batch": True,
         "dry_run": False,
+    }
+    capsys.readouterr()
+
+
+def test_attach_dispatch_forwards_conversation_options(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Conversation and model overrides reach attachment orchestration unchanged."""
+
+    fake = FakeService(tmp_path)
+    install_fake_service(monkeypatch, fake)
+    code = main(
+        [
+            "attach",
+            "research",
+            "--new",
+            "reviewer",
+            "--model",
+            "provider/model",
+            "--thinking",
+            "xhigh",
+            "--prompt",
+            "Review the changes.",
+            "--timeout",
+            "45",
+            "--config",
+            str(tmp_path / "missing.toml"),
+        ]
+    )
+
+    assert code == ExitCode.SUCCESS
+    assert fake.attach_args == ("research",)
+    assert fake.attach_kwargs == {
+        "new": "reviewer",
+        "select": False,
+        "model": "provider/model",
+        "thinking": ThinkingLevel.XHIGH,
+        "prompt": "Review the changes.",
+        "timeout_seconds": 45,
     }
     capsys.readouterr()
 
@@ -446,7 +524,7 @@ def test_config_path_for_missing_file_is_not_an_error(
         (["branch", "task", "--batch"], 0),
         (["chat", "research"], 0),
         (["chat", "--temporary"], 0),
-        (["resume", "task"], 0),
+        (["attach", "task"], 0),
         (["list"], 0),
         (["status", "task"], 0),
         (["shell", "task"], 0),

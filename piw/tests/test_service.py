@@ -352,7 +352,7 @@ def test_persistent_chat_supports_complete_lifecycle(
     assert service.execute("research-notes", ("printf", "ok"))["returncode"] == 0
     service.shell("research-notes")
     assert service.stop("research-notes", dry_run=False)["action"] == "stopped"
-    service.resume("research-notes", timeout_seconds=30)
+    service.attach("research-notes", timeout_seconds=30)
     assert service.store.load("research-notes").session_started is True
     status = service.status("research-notes")
     assert status["git"] is None
@@ -771,11 +771,11 @@ def test_branch_synchronizes_declared_secrets_automatically(
     assert "EXAMPLE_API_KEY" in runner.custom_secrets
 
     placeholder = runner.custom_secrets["EXAMPLE_API_KEY"][0]
-    monkeypatch.setenv("HOST_TOKEN", "rotated-on-resume")
-    resumed = service.resume("automatic-secret")
-    resumed_secrets = resumed["secrets"]
-    assert isinstance(resumed_secrets, list)
-    assert resumed_secrets[0]["action"] == "updated"
+    monkeypatch.setenv("HOST_TOKEN", "rotated-on-attach")
+    attached = service.attach("automatic-secret")
+    attached_secrets = attached["secrets"]
+    assert isinstance(attached_secrets, list)
+    assert attached_secrets[0]["action"] == "updated"
     assert runner.custom_secrets["EXAMPLE_API_KEY"][0] == placeholder
 
 
@@ -952,8 +952,8 @@ def test_branch_rolls_back_when_carried_changes_do_not_apply(tmp_path: Path) -> 
     assert not service.store.exists("bad-patch")
 
 
-def test_status_exec_stop_resume_and_clean(tmp_path: Path) -> None:
-    """A branch session survives stop/resume and is removed only after Git safety checks."""
+def test_status_exec_stop_attach_and_clean(tmp_path: Path) -> None:
+    """A branch session survives stop/attach and is removed only after Git safety checks."""
 
     service, runner, repo = make_service(tmp_path)
     service.create_branch(
@@ -969,16 +969,109 @@ def test_status_exec_stop_resume_and_clean(tmp_path: Path) -> None:
     stopped_status = service.status("lifecycle")
     assert stopped_status["git_inspection_deferred"] is True
     assert service.clean("lifecycle", dry_run=True, force=False)["safety"] is None
-    service.resume("lifecycle", timeout_seconds=30)
+    first = service.attach("lifecycle", timeout_seconds=30)
     assert service.store.load("lifecycle").session_started is True
-    service.resume("lifecycle", timeout_seconds=30)
+    second = service.attach("lifecycle", timeout_seconds=30)
     pi_calls = [call for call in runner.calls if "pi" in call]
+    assert first["conversation_mode"] == "new"
+    assert first["conversation_name"] == "lifecycle"
+    assert second["conversation_mode"] == "continue"
     assert "--continue" not in pi_calls[-2]
     assert "--continue" in pi_calls[-1]
     cleaned = service.clean("lifecycle", dry_run=False, force=False)
     assert cleaned["action"] == "removed"
     assert not runner.sandboxes
     assert not service.store.exists("lifecycle")
+
+
+def test_attach_starts_named_conversation_with_runtime_overrides(tmp_path: Path) -> None:
+    """A new conversation can use another model without changing stored defaults."""
+
+    service, runner, repo = make_service(tmp_path)
+    service.create_branch(
+        name="source",
+        branch_config=effective(service, repo, "source"),
+        batch=True,
+        dry_run=False,
+    )
+
+    attached = service.attach(
+        "source",
+        new="reviewer",
+        model="anthropic/reviewer",
+        thinking=ThinkingLevel.XHIGH,
+        prompt="Review the current changes.",
+    )
+
+    pi_call = next(call for call in reversed(runner.calls) if "pi" in call)
+    assert attached["conversation_mode"] == "new"
+    assert attached["conversation_name"] == "reviewer"
+    assert attached["model"] == "anthropic/reviewer"
+    assert attached["thinking"] == "xhigh"
+    assert "--continue" not in pi_call
+    assert "--resume" not in pi_call
+    pi_index = pi_call.index("pi")
+    assert pi_call[pi_index:] == (
+        "pi",
+        "--name",
+        "reviewer",
+        "--model",
+        "anthropic/reviewer",
+        "--thinking",
+        "xhigh",
+        "Review the current changes.",
+    )
+
+
+def test_attach_selects_a_chat_conversation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Conversation selection uses the same command for repository-free chats."""
+
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
+    service, runner, _ = make_service(tmp_path)
+    service.chat(
+        "research",
+        service.effective_session_config(),
+        temporary=False,
+        batch=True,
+        dry_run=False,
+    )
+
+    attached = service.attach("research", select=True)
+    pi_call = next(call for call in reversed(runner.calls) if "pi" in call)
+    assert attached["type"] == "chat"
+    assert attached["conversation_mode"] == "select"
+    assert "--resume" in pi_call
+    assert "--continue" not in pi_call
+
+
+@pytest.mark.parametrize(
+    ("new", "select", "kind"),
+    [
+        ("", False, "missing_conversation_name"),
+        ("reviewer", True, "invalid_usage"),
+    ],
+)
+def test_attach_rejects_invalid_conversation_modes(
+    tmp_path: Path,
+    new: str,
+    select: bool,
+    kind: str,
+) -> None:
+    """Direct service callers receive the same fail-closed validation as the CLI."""
+
+    service, _, repo = make_service(tmp_path)
+    service.create_branch(
+        name="source",
+        branch_config=effective(service, repo, "source"),
+        batch=True,
+        dry_run=False,
+    )
+
+    with pytest.raises(PiwError) as captured:
+        service.attach("source", new=new, select=select)
+    assert captured.value.detail.kind == kind
 
 
 def test_clean_refuses_dirty_or_unpushed_work(tmp_path: Path) -> None:

@@ -17,6 +17,7 @@ from piw.errors import ExitCode, PiwError
 from piw.git import GitClient, HostPatch, HostStatus
 from piw.models import (
     AppConfig,
+    AttachMode,
     BranchMode,
     DoctorCheck,
     EffectiveBranchConfig,
@@ -268,10 +269,12 @@ class _PiLaunch:
 
     sandbox: str
     workdir: Path
-    name: str
+    mode: AttachMode
+    conversation_name: str | None
     model: str | None
     thinking: str
     skill_paths: tuple[str, ...]
+    prompt: str | None
 
 
 class PiwService:
@@ -868,27 +871,31 @@ class PiwService:
             )
 
     @staticmethod
-    def _pi_command(launch: _PiLaunch, *, resume: bool) -> tuple[str, ...]:
-        """Build the Pi command for a new or resumed session."""
+    def _pi_command(launch: _PiLaunch) -> tuple[str, ...]:
+        """Build the Pi command for one conversation attachment."""
 
         argv = ["pi"]
-        if resume:
+        if launch.mode is AttachMode.CONTINUE:
             argv.append("--continue")
-        else:
-            argv.extend(("--name", launch.name))
+        elif launch.mode is AttachMode.SELECT:
+            argv.append("--resume")
+        elif launch.conversation_name:
+            argv.extend(("--name", launch.conversation_name))
         if launch.model:
             argv.extend(("--model", launch.model))
         argv.extend(("--thinking", launch.thinking))
         for skill in launch.skill_paths:
             argv.extend(("--skill", skill))
+        if launch.prompt:
+            argv.append(launch.prompt)
         return tuple(argv)
 
-    def _attach_pi(self, launch: _PiLaunch, *, resume: bool) -> None:
+    def _attach_pi(self, launch: _PiLaunch) -> None:
         """Run Pi interactively inside one sandbox."""
 
         result = self.sbx.exec(
             launch.sandbox,
-            self._pi_command(launch, resume=resume),
+            self._pi_command(launch),
             workdir=launch.workdir,
             interactive=True,
         )
@@ -900,16 +907,26 @@ class PiwService:
             )
 
     @staticmethod
-    def _session_launch(record: SessionRecord) -> _PiLaunch:
-        """Convert persistent session state into Pi launch inputs."""
+    def _session_launch(
+        record: SessionRecord,
+        *,
+        mode: AttachMode,
+        conversation_name: str | None = None,
+        model: str | None = None,
+        thinking: ThinkingLevel | None = None,
+        prompt: str | None = None,
+    ) -> _PiLaunch:
+        """Combine stored session defaults with one attachment request."""
 
         return _PiLaunch(
             sandbox=record.sandbox,
             workdir=Path(record.workspace),
-            name=record.name,
-            model=record.model,
-            thinking=record.thinking,
+            mode=mode,
+            conversation_name=conversation_name,
+            model=model or record.model,
+            thinking=thinking.value if thinking else record.thinking,
             skill_paths=record.skill_paths,
+            prompt=prompt,
         )
 
     def _plan_branch(
@@ -926,7 +943,7 @@ class PiwService:
                 f"session {normalized!r} already exists",
                 code=ExitCode.SESSION,
                 kind="session_exists",
-                hint=f"Use 'piw resume {normalized}'.",
+                hint=f"Use 'piw attach {normalized}'.",
             )
 
         host_status = self.git.status(branch_config.repo)
@@ -1229,7 +1246,13 @@ class PiwService:
             if not batch:
                 started = replace(record, last_used_at=utc_now(), session_started=True)
                 self.store.save(started)
-                self._attach_pi(self._session_launch(started), resume=False)
+                self._attach_pi(
+                    self._session_launch(
+                        started,
+                        mode=AttachMode.NEW,
+                        conversation_name=started.name,
+                    )
+                )
         finally:
             if not saved:
                 self._best_effort_remove(plan.sandbox)
@@ -1260,7 +1283,7 @@ class PiwService:
                 f"session {normalized!r} already exists",
                 code=ExitCode.SESSION,
                 kind="session_exists",
-                hint=f"Use 'piw resume {normalized}'.",
+                hint=f"Use 'piw attach {normalized}'.",
             )
 
         sandbox = chat_sandbox_name(normalized, temporary=temporary)
@@ -1382,7 +1405,13 @@ class PiwService:
             if not batch:
                 started = replace(record, last_used_at=utc_now(), session_started=True)
                 self.store.save(started)
-                self._attach_pi(self._session_launch(started), resume=False)
+                self._attach_pi(
+                    self._session_launch(
+                        started,
+                        mode=AttachMode.NEW,
+                        conversation_name=started.name,
+                    )
+                )
         finally:
             if not saved:
                 self._best_effort_remove(plan.sandbox)
@@ -1405,12 +1434,13 @@ class PiwService:
                 _PiLaunch(
                     sandbox=plan.sandbox,
                     workdir=plan.workspace,
-                    name=plan.name,
+                    mode=AttachMode.NEW,
+                    conversation_name=plan.name,
                     model=session_config.model,
                     thinking=session_config.thinking.value,
                     skill_paths=tuple(str(path) for path in session_config.skill_paths),
+                    prompt=None,
                 ),
-                resume=False,
             )
             self.sbx.remove(plan.sandbox)
             removed = True
@@ -1473,8 +1503,31 @@ class PiwService:
             return self._run_temporary_chat(plan, session_config, preview)
         return self._create_persistent_chat(plan, session_config, preview, batch=batch)
 
-    def resume(self, name: str, *, timeout_seconds: int = 120) -> dict[str, object]:
-        """Resume the most recent Pi conversation in a persistent session."""
+    def attach(
+        self,
+        name: str,
+        *,
+        new: str | None = None,
+        select: bool = False,
+        model: str | None = None,
+        thinking: ThinkingLevel | None = None,
+        prompt: str | None = None,
+        timeout_seconds: int = 120,
+    ) -> dict[str, object]:
+        """Run a new, selected, or continued Pi conversation in a saved sandbox."""
+
+        if new is not None and select:
+            raise PiwError(
+                "--new cannot be combined with --select",
+                code=ExitCode.USAGE,
+                kind="invalid_usage",
+            )
+        if new is not None and not new.strip():
+            raise PiwError(
+                "new conversation names cannot be empty",
+                code=ExitCode.USAGE,
+                kind="missing_conversation_name",
+            )
 
         secrets = self.sync_secrets(dry_run=False, force=False)
         record = self.store.load(normalize_session_name(name))
@@ -1496,13 +1549,37 @@ class PiwService:
 
         updated = replace(record, last_used_at=utc_now(), session_started=True)
         self.store.save(updated)
-        self._attach_pi(self._session_launch(updated), resume=record.session_started)
+
+        if select:
+            mode = AttachMode.SELECT
+        elif new is not None:
+            mode = AttachMode.NEW
+        else:
+            mode = AttachMode.CONTINUE
+        conversation_name = new.strip() if new is not None else None
+        if mode is AttachMode.CONTINUE and not record.session_started:
+            mode = AttachMode.NEW
+            conversation_name = record.name
+
+        launch = self._session_launch(
+            updated,
+            mode=mode,
+            conversation_name=conversation_name,
+            model=model,
+            thinking=thinking,
+            prompt=prompt,
+        )
+        self._attach_pi(launch)
 
         return {
             "name": record.name,
             "type": record.kind.value,
             "sandbox": record.sandbox,
             "previous_status": sandbox.status.value,
+            "conversation_mode": mode.value,
+            "conversation_name": conversation_name,
+            "model": launch.model,
+            "thinking": launch.thinking,
             "secrets": secrets,
         }
 

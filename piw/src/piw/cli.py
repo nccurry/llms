@@ -60,6 +60,15 @@ AI_CONTEXT:
   Exit 0 is success; 10-16 are piw failures.
 """
 
+_ATTACH_AI_CONTEXT = """
+AI_CONTEXT:
+  With no mode flag, attach continues the latest Pi conversation.
+  Use --new NAME for a separate conversation in the same sandbox and working tree.
+  Use --select to open Pi's saved-conversation selector.
+  --model and --thinking override this attachment without changing the saved defaults.
+  Exit 0 is success; 10-16 are piw failures.
+"""
+
 
 class PiwArgumentParser(argparse.ArgumentParser):
     """Argument parser that reports usage failures through piw's error model."""
@@ -222,15 +231,34 @@ def _add_session_lifecycle_commands(
 ) -> None:
     """Register commands that manage existing persistent sessions."""
 
-    resume = commands.add_parser(
-        "resume",
+    attach = commands.add_parser(
+        "attach",
         parents=[common],
-        help="Continue the latest Pi conversation for a persistent session.",
-        epilog=_AI_CONTEXT,
+        help="Run Pi in an existing branch or chat session.",
+        epilog=_ATTACH_AI_CONTEXT,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    resume.add_argument("name")
-    resume.add_argument(
+    attach.add_argument("name", help="Persistent branch or chat session name.")
+    conversation = attach.add_mutually_exclusive_group()
+    conversation.add_argument(
+        "--new",
+        metavar="NAME",
+        help="Start a separate named Pi conversation in the same workspace.",
+    )
+    conversation.add_argument(
+        "--select",
+        action="store_true",
+        help="Open Pi's saved-conversation selector.",
+    )
+    attach.add_argument("--model", help="Override the saved model for this attachment.")
+    attach.add_argument(
+        "--thinking",
+        choices=tuple(ThinkingLevel),
+        type=ThinkingLevel,
+        help="Override the saved thinking level for this attachment.",
+    )
+    attach.add_argument("--prompt", help="Send an initial message after Pi attaches.")
+    attach.add_argument(
         "--timeout", type=_positive_int, default=120, help="Sandbox startup timeout in seconds."
     )
 
@@ -688,8 +716,19 @@ def _dispatch(
     if command == "chat":
         return _chat(args, service), ExitCode.SUCCESS
 
-    if command == "resume":
-        return service.resume(args.name, timeout_seconds=args.timeout), ExitCode.SUCCESS
+    if command == "attach":
+        return (
+            service.attach(
+                args.name,
+                new=args.new,
+                select=args.select,
+                model=args.model,
+                thinking=args.thinking,
+                prompt=args.prompt,
+                timeout_seconds=args.timeout,
+            ),
+            ExitCode.SUCCESS,
+        )
 
     if command == "list":
         return service.list_sessions(), ExitCode.SUCCESS

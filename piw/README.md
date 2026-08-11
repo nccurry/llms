@@ -1,10 +1,10 @@
 # piw
 
 `piw` runs Pi in isolated Docker Sandboxes. A branch session has a persistent private clone,
-dedicated Git branch, and resumable Pi conversation. A chat session has a persistent empty
-workspace and resumable conversation without a repository. Add `--temporary` when a chat should be
-discarded as soon as Pi exits. Both workflows support configurable read-only references, skills,
-models, secrets, extensions, and MCP servers.
+dedicated Git branch, and resumable Pi conversations. A chat session has a persistent empty
+workspace and resumable conversations without a repository. Add `--temporary` when a chat should
+be discarded as soon as Pi exits. Both workflows support configurable read-only references,
+skills, models, secrets, extensions, and MCP servers.
 
 ### Requirements
 
@@ -69,7 +69,13 @@ piw branch review-metrics --existing origin/feature/metrics
 # Later:
 piw list
 piw status fix-exporter-metrics
-piw resume fix-exporter-metrics
+piw attach fix-exporter-metrics
+
+# Start a separate Pi conversation in the same sandbox and working tree:
+piw attach fix-exporter-metrics \
+  --new reviewer \
+  --model provider/reviewer-model \
+  --prompt "Review the current changes. Do not modify files."
 
 # Preserve the sandbox but release resources:
 piw stop fix-exporter-metrics --yes
@@ -80,7 +86,7 @@ piw clean fix-exporter-metrics --yes
 
 # For persistent repository-free research:
 piw chat architecture-research
-piw resume architecture-research
+piw attach architecture-research
 
 # For a repository-free conversation that disappears on exit:
 piw chat --temporary
@@ -93,7 +99,7 @@ GitLab, GitHub, or another hosting provider's API.
 `piw chat NAME` does not inspect or clone the current directory. It creates an empty writable
 workspace under `~/.local/state/piw/chats/NAME`, exposes the configured references and skills
 read-only, and retains the workspace, sandbox, and Pi conversation. It works with the same
-`resume`, `status`, `shell`, `exec`, `stop`, and `clean` commands as a branch session. Use
+`attach`, `status`, `shell`, `exec`, `stop`, and `clean` commands as a branch session. Use
 `--temporary` to discard all chat resources on exit; the name is optional in that mode. One-off
 overrides use the same flags as branch sessions:
 
@@ -108,6 +114,13 @@ piw chat research --dry-run --output yaml
 `--batch` creates a persistent chat without attaching Pi. It cannot be combined with
 `--temporary`, because an unattached temporary sandbox would be unreachable.
 
+`piw attach NAME` launches Pi in the existing workspace for either session type. It continues the
+latest conversation by default. `--new CONVERSATION` starts a separate saved conversation in that
+same sandbox and working tree; combine it with `--model`, `--thinking`, or `--prompt` for an
+independent reviewer or specialist. These overrides apply only to that attachment. `--select`
+opens Pi's saved-conversation picker. Attachments share writable files, so avoid concurrent edits
+unless the agents are deliberately coordinating.
+
 ### Commands
 
 | Command | Purpose |
@@ -117,7 +130,9 @@ piw chat research --dry-run --output yaml
 | `piw branch NAME [--existing BRANCH]` | Create a new branch or adopt an existing branch in a persistent private clone. |
 | `piw chat NAME` | Create a persistent repository-free workspace, then attach Pi. |
 | `piw chat [NAME] --temporary` | Run a disposable repository-free chat and remove it on exit. |
-| `piw resume NAME` | Continue the session's latest Pi conversation. |
+| `piw attach NAME` | Continue the latest Pi conversation in a branch or chat session. |
+| `piw attach NAME --new CONVERSATION` | Start a separate conversation in the same sandbox and working tree. |
+| `piw attach NAME --select` | Open Pi's saved-conversation selector for the session. |
 | `piw list` | Reconcile saved branch and chat sessions with live sandboxes. |
 | `piw status NAME` | Show session, sandbox, and branch-specific Git state. |
 | `piw shell NAME` | Open a shell in the session workspace. |
@@ -272,7 +287,7 @@ is skipped, rotation reuses the placeholder so running sandboxes continue workin
 secret-store drift is repaired on the next sync. Missing required variables fail closed; optional
 declarations use `required = false`.
 
-`piw branch`, `piw chat`, and `piw resume` automatically perform the same synchronization before
+`piw branch`, `piw chat`, and `piw attach` automatically perform the same synchronization before
 launching Pi. Branch and chat creation also ask the template's installed Pi version to validate
 copied model and settings metadata before starting the session.
 
