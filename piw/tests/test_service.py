@@ -9,6 +9,7 @@ import pytest
 from piw.errors import ExitCode, PiwError
 from piw.models import (
     AppConfig,
+    BranchMode,
     EffectiveBranchConfig,
     HostChangesPolicy,
     PiConfig,
@@ -135,8 +136,142 @@ def test_branch_dry_run_is_read_only(tmp_path: Path) -> None:
     assert data["action"] == "create"
     assert data["name"] == "feature-work"
     assert data["type"] == "branch"
+    assert data["mode"] == "new"
+    assert data["source_ref"] is None
     assert not runner.sandboxes
     assert not service.store.exists("feature-work")
+
+
+def test_existing_branch_mode_rejects_new_branch_options(tmp_path: Path) -> None:
+    """Adoption cannot silently reinterpret new-branch base or naming options."""
+
+    service, _, repo = make_service(tmp_path)
+    with pytest.raises(PiwError) as captured:
+        service.effective_branch_config(
+            session_config=service.effective_session_config(),
+            repo_candidate=repo,
+            name="adopt",
+            existing="feature/existing",
+            base_ref="main",
+        )
+    assert captured.value.detail.kind == "invalid_existing_branch_options"
+
+
+def test_existing_local_branch_is_recreated_with_its_upstream(tmp_path: Path) -> None:
+    """A local branch starts at its exact commit and retains tracking configuration."""
+
+    service, runner, repo = make_service(tmp_path)
+    commit = "c" * 40
+    runner.local_branches["feature/existing"] = commit
+    runner.remote_branches["origin/feature/existing"] = commit
+    runner.branch_upstreams["feature/existing"] = "origin/feature/existing"
+    branch_config = service.effective_branch_config(
+        session_config=service.effective_session_config(),
+        repo_candidate=repo,
+        name="adopt-local",
+        existing="feature/existing",
+    )
+
+    assert branch_config.mode is BranchMode.EXISTING
+    assert branch_config.branch == "feature/existing"
+    assert branch_config.base_ref == "refs/heads/feature/existing"
+    result = service.create_branch(
+        name="adopt-local",
+        branch_config=branch_config,
+        batch=True,
+        dry_run=False,
+    )
+
+    assert result["mode"] == "existing"
+    assert result["source_ref"] == "feature/existing"
+    assert result["base_commit"] == commit
+    assert result["upstream"] == "origin/feature/existing"
+    switch = next(call for call in runner.calls if "--force-create" in call)
+    assert switch[-3:] == ("--force-create", "feature/existing", commit)
+    copied = next(call for call in runner.calls if call[-5:-3] == ("git", "fetch"))
+    assert copied[-5:] == (
+        "git",
+        "fetch",
+        "--no-tags",
+        "origin",
+        "+refs/remotes/origin/feature/existing:refs/remotes/origin/feature/existing",
+    )
+    assert runner.sandbox_upstreams == {"feature/existing": "origin/feature/existing"}
+    record = service.store.load("adopt-local")
+    assert record.branch == "feature/existing"
+    assert record.base_commit == commit
+
+
+def test_existing_remote_branch_infers_local_name(tmp_path: Path) -> None:
+    """An explicit remote-tracking ref becomes a same-named local tracking branch."""
+
+    service, runner, repo = make_service(tmp_path)
+    runner.remote_branches["origin/feature/review"] = "d" * 40
+    resolved = service.effective_branch_config(
+        session_config=service.effective_session_config(),
+        repo_candidate=repo,
+        name="review",
+        existing="origin/feature/review",
+    )
+
+    assert resolved.mode is BranchMode.EXISTING
+    assert resolved.branch == "feature/review"
+    assert resolved.base_ref == "refs/remotes/origin/feature/review"
+    assert resolved.upstream == "origin/feature/review"
+
+
+def test_existing_branch_upstream_failure_rolls_back(tmp_path: Path) -> None:
+    """A tracking failure cannot leave a partial sandbox or session record."""
+
+    service, runner, repo = make_service(tmp_path)
+    runner.local_branches["feature/existing"] = "c" * 40
+    runner.remote_branches["origin/feature/existing"] = "c" * 40
+    runner.branch_upstreams["feature/existing"] = "origin/feature/existing"
+    runner.upstream_config_error = True
+    branch_config = service.effective_branch_config(
+        session_config=service.effective_session_config(),
+        repo_candidate=repo,
+        name="bad-upstream",
+        existing="feature/existing",
+    )
+
+    with pytest.raises(PiwError) as captured:
+        service.create_branch(
+            name="bad-upstream",
+            branch_config=branch_config,
+            batch=True,
+            dry_run=False,
+        )
+
+    assert captured.value.detail.kind == "upstream_config_failed"
+    assert not runner.sandboxes
+    assert not service.store.exists("bad-upstream")
+
+
+def test_existing_branch_upstream_copy_failure_rolls_back(tmp_path: Path) -> None:
+    """A missing sandbox tracking ref cannot leave a partial branch session."""
+
+    service, runner, repo = make_service(tmp_path)
+    runner.remote_branches["origin/feature/review"] = "d" * 40
+    runner.upstream_copy_error = True
+    branch_config = service.effective_branch_config(
+        session_config=service.effective_session_config(),
+        repo_candidate=repo,
+        name="bad-copy",
+        existing="origin/feature/review",
+    )
+
+    with pytest.raises(PiwError) as captured:
+        service.create_branch(
+            name="bad-copy",
+            branch_config=branch_config,
+            batch=True,
+            dry_run=False,
+        )
+
+    assert captured.value.detail.kind == "upstream_copy_failed"
+    assert not runner.sandboxes
+    assert not service.store.exists("bad-copy")
 
 
 def test_persistent_chat_requires_a_name(tmp_path: Path) -> None:
@@ -644,6 +779,9 @@ def test_branch_batch_seeds_state_and_list(tmp_path: Path) -> None:
     record = service.store.load("feature-work")
     assert record.branch == "piw/feature-work"
     assert record.sandbox in runner.sandboxes
+    switch = next(call for call in runner.calls if call[-5:-3] == ("git", "switch"))
+    assert "--create" in switch
+    assert "--force-create" not in switch
     assert "models.json" in runner.seeded_files
     assert service.list_sessions()[0]["status"] == SandboxPhase.RUNNING
 

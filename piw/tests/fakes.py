@@ -41,6 +41,13 @@ class ScenarioRunner:
     host_patch_paths: tuple[str, ...] = ()
     applied_host_patches: list[str] = field(default_factory=_strings)
     host_patch_apply_error: bool = False
+    local_branches: dict[str, str] = field(default_factory=_string_dict)
+    remote_branches: dict[str, str] = field(default_factory=_string_dict)
+    branch_upstreams: dict[str, str] = field(default_factory=_string_dict)
+    remotes: tuple[str, ...] = ("origin",)
+    sandbox_upstreams: dict[str, str] = field(default_factory=_string_dict)
+    upstream_copy_error: bool = False
+    upstream_config_error: bool = False
     sandbox_dirty: bool = False
     head_commit: str = "a" * 40
     upstream_exists: bool = True
@@ -174,12 +181,42 @@ class ScenarioRunner:
                 return self._result(argv, stdout="?? host-change.txt\0")
             return self._result(argv)
         if "check-ref-format" in argv:
-            valid = ".." not in argv[-1] and not any(part.isspace() for part in argv[-1])
+            valid = (
+                bool(argv[-1])
+                and ".." not in argv[-1]
+                and not argv[-1].endswith("/")
+                and not any(part.isspace() for part in argv[-1])
+            )
             return self._result(argv, code=0 if valid else 1)
+        if "show-ref" in argv:
+            full_ref = argv[-1]
+            exists = (
+                full_ref.removeprefix("refs/heads/") in self.local_branches
+                if full_ref.startswith("refs/heads/")
+                else full_ref.removeprefix("refs/remotes/") in self.remote_branches
+            )
+            return self._result(argv, code=0 if exists else 1)
+        if argv[-1] == "remote":
+            return self._result(argv, stdout="".join(f"{remote}\n" for remote in self.remotes))
+        if "for-each-ref" in argv:
+            branch = argv[-1].removeprefix("refs/heads/")
+            upstream = self.branch_upstreams.get(branch, "")
+            if "--format=%(upstream)" in argv:
+                if not upstream:
+                    return self._result(argv)
+                prefix = "refs/remotes" if "/" in upstream else "refs/heads"
+                return self._result(argv, stdout=f"{prefix}/{upstream}\n")
+            return self._result(argv, stdout=f"{upstream}\n" if upstream else "")
         if "rev-parse" in argv:
             if argv[-2:] == ("--git-path", "objects"):
                 return self._result(argv, stdout=f"{self.repo / '.git' / 'objects'}\n")
-            return self._result(argv, stdout=f"{self.head_commit}\n")
+            ref = argv[-1].removesuffix("^{commit}")
+            commit = self.head_commit
+            if ref.startswith("refs/heads/"):
+                commit = self.local_branches.get(ref.removeprefix("refs/heads/"), commit)
+            elif ref.startswith("refs/remotes/"):
+                commit = self.remote_branches.get(ref.removeprefix("refs/remotes/"), commit)
+            return self._result(argv, stdout=f"{commit}\n")
         if "diff" in argv and "--name-only" in argv:
             return self._result(
                 argv,
@@ -205,6 +242,19 @@ class ScenarioRunner:
         self.sandboxes[sandbox] = "running"
         if command[:2] == ("git", "switch"):
             return self._result(argv)
+        if command[:2] == ("git", "fetch"):
+            return self._result(
+                argv,
+                code=1 if self.upstream_copy_error else 0,
+                stderr="upstream copy failed" if self.upstream_copy_error else "",
+            )
+        if command[:2] == ("git", "branch"):
+            self.sandbox_upstreams[command[-1]] = command[-2]
+            return self._result(
+                argv,
+                code=1 if self.upstream_config_error else 0,
+                stderr="upstream failed" if self.upstream_config_error else "",
+            )
         if command[:2] == ("git", "apply"):
             self.applied_host_patches.append(input_text or "")
             return self._result(

@@ -7,6 +7,7 @@ import pytest
 from piw.errors import PiwError
 from piw.models import (
     AppConfig,
+    BranchMode,
     EffectiveBranchConfig,
     EffectiveSessionConfig,
     PiConfig,
@@ -22,8 +23,13 @@ def effective(repo: Path) -> EffectiveBranchConfig:
 
     return EffectiveBranchConfig(
         repo=repo,
+        mode=BranchMode.NEW,
         base_ref="HEAD",
+        base_commit=None,
         branch="piw/example",
+        source_ref=None,
+        upstream=None,
+        upstream_ref=None,
         read_only_refs=(repo.parent,),
         skill_paths=(repo.parent / "skills",),
         model="provider/model",

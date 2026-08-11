@@ -33,6 +33,18 @@ class HostPatch:
     paths: tuple[str, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class ExistingBranch:
+    """One exact local or remote-tracking branch selected on the host."""
+
+    branch: str
+    source_ref: str
+    full_ref: str
+    commit: str
+    upstream: str | None
+    upstream_ref: str | None
+
+
 class GitClient:
     """Inspect a host repository without changing it."""
 
@@ -199,6 +211,146 @@ class GitClient:
 
         result = self.runner.run(("git", "-C", str(repo), "check-ref-format", "--branch", branch))
         return result.returncode == 0
+
+    def _ref_exists(self, repo: Path, full_ref: str) -> bool:
+        """Return whether one fully qualified branch ref exists."""
+
+        result = self.runner.run(
+            ("git", "-C", str(repo), "show-ref", "--verify", "--quiet", full_ref)
+        )
+        if result.returncode in {0, 1}:
+            return result.returncode == 0
+        message = result.stderr.strip() or result.stdout.strip() or "cannot inspect Git refs"
+        raise PiwError(message, code=ExitCode.PREREQUISITE, kind="git_error")
+
+    def _local_branch(self, repo: Path, branch: str) -> ExistingBranch | None:
+        """Resolve one exact local branch without DWIM ref matching."""
+
+        if not self.is_valid_branch(repo, branch):
+            return None
+        full_ref = f"refs/heads/{branch}"
+        if not self._ref_exists(repo, full_ref):
+            return None
+        upstream_ref = self._read(
+            repo,
+            "for-each-ref",
+            "--format=%(upstream)",
+            full_ref,
+        )
+        upstream = (
+            self._read(
+                repo,
+                "for-each-ref",
+                "--format=%(upstream:short)",
+                full_ref,
+            )
+            if upstream_ref and self._ref_exists(repo, upstream_ref)
+            else ""
+        )
+        return ExistingBranch(
+            branch=branch,
+            source_ref=branch,
+            full_ref=full_ref,
+            commit=self.resolve_ref(repo, full_ref),
+            upstream=upstream or None,
+            upstream_ref=upstream_ref if upstream else None,
+        )
+
+    def _remote_branch(
+        self,
+        repo: Path,
+        value: str,
+        remotes: tuple[str, ...],
+    ) -> ExistingBranch | None:
+        """Resolve one explicit remote-tracking branch and infer its local name."""
+
+        for remote in sorted(remotes, key=len, reverse=True):
+            prefix = f"{remote}/"
+            if not value.startswith(prefix):
+                continue
+            branch = value.removeprefix(prefix)
+            if not self.is_valid_branch(repo, branch):
+                raise PiwError(
+                    f"Git does not accept existing branch name {value!r}",
+                    code=ExitCode.USAGE,
+                    kind="invalid_existing_branch",
+                )
+            full_ref = f"refs/remotes/{value}"
+            if not self._ref_exists(repo, full_ref):
+                return None
+            return ExistingBranch(
+                branch=branch,
+                source_ref=value,
+                full_ref=full_ref,
+                commit=self.resolve_ref(repo, full_ref),
+                upstream=value,
+                upstream_ref=full_ref,
+            )
+        return None
+
+    def resolve_existing_branch(self, repo: Path, value: str) -> ExistingBranch:
+        """Resolve an exact local or explicitly named remote-tracking branch."""
+
+        requested = value.strip()
+        if not requested:
+            raise PiwError(
+                "--existing requires a branch name",
+                code=ExitCode.USAGE,
+                kind="invalid_existing_branch",
+            )
+        if not requested.startswith("refs/") and not self.is_valid_branch(repo, requested):
+            raise PiwError(
+                f"Git does not accept existing branch name {requested!r}",
+                code=ExitCode.USAGE,
+                kind="invalid_existing_branch",
+            )
+
+        remotes = tuple(sorted(part for part in self._read(repo, "remote").splitlines() if part))
+        if requested.startswith("refs/heads/"):
+            local_name = requested.removeprefix("refs/heads/")
+            if not self.is_valid_branch(repo, local_name):
+                raise PiwError(
+                    f"Git does not accept existing branch name {requested!r}",
+                    code=ExitCode.USAGE,
+                    kind="invalid_existing_branch",
+                )
+            resolved = self._local_branch(repo, local_name)
+        elif requested.startswith("refs/remotes/"):
+            remote_name = requested.removeprefix("refs/remotes/")
+            resolved = self._remote_branch(repo, remote_name, remotes)
+        elif requested.startswith("refs/"):
+            raise PiwError(
+                "--existing accepts only refs/heads/* or refs/remotes/* branch refs",
+                code=ExitCode.USAGE,
+                kind="invalid_existing_branch",
+            )
+        else:
+            resolved = self._local_branch(repo, requested)
+            if resolved is None:
+                resolved = self._remote_branch(repo, requested, remotes)
+
+        if resolved is not None:
+            return resolved
+
+        suggestions = tuple(
+            candidate
+            for remote in remotes
+            if self._ref_exists(repo, f"refs/remotes/{remote}/{requested}")
+            for candidate in (f"{remote}/{requested}",)
+        )
+        if len(suggestions) == 1:
+            hint = f"Use '--existing {suggestions[0]}' to select the remote-tracking branch."
+        elif suggestions:
+            choices = " or ".join(f"'--existing {item}'" for item in suggestions)
+            hint = f"Choose one remote-tracking branch explicitly: {choices}."
+        else:
+            hint = "Fetch the branch, then retry with its local name or REMOTE/BRANCH."
+        raise PiwError(
+            f"existing branch {requested!r} was not found",
+            code=ExitCode.PREREQUISITE,
+            kind="existing_branch_not_found",
+            hint=hint,
+        )
 
     def resolve_ref(self, repo: Path, ref: str) -> str:
         """Resolve a Git revision to a commit ID."""

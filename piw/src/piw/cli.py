@@ -45,6 +45,7 @@ AI_CONTEXT:
 _BRANCH_AI_CONTEXT = """
 AI_CONTEXT:
   Use --dry-run with --output json or --output yaml to inspect the creation plan.
+  Use --existing BRANCH to adopt an exact local or REMOTE/BRANCH ref.
   Use --batch to create the branch session without attaching an interactive Pi process.
   Use --timeout to bound sandbox and template creation.
   Exit 0 is success; 10-16 are piw failures.
@@ -155,7 +156,13 @@ def _add_branch_command(
     )
     branch.add_argument("name", help="Persistent session name.")
     branch.add_argument("--repo", type=Path, default=Path.cwd(), help="Repository path.")
-    branch.add_argument("--base", help="Base revision; defaults to the current HEAD.")
+    source = branch.add_mutually_exclusive_group()
+    source.add_argument("--base", help="Base revision; defaults to the current HEAD.")
+    source.add_argument(
+        "--existing",
+        metavar="BRANCH",
+        help="Adopt an exact local branch or explicit REMOTE/BRANCH.",
+    )
     branch.add_argument("--branch", help="Git branch; defaults to piw/<name>.")
     _add_session_overrides(branch)
     branch.add_argument(
@@ -564,6 +571,7 @@ def _create_branch(args: argparse.Namespace, service: PiwService) -> dict[str, o
         repo_candidate=args.repo,
         base_ref=args.base,
         branch=args.branch,
+        existing=args.existing,
         name=args.name,
     )
 
