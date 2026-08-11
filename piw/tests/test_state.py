@@ -1,6 +1,7 @@
 """Session state persistence tests."""
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -40,7 +41,8 @@ def test_state_round_trip_and_permissions(tmp_path: Path) -> None:
     expected = record()
     store.save(expected)
     assert store.load("sample") == expected
-    assert store.path_for("sample").stat().st_mode & 0o777 == 0o600
+    if os.name != "nt":
+        assert store.path_for("sample").stat().st_mode & 0o777 == 0o600
 
 
 def test_state_list_is_sorted_and_delete_is_idempotent(tmp_path: Path) -> None:
@@ -191,7 +193,8 @@ def test_secret_state_round_trip_is_redacted_and_private(tmp_path: Path) -> None
     store = SecretStateStore(path)
     store.save((secret_record(),))
     assert store.load() == (secret_record(),)
-    assert path.stat().st_mode & 0o777 == 0o600
+    if os.name != "nt":
+        assert path.stat().st_mode & 0o777 == 0o600
     assert "high-entropy-value" not in path.read_text()
 
 

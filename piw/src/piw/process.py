@@ -54,11 +54,12 @@ class SubprocessRunner:
         if env:
             command_env.update(env)
 
+        encoded_input = input_text.encode("utf-8") if input_text is not None else None
         completed = subprocess.run(  # noqa: S603
             argv,
             cwd=cwd,
-            input=input_text,
-            text=True,
+            input=encoded_input,
+            text=False,
             capture_output=not interactive,
             check=False,
             timeout=timeout_seconds,
@@ -68,8 +69,8 @@ class SubprocessRunner:
         return CommandResult(
             argv=argv,
             returncode=completed.returncode,
-            stdout=completed.stdout or "",
-            stderr=completed.stderr or "",
+            stdout=completed.stdout.decode("utf-8", errors="replace") if completed.stdout else "",
+            stderr=completed.stderr.decode("utf-8", errors="replace") if completed.stderr else "",
             duration_seconds=time.monotonic() - started,
         )
 
