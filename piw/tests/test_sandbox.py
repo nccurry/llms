@@ -1,6 +1,6 @@
 """Docker Sandboxes adapter tests."""
 
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import pytest
 
@@ -14,7 +14,13 @@ from piw.models import (
     SandboxSecretConfig,
     ThinkingLevel,
 )
-from piw.sandbox import SbxClient, desired_template, read_only_exposure, template_fingerprint
+from piw.sandbox import (
+    SbxClient,
+    desired_template,
+    read_only_exposure,
+    sandbox_guest_path,
+    template_fingerprint,
+)
 from tests.fakes import ScenarioRunner
 
 
@@ -72,6 +78,17 @@ def test_template_fingerprint_is_stable_and_input_sensitive() -> None:
     assert template_fingerprint(base) == template_fingerprint(base)
     assert template_fingerprint(base) != template_fingerprint(changed)
     assert desired_template(base).startswith("piw-pi-")
+
+
+def test_windows_paths_map_to_the_linux_guest_mount(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Docker exposes Windows drive paths below a lowercase guest root."""
+
+    monkeypatch.setattr("piw.sandbox._WINDOWS_HOST", True)
+    assert (
+        sandbox_guest_path(PureWindowsPath(r"C:\Users\Nick Curry\project"))
+        == "/c/Users/Nick Curry/project"
+    )
+    assert sandbox_guest_path(PureWindowsPath(r"\home\agent")) == "/home/agent"
 
 
 def test_sandbox_and_template_json_are_decoded(tmp_path: Path) -> None:
@@ -197,7 +214,7 @@ def test_create_snapshots_disjoint_reference_files(tmp_path: Path) -> None:
         "cp",
         "--follow-link",
         str(note),
-        f"piw-repo-example:{tmp_path}/",
+        f"piw-repo-example:{sandbox_guest_path(tmp_path)}/",
     ) in runner.calls
 
 
@@ -207,7 +224,8 @@ def test_exec_stop_remove_and_template_lifecycle(tmp_path: Path) -> None:
     runner = ScenarioRunner(tmp_path)
     runner.sandboxes["task"] = "running"
     client = SbxClient(runner)
-    assert client.exec("task", ("printf", "ok")).returncode == 0
+    assert client.exec("task", ("printf", "ok"), workdir=tmp_path).returncode == 0
+    assert runner.calls[-1][2:4] == ("--workdir", sandbox_guest_path(tmp_path))
     client.stop("task")
     assert runner.sandboxes["task"] == "stopped"
     client.save_template("task", "piw-pi-test:latest", timeout_seconds=60)

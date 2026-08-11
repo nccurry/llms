@@ -2,10 +2,11 @@
 
 import hashlib
 import json
+import os
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
-from typing import cast
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
+from typing import Final, cast
 
 from piw.errors import ExitCode, PiwError
 from piw.models import (
@@ -17,6 +18,9 @@ from piw.models import (
     SandboxSecretConfig,
 )
 from piw.process import Runner
+
+_WINDOWS_HOST: Final = os.name == "nt"
+_WINDOWS_DRIVE_LENGTH: Final = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +52,28 @@ class ReadOnlyExposure:
 
     mounts: tuple[Path, ...]
     snapshots: tuple[Path, ...]
+
+
+def _windows_guest_path(path: str | PurePath) -> str:
+    """Translate an absolute Windows path to Docker Sandbox's Linux mount path."""
+
+    windows_path = PureWindowsPath(path)
+    drive = windows_path.drive
+    if not drive and windows_path.root:
+        return windows_path.as_posix()
+    if len(drive) != _WINDOWS_DRIVE_LENGTH or drive[1] != ":" or not windows_path.is_absolute():
+        raise PiwError(
+            f"Docker Sandbox cannot map Windows path: {windows_path}",
+            code=ExitCode.CONFIG,
+            kind="unsupported_sandbox_path",
+        )
+    return str(PurePosixPath("/", drive[0].lower(), *windows_path.parts[1:]))
+
+
+def sandbox_guest_path(path: str | PurePath) -> str:
+    """Return the path visible to commands running inside Docker Sandbox."""
+
+    return _windows_guest_path(path) if _WINDOWS_HOST else str(path)
 
 
 def template_fingerprint(config: AppConfig) -> str:
@@ -359,7 +385,7 @@ class SbxClient:
                         "cp",
                         "--follow-link",
                         str(source),
-                        f"{name}:{source.parent}/",
+                        f"{name}:{sandbox_guest_path(source.parent)}/",
                     ),
                     timeout_seconds=timeout_seconds,
                 ),
@@ -433,7 +459,7 @@ class SbxClient:
         elif input_text is not None:
             argv.append("--interactive")
         if workdir:
-            argv.extend(("--workdir", str(workdir)))
+            argv.extend(("--workdir", sandbox_guest_path(workdir)))
         argv.append(name)
         argv.extend(command)
         return self._run(

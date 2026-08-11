@@ -37,6 +37,7 @@ from piw.sandbox import (
     SbxClient,
     desired_template,
     read_only_exposure,
+    sandbox_guest_path,
 )
 from piw.state import SecretStateStore, StateStore
 
@@ -885,7 +886,7 @@ class PiwService:
             argv.extend(("--model", launch.model))
         argv.extend(("--thinking", launch.thinking))
         for skill in launch.skill_paths:
-            argv.extend(("--skill", skill))
+            argv.extend(("--skill", sandbox_guest_path(skill)))
         if launch.prompt:
             argv.append(launch.prompt)
         return tuple(argv)

@@ -55,14 +55,13 @@ tasks:
     desc: Build the wheel and smoke-test its installed command.
     cmds:
       - task: build
-      - |
-        wheel="$(find dist -maxdepth 1 -type f -name '*.whl' -printf '%T@ %p\n' \
-          | sort -n \
-          | tail -1 \
-          | cut -d' ' -f2-)"
-        test -n "${wheel}"
-        uv run --isolated --no-project --python 3.14 --with "${wheel}" \
-          piw --version --output json
+      - >-
+        uv run --locked python -c
+        "import subprocess; from pathlib import Path;
+        wheel = max(Path('dist').glob('*.whl'), key=lambda path: path.stat().st_mtime_ns);
+        result = subprocess.run(['uv', 'run', '--isolated', '--no-project', '--python', '3.14',
+        '--with', str(wheel), 'piw', '--version', '--output', 'json'], check=False);
+        raise SystemExit(result.returncode)"
 
   install:
     desc: Install the current checkout as a uv-managed tool.

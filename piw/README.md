@@ -219,10 +219,12 @@ prefix = "piw-pi"
 node_version = "v22.19.0"
 ```
 
-Reference and skill paths are mounted read-only at the same absolute path inside the sandbox.
-The primary repository is cloned privately and remains writable. Configure a broad reference
-root when all content below that root is safe for agents to read. When that root contains the
-active repository, `piw` expands it into disjoint sibling mounts so the broad reference cannot
+Reference and skill paths are mounted read-only at their Docker Sandbox guest paths. On Linux the
+absolute path is unchanged; on Windows Docker maps a path such as `C:\Users\name\project` to
+`/c/Users/name/project`. `piw` translates work directories, skill arguments, and snapshot targets
+automatically. The primary repository is cloned privately and remains writable. Configure a broad
+reference root when all content below that root is safe for agents to read. When that root contains
+the active repository, `piw` expands it into disjoint sibling mounts so the broad reference cannot
 make the nested private clone read-only. Files directly beside the active path are copied into the
 sandbox as snapshots; editing those copies cannot affect the host files.
 
