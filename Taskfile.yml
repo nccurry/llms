@@ -3,6 +3,29 @@ version: '3'
 silent: true
 
 tasks:
+  piw:sync:
+    desc: Create the Python 3.14 development environment from the lockfile.
+    cmds:
+      - uv sync --locked
+
+  piw:check:
+    desc: Run formatting, lint, strict typing, tests, and coverage.
+    cmds:
+      - uv run ruff format --check src tests/piw piw
+      - uv run ruff check src tests/piw piw
+      - uv run pyright
+      - uv run pytest tests/piw --cov=piw --cov-report=term-missing
+
+  piw:test:
+    desc: Run piw's deterministic test suite.
+    cmds:
+      - uv run pytest tests/piw
+
+  piw:build:
+    desc: Build the piw source distribution and wheel.
+    cmds:
+      - uv build --no-sources
+
   skills:list:
     desc: List managed skills and resolved install targets.
     cmds:
