@@ -1,0 +1,16 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.14"
+# dependencies = []
+# ///
+"""Run piw directly from a source checkout through uv."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+
+from piw.cli import main
+
+if __name__ == "__main__":
+    raise SystemExit(main())

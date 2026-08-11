@@ -1,0 +1,80 @@
+[build-system]
+requires = ["uv_build>=0.11.0,<0.12.0"]
+build-backend = "uv_build"
+
+[project]
+name = "piw-agent-workflow"
+version = "0.1.0"
+description = "Run persistent Pi coding-agent workflows in isolated Docker Sandboxes."
+readme = "README.md"
+requires-python = ">=3.14"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Nick Curry", email = "code@nickcurry.com" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.14",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.scripts]
+piw = "piw.cli:main"
+
+[dependency-groups]
+dev = [
+  "pyright>=1.1.403",
+  "pytest>=8.4.0",
+  "pytest-cov>=6.2.1",
+  "ruff>=0.12.0",
+]
+
+[tool.uv.build-backend]
+module-name = "piw"
+
+[tool.pyright]
+include = ["src", "tests/piw"]
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+reportUnnecessaryTypeIgnoreComment = "error"
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["piw"]
+omit = ["src/piw/__main__.py"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+include = ["src/**/*.py", "tests/piw/**/*.py", "piw"]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["B", "D", "E", "F", "I", "PERF", "PL", "RUF", "S", "SIM", "TRY", "UP"]
+ignore = [
+  "D202",
+  "COM812",
+  "D203",
+  "D213",
+  "EM101",
+  "EM102",
+  "PLR0911",
+  "PLR0912",
+  "PLR0913",
+  "PLR0915",
+  "TRY003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D102", "D107", "PLR2004", "S101"]
