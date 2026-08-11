@@ -19,7 +19,7 @@ from piw.models import (
     SessionKind,
     ThinkingLevel,
 )
-from piw.sandbox import desired_template
+from piw.sandbox import desired_template, sandbox_guest_path
 from piw.service import PiwService, branch_sandbox_name, normalize_session_name
 from piw.state import SecretStateStore, StateStore
 from tests.fakes import ScenarioRunner
@@ -1260,6 +1260,27 @@ def test_settings_mcp_and_interactive_pi_are_seeded(tmp_path: Path) -> None:
     assert len(pi_calls) == 1
     assert "--name" in pi_calls[0]
     assert "--interactive" in pi_calls[0]
+
+
+def test_interactive_pi_uses_guest_skill_paths(tmp_path: Path) -> None:
+    """Pi receives paths as they appear inside the Linux sandbox."""
+
+    skills = tmp_path / "skills"
+    skills.mkdir()
+    service, runner, repo = make_service(tmp_path, pi_config=PiConfig(skill_paths=(skills,)))
+    service.create_branch(
+        name="skills",
+        branch_config=effective(service, repo, "skills"),
+        batch=False,
+        dry_run=False,
+    )
+    pi_call = next(
+        call
+        for call in runner.calls
+        if call[:2] == ("sbx", "exec") and "pi" in call and "--list-models" not in call
+    )
+    skill_index = pi_call.index("--skill")
+    assert pi_call[skill_index + 1] == sandbox_guest_path(skills)
 
 
 def test_missing_sandbox_and_stale_list_are_reported(tmp_path: Path) -> None:
