@@ -1,5 +1,6 @@
 """Subprocess and host Git adapter tests."""
 
+import os
 import sys
 from pathlib import Path
 from typing import Final
@@ -33,6 +34,24 @@ def test_subprocess_runner_captures_output_and_environment(tmp_path: Path) -> No
     assert result.stdout.splitlines() == ["value", "input"]
     assert result.duration_seconds >= 0
     assert runner.which("python")
+
+
+def test_subprocess_runner_preserves_exact_input_bytes() -> None:
+    """Newline-sensitive payloads reach child processes without host translation."""
+
+    payload = "first\nsecond\n"
+    result = SubprocessRunner().run(
+        (
+            sys.executable,
+            "-c",
+            "import sys; sys.stdout.write(sys.stdin.buffer.read().hex())",
+        ),
+        input_text=payload,
+        timeout_seconds=10,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == payload.encode().hex()
 
 
 def test_render_command_quotes_without_execution() -> None:
@@ -209,6 +228,7 @@ def test_git_client_patch_recreates_real_worktree_without_mutating_host_git(
     assert (target / "modified.txt").read_text(encoding="utf-8") == "final\n"
     assert not (target / "deleted.txt").exists()
     assert (target / "new binary.bin").read_bytes() == bytes(range(256))
-    assert (target / "run-me").stat().st_mode & 0o111
+    if os.name != "nt":
+        assert (target / "run-me").stat().st_mode & 0o111
     assert (target / "empty.txt").is_file()
     assert not (target / "ignored.bin").exists()

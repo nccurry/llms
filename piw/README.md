@@ -8,7 +8,7 @@ skills, models, secrets, extensions, and MCP servers.
 
 ### Requirements
 
-- Linux
+- Windows 11 (x86-64) or Linux
 - [uv](https://docs.astral.sh/uv/)
 - Python 3.14, which uv can install automatically
 - Git for branch sessions
@@ -25,17 +25,21 @@ uv sync --locked
 uv run piw --help
 ```
 
-The repository also contains an executable uv-script launcher:
+On POSIX hosts, the repository also contains an executable uv-script launcher:
 
 ```bash
 ./piw --help
 ```
 
-Install the current checkout from the repository root:
+Install the current checkout from the repository root. `--no-cache` ensures local source changes are
+included when reinstalling the same package version:
 
 ```bash
-uv tool install --force ./piw
+uv tool install --force --no-cache ./piw
+piw --help
 ```
+
+Use the installed `piw` command on Windows; the extensionless `./piw` launcher is POSIX-only.
 
 Install the command directly from Git:
 
