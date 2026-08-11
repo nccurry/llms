@@ -45,6 +45,9 @@ reportUnnecessaryTypeIgnoreComment = "error"
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers"
 testpaths = ["tests"]
+markers = [
+  "live: requires Docker Sandboxes and may download or build the piw template",
+]
 
 [tool.coverage.run]
 branch = true

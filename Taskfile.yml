@@ -2,43 +2,60 @@ version: '3'
 
 silent: true
 
+includes:
+  piw:
+    taskfile: ./piw/Taskfile.yml
+    dir: ./piw
+
 tasks:
-  piw:sync:
-    desc: Create the Python 3.14 development environment from the lockfile.
-    dir: piw
-    cmds:
-      - uv sync --locked
+  default:
+    desc: List available repository tasks.
+    cmd: '{{.TASK_EXE}} --list'
 
-  piw:check:
-    desc: Run formatting, lint, strict typing, tests, and coverage.
-    dir: piw
+  setup:
+    desc: Install pinned tools and synchronize project dependencies.
     cmds:
-      - uv run ruff format --check src tests piw
-      - uv run ruff check src tests piw
-      - uv run pyright
-      - uv run pytest tests --cov=piw --cov-report=term-missing
+      - mise install --locked
+      - task: piw:sync
 
-  piw:test:
-    desc: Run piw's deterministic test suite.
-    dir: piw
+  test:
+    desc: Run all deterministic repository tests.
     cmds:
-      - uv run pytest tests
+      - task: piw:test
+      - task: skills:test
 
-  piw:build:
-    desc: Build the piw source distribution and wheel.
-    dir: piw
+  check:
+    desc: Run the full nonmutating local quality gate.
     cmds:
-      - uv build --no-sources
+      - task: piw:check
+      - task: skills:check
+
+  build:
+    desc: Build all distributable repository artifacts.
+    cmds:
+      - task: piw:build
+
+  ci:
+    desc: Reproduce the complete CI gate locally.
+    cmds:
+      - task: piw:ci
+      - task: skills:check
 
   skills:list:
     desc: List managed skills and resolved install targets.
     cmds:
-      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --command list
+      - uv run --isolated --python 3.14 python scripts/install_skills.py --command list
 
   skills:validate:
     desc: Validate managed skill folder shape and metadata.
     cmds:
-      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --command validate
+      - uv run --isolated --python 3.14 python scripts/install_skills.py --command validate
+
+  skills:check:
+    desc: Validate managed skills and run installer tests.
+    cmds:
+      - task: skills:validate
+      - task: skills:test
 
   skills:test:
     desc: Run the installer unit tests.
@@ -50,34 +67,34 @@ tasks:
   skills:dry-run:
     desc: Show what skill installation would change.
     cmds:
-      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target all --dry-run
+      - uv run --isolated --python 3.14 python scripts/install_skills.py --target all --dry-run
 
   skills:dry-run:codex:
     desc: Show what the Codex skill installation would change.
     cmds:
-      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target codex --dry-run
+      - uv run --isolated --python 3.14 python scripts/install_skills.py --target codex --dry-run
 
   skills:dry-run:pi:
     desc: Show what the Pi skill installation would change.
     cmds:
-      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target pi --dry-run
+      - uv run --isolated --python 3.14 python scripts/install_skills.py --target pi --dry-run
 
   skills:install:
     desc: Install managed skills for Codex, Claude, and Pi.
     cmds:
-      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target all
+      - uv run --isolated --python 3.14 python scripts/install_skills.py --target all
 
   skills:install:codex:
     desc: Install managed skills for Codex only.
     cmds:
-      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target codex
+      - uv run --isolated --python 3.14 python scripts/install_skills.py --target codex
 
   skills:install:claude:
     desc: Install managed skills for Claude only.
     cmds:
-      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target claude
+      - uv run --isolated --python 3.14 python scripts/install_skills.py --target claude
 
   skills:install:pi:
     desc: Install managed skills for Pi only.
     cmds:
-      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_install_skills.ps1 --target pi
+      - uv run --isolated --python 3.14 python scripts/install_skills.py --target pi

@@ -1,0 +1,84 @@
+version: '3'
+
+silent: true
+
+tasks:
+  default:
+    desc: List available piw tasks.
+    cmd: '{{.TASK_EXE}} --list'
+
+  sync:
+    desc: Create the Python 3.14 environment from the lockfile.
+    cmd: uv sync --locked
+
+  deps:check:
+    desc: Verify that uv.lock matches the project metadata.
+    cmd: uv lock --check
+
+  fmt:
+    desc: Format Python source and tests.
+    cmd: uv run --locked ruff format src tests piw
+
+  fmt:check:
+    desc: Check Python formatting without changing files.
+    cmd: uv run --locked ruff format --check src tests piw
+
+  lint:
+    desc: Run Ruff over Python source and tests.
+    cmd: uv run --locked ruff check src tests piw
+
+  typecheck:
+    desc: Run strict Pyright type checking.
+    cmd: uv run --locked pyright
+
+  test:
+    desc: Run deterministic tests without live Docker Sandboxes.
+    cmd: uv run --locked pytest -m 'not live' tests {{.CLI_ARGS}}
+
+  test:coverage:
+    desc: Run deterministic tests with the enforced coverage floor.
+    cmd: >-
+      uv run --locked pytest -m 'not live' tests
+      --cov=piw --cov-report=term-missing {{.CLI_ARGS}}
+
+  test:live:
+    desc: Run the opt-in real Docker Sandbox lifecycle test.
+    env:
+      PIW_RUN_LIVE_TESTS: '1'
+    cmd: uv run --locked pytest -m live -v tests/test_live_sandbox.py {{.CLI_ARGS}}
+
+  build:
+    desc: Build the piw source distribution and wheel.
+    cmd: uv build --no-sources
+
+  test:package:
+    desc: Build the wheel and smoke-test its installed command.
+    cmds:
+      - task: build
+      - |
+        wheel="$(find dist -maxdepth 1 -type f -name '*.whl' -printf '%T@ %p\n' \
+          | sort -n \
+          | tail -1 \
+          | cut -d' ' -f2-)"
+        test -n "${wheel}"
+        uv run --isolated --no-project --python 3.14 --with "${wheel}" \
+          piw --version --output json
+
+  install:
+    desc: Install the current checkout as a uv-managed tool.
+    cmd: uv tool install --force .
+
+  check:
+    desc: Run dependency, formatting, lint, typing, test, and coverage checks.
+    cmds:
+      - task: deps:check
+      - task: fmt:check
+      - task: lint
+      - task: typecheck
+      - task: test:coverage
+
+  ci:
+    desc: Run the complete piw quality and package gate.
+    cmds:
+      - task: check
+      - task: test:package

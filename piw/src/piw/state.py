@@ -161,10 +161,17 @@ class StateStore:
     def delete(self, name: str) -> None:
         """Delete current and legacy state for one session."""
 
-        self.path_for(name).unlink(missing_ok=True)
-        legacy = self._legacy_path_for(name)
-        if legacy:
-            legacy.unlink(missing_ok=True)
+        try:
+            self.path_for(name).unlink(missing_ok=True)
+            legacy = self._legacy_path_for(name)
+            if legacy:
+                legacy.unlink(missing_ok=True)
+        except OSError as error:
+            raise PiwError(
+                f"cannot delete session state for {name!r}: {error}",
+                code=ExitCode.STATE,
+                kind="session_state_delete_failed",
+            ) from error
 
     @staticmethod
     def _state_names(root: Path | None) -> set[str]:
