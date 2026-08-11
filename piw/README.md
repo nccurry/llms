@@ -61,6 +61,11 @@ piw branch fix-exporter-metrics
 piw branch clean-commit-only --ignore-host-changes
 piw branch include-local-work --carry-host-changes
 
+# Continue an existing local branch or review a fetched remote-tracking branch:
+piw branch continue-metrics --existing feature/metrics
+git fetch origin
+piw branch review-metrics --existing origin/feature/metrics
+
 # Later:
 piw list
 piw status fix-exporter-metrics
@@ -109,7 +114,7 @@ piw chat research --dry-run --output yaml
 |---|---|
 | `piw init` | Create a neutral user configuration. |
 | `piw doctor` | Check host, sandbox, model, skill, SSH, template, and runtime-config readiness. |
-| `piw branch NAME` | Create a persistent private clone and Git branch, then attach Pi. |
+| `piw branch NAME [--existing BRANCH]` | Create a new branch or adopt an existing branch in a persistent private clone. |
 | `piw chat NAME` | Create a persistent repository-free workspace, then attach Pi. |
 | `piw chat [NAME] --temporary` | Run a disposable repository-free chat and remove it on exit. |
 | `piw resume NAME` | Continue the session's latest Pi conversation. |
@@ -143,6 +148,19 @@ Mutating commands support `--dry-run`, `--yes`, or `--batch` as appropriate. Lon
 flags are mutually exclusive, ignored files are never carried, and unresolved merge conflicts are
 always rejected. Carrying changes flattens staged and unstaged state into ordinary unstaged branch
 changes. `--dry-run --output json` reports the selected policy and affected paths.
+
+Use `piw branch NAME --existing BRANCH` to start a session at the exact commit of an existing
+branch instead of creating `piw/NAME`. A local branch uses its existing name and upstream. An
+explicit remote-tracking ref such as `origin/feature/metrics` becomes a local
+`feature/metrics` branch that tracks the remote ref. `piw` does not fetch or change host Git refs;
+run `git fetch REMOTE` first when a remote-tracking branch is missing or stale. Local branch names
+take precedence over same-named remote shorthand; use a full `refs/remotes/REMOTE/BRANCH` ref to
+force the remote selection. `--existing` cannot be combined with `--base` or `--branch`.
+
+Existing-branch dry runs expose `mode`, `source_ref`, `base_commit`, `branch`, and `upstream` in
+JSON or YAML. Host change policies work the same way as new branches: the default fails closed,
+`--ignore-host-changes` uses only committed state, and `--carry-host-changes` applies the current
+working-tree patch to the adopted commit inside the sandbox.
 
 ### Configuration
 

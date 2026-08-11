@@ -17,6 +17,7 @@ from piw.errors import ExitCode, PiwError
 from piw.git import GitClient, HostPatch, HostStatus
 from piw.models import (
     AppConfig,
+    BranchMode,
     DoctorCheck,
     EffectiveBranchConfig,
     EffectiveSessionConfig,
@@ -598,12 +599,26 @@ class PiwService:
         repo_candidate: Path,
         base_ref: str | None = None,
         branch: str | None = None,
+        existing: str | None = None,
         name: str,
     ) -> EffectiveBranchConfig:
         """Resolve configuration and CLI overrides for one branch session."""
 
         repo = self.git.root(repo_candidate)
-        selected_branch = branch or f"piw/{normalize_session_name(name)}"
+        if existing is not None and (base_ref is not None or branch is not None):
+            raise PiwError(
+                "--existing cannot be combined with --base or --branch",
+                code=ExitCode.USAGE,
+                kind="invalid_existing_branch_options",
+                hint="Let the existing branch determine both its starting commit and branch name.",
+            )
+
+        resolved = (
+            self.git.resolve_existing_branch(repo, existing) if existing is not None else None
+        )
+        selected_branch = (
+            resolved.branch if resolved else branch or f"piw/{normalize_session_name(name)}"
+        )
         if not self.git.is_valid_branch(repo, selected_branch):
             raise PiwError(
                 f"Git does not accept branch name {selected_branch!r}",
@@ -625,8 +640,13 @@ class PiwService:
             memory=session_config.memory,
             timeout_seconds=session_config.timeout_seconds,
             repo=repo,
-            base_ref=base_ref or "HEAD",
+            mode=BranchMode.EXISTING if resolved else BranchMode.NEW,
+            base_ref=resolved.full_ref if resolved else base_ref or "HEAD",
+            base_commit=resolved.commit if resolved else None,
             branch=selected_branch,
+            source_ref=resolved.source_ref if resolved else None,
+            upstream=resolved.upstream if resolved else None,
+            upstream_ref=resolved.upstream_ref if resolved else None,
         )
 
     def config_for_extensions(self, extensions: tuple[str, ...]) -> AppConfig:
@@ -933,7 +953,9 @@ class PiwService:
             if host_status.dirty and host_changes is HostChangesPolicy.CARRY
             else None
         )
-        base_commit = self.git.resolve_ref(branch_config.repo, branch_config.base_ref)
+        base_commit = branch_config.base_commit or self.git.resolve_ref(
+            branch_config.repo, branch_config.base_ref
+        )
         template_config = self.config_for_extensions(branch_config.extensions)
 
         return _BranchPlan(
@@ -965,9 +987,12 @@ class PiwService:
             "type": SessionKind.BRANCH.value,
             "sandbox": plan.sandbox,
             "repo": str(branch_config.repo),
+            "mode": branch_config.mode.value,
             "base_ref": branch_config.base_ref,
             "base_commit": plan.base_commit,
             "branch": branch_config.branch,
+            "source_ref": branch_config.source_ref,
+            "upstream": branch_config.upstream,
             "template": plan.template,
             "read_only_refs": [str(path) for path in branch_config.read_only_refs],
             "skill_paths": [str(path) for path in branch_config.skill_paths],
@@ -1013,9 +1038,10 @@ class PiwService:
     ) -> None:
         """Create the configured Git branch inside a new sandbox clone."""
 
+        switch_mode = "--force-create" if branch_config.mode is BranchMode.EXISTING else "--create"
         result = self.sbx.exec(
             plan.sandbox,
-            ("git", "switch", "--create", branch_config.branch, plan.base_commit),
+            ("git", "switch", switch_mode, branch_config.branch, plan.base_commit),
             workdir=branch_config.repo,
             timeout_seconds=60,
         )
@@ -1024,6 +1050,53 @@ class PiwService:
                 _failure(result.stdout, result.stderr, "cannot create Git branch"),
                 code=ExitCode.SANDBOX,
                 kind="branch_create_failed",
+            )
+
+        self._configure_sandbox_upstream(plan, branch_config)
+
+    def _configure_sandbox_upstream(
+        self,
+        plan: _BranchPlan,
+        branch_config: EffectiveBranchConfig,
+    ) -> None:
+        """Copy and configure the host branch's upstream in the private clone."""
+
+        if branch_config.upstream is None and branch_config.upstream_ref is None:
+            return
+        if branch_config.upstream is None or branch_config.upstream_ref is None:
+            raise AssertionError("branch upstream name and ref must be configured together")
+
+        refspec = f"+{branch_config.upstream_ref}:{branch_config.upstream_ref}"
+        copied = self.sbx.exec(
+            plan.sandbox,
+            ("git", "fetch", "--no-tags", "origin", refspec),
+            workdir=branch_config.repo,
+            timeout_seconds=60,
+        )
+        if copied.returncode != 0:
+            raise PiwError(
+                _failure(copied.stdout, copied.stderr, "cannot copy branch upstream"),
+                code=ExitCode.SANDBOX,
+                kind="upstream_copy_failed",
+            )
+
+        upstream = self.sbx.exec(
+            plan.sandbox,
+            (
+                "git",
+                "branch",
+                "--set-upstream-to",
+                branch_config.upstream,
+                branch_config.branch,
+            ),
+            workdir=branch_config.repo,
+            timeout_seconds=60,
+        )
+        if upstream.returncode != 0:
+            raise PiwError(
+                _failure(upstream.stdout, upstream.stderr, "cannot preserve branch upstream"),
+                code=ExitCode.SANDBOX,
+                kind="upstream_config_failed",
             )
 
     def _apply_host_patch(

@@ -11,6 +11,7 @@ from piw.cli import build_parser, emit, main
 from piw.errors import ExitCode, PiwError
 from piw.models import (
     AppConfig,
+    BranchMode,
     DoctorCheck,
     EffectiveBranchConfig,
     EffectiveSessionConfig,
@@ -28,6 +29,7 @@ class FakeService:
 
     def __init__(self, repo: Path) -> None:
         self.repo = repo
+        self.branch_config_kwargs: dict[str, object] = {}
         self.branch_kwargs: dict[str, object] = {}
         self.chat_args: tuple[object, ...] = ()
         self.chat_kwargs: dict[str, object] = {}
@@ -54,11 +56,16 @@ class FakeService:
         return [DoctorCheck("fake", "pass", "ready")]
 
     def effective_branch_config(self, **kwargs: object) -> EffectiveBranchConfig:
-        del kwargs
+        self.branch_config_kwargs = kwargs
         return EffectiveBranchConfig(
             repo=self.repo,
+            mode=BranchMode.NEW,
             base_ref="HEAD",
+            base_commit=None,
             branch="piw/task",
+            source_ref=None,
+            upstream=None,
+            upstream_ref=None,
             read_only_refs=(),
             skill_paths=(),
             model=None,
@@ -165,6 +172,7 @@ def test_parser_exposes_complete_command_tree() -> None:
         ["init", "--dry-run"],
         ["doctor"],
         ["branch", "task", "--batch", "--dry-run"],
+        ["branch", "review", "--existing", "origin/feature/review", "--dry-run"],
         ["branch", "task", "--ignore-host-changes", "--dry-run"],
         ["branch", "task", "--carry-host-changes", "--dry-run"],
         ["chat", "research", "--batch", "--dry-run"],
@@ -215,6 +223,10 @@ def test_branch_host_change_flags_are_explicit_and_mutually_exclusive() -> None:
         parser.parse_args(["branch", "task", "--ignore-host-changes", "--carry-host-changes"])
     assert "not allowed with argument" in str(captured.value)
 
+    with pytest.raises(PiwError) as source_conflict:
+        parser.parse_args(["branch", "task", "--base", "main", "--existing", "feature/task"])
+    assert "not allowed with argument" in str(source_conflict.value)
+
 
 def test_branch_dispatch_forwards_host_change_policy(
     tmp_path: Path,
@@ -237,6 +249,32 @@ def test_branch_dispatch_forwards_host_change_policy(
     )
     assert code == ExitCode.SUCCESS
     assert fake.branch_kwargs["host_changes"] is HostChangesPolicy.CARRY
+    capsys.readouterr()
+
+
+def test_branch_dispatch_forwards_existing_branch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The existing branch selector reaches Git configuration unchanged."""
+
+    fake = FakeService(tmp_path)
+    install_fake_service(monkeypatch, fake)
+    code = main(
+        [
+            "branch",
+            "review",
+            "--existing",
+            "origin/feature/review",
+            "--batch",
+            "--config",
+            str(tmp_path / "missing.toml"),
+        ]
+    )
+
+    assert code == ExitCode.SUCCESS
+    assert fake.branch_config_kwargs["existing"] == "origin/feature/review"
     capsys.readouterr()
 
 

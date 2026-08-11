@@ -25,6 +25,13 @@ class HostChangesPolicy(StrEnum):
     CARRY = "carry"
 
 
+class BranchMode(StrEnum):
+    """Whether a branch session creates or adopts its Git branch."""
+
+    NEW = "new"
+    EXISTING = "existing"
+
+
 class ThinkingLevel(StrEnum):
     """Thinking levels accepted by Pi."""
 
@@ -130,8 +137,13 @@ class EffectiveBranchConfig(EffectiveSessionConfig):
     """Resolved Git settings used to create one branch session."""
 
     repo: Path
+    mode: BranchMode
     base_ref: str
+    base_commit: str | None
     branch: str
+    source_ref: str | None
+    upstream: str | None
+    upstream_ref: str | None
 
 
 @dataclass(frozen=True, slots=True)

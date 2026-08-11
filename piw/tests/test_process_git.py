@@ -4,6 +4,9 @@ import sys
 from pathlib import Path
 from typing import Final
 
+import pytest
+
+from piw.errors import PiwError
 from piw.git import GitClient
 from piw.process import SubprocessRunner, render_command
 from tests.fakes import ScenarioRunner
@@ -49,6 +52,82 @@ def test_git_client_reads_repository_state(tmp_path: Path) -> None:
     runner.host_clean = False
     assert not git.is_clean(tmp_path)
     assert git.status(tmp_path).paths == ("host-change.txt",)
+
+
+def test_git_client_resolves_exact_local_and_remote_tracking_branches(tmp_path: Path) -> None:
+    """Existing branch resolution preserves exact commits, names, and upstreams."""
+
+    runner = SubprocessRunner()
+    repo = tmp_path / "source"
+    repo.mkdir()
+
+    def git(*args: str) -> str:
+        result = runner.run(("git", *_GIT_ENV, "-C", str(repo), *args))
+        assert result.returncode == 0, result.stderr
+        return result.stdout.strip()
+
+    git("init", "--initial-branch=main")
+    (repo / "tracked.txt").write_text("base\n", encoding="utf-8")
+    git("add", "tracked.txt")
+    git("commit", "-m", "base")
+    commit = git("rev-parse", "HEAD")
+    git("branch", "feature/local")
+    git("remote", "add", "origin", "https://example.invalid/repository.git")
+    git("update-ref", "refs/remotes/origin/feature/remote", commit)
+    git("branch", "--set-upstream-to", "origin/feature/remote", "feature/local")
+
+    client = GitClient(runner)
+    local = client.resolve_existing_branch(repo, "feature/local")
+    assert local.branch == "feature/local"
+    assert local.full_ref == "refs/heads/feature/local"
+    assert local.commit == commit
+    assert local.upstream == "origin/feature/remote"
+    assert local.upstream_ref == "refs/remotes/origin/feature/remote"
+
+    remote = client.resolve_existing_branch(repo, "origin/feature/remote")
+    assert remote.branch == "feature/remote"
+    assert remote.full_ref == "refs/remotes/origin/feature/remote"
+    assert remote.commit == commit
+    assert remote.upstream == "origin/feature/remote"
+    assert remote.upstream_ref == "refs/remotes/origin/feature/remote"
+
+    git("branch", "origin/feature/remote")
+    shadowing_local = client.resolve_existing_branch(repo, "origin/feature/remote")
+    assert shadowing_local.full_ref == "refs/heads/origin/feature/remote"
+    explicit_remote = client.resolve_existing_branch(repo, "refs/remotes/origin/feature/remote")
+    assert explicit_remote.full_ref == "refs/remotes/origin/feature/remote"
+
+    with pytest.raises(PiwError) as captured:
+        client.resolve_existing_branch(repo, "feature/remote")
+    assert captured.value.detail.kind == "existing_branch_not_found"
+    assert "--existing origin/feature/remote" in (captured.value.detail.hint or "")
+
+
+def test_git_client_rejects_non_branches_and_lists_remote_choices(tmp_path: Path) -> None:
+    """Invalid ref classes and ambiguous remote shorthand receive actionable errors."""
+
+    runner = ScenarioRunner(tmp_path)
+    runner.remotes = ("origin", "upstream")
+    runner.remote_branches = {
+        "origin/feature/shared": "a" * 40,
+        "upstream/feature/shared": "b" * 40,
+    }
+    client = GitClient(runner)
+
+    with pytest.raises(PiwError) as invalid:
+        client.resolve_existing_branch(tmp_path, "refs/tags/v1.0")
+    assert invalid.value.detail.kind == "invalid_existing_branch"
+
+    with pytest.raises(PiwError) as malformed:
+        client.resolve_existing_branch(tmp_path, "refs/remotes/origin/")
+    assert malformed.value.detail.kind == "invalid_existing_branch"
+
+    with pytest.raises(PiwError) as ambiguous:
+        client.resolve_existing_branch(tmp_path, "feature/shared")
+    assert ambiguous.value.detail.kind == "existing_branch_not_found"
+    hint = ambiguous.value.detail.hint or ""
+    assert "--existing origin/feature/shared" in hint
+    assert "--existing upstream/feature/shared" in hint
 
 
 def test_git_client_reports_conflicts_and_captures_host_patch(tmp_path: Path) -> None:
