@@ -5,15 +5,22 @@ from pathlib import Path
 import pytest
 
 from piw.errors import PiwError
-from piw.models import AppConfig, EffectiveTaskConfig, PiConfig, ThinkingLevel
+from piw.models import (
+    AppConfig,
+    EffectiveBranchConfig,
+    EffectiveSessionConfig,
+    PiConfig,
+    SandboxSecretConfig,
+    ThinkingLevel,
+)
 from piw.sandbox import SbxClient, desired_template, read_only_exposure, template_fingerprint
-from tests.piw.fakes import ScenarioRunner
+from tests.fakes import ScenarioRunner
 
 
-def effective(repo: Path) -> EffectiveTaskConfig:
-    """Create a representative task configuration."""
+def effective(repo: Path) -> EffectiveBranchConfig:
+    """Create a representative branch configuration."""
 
-    return EffectiveTaskConfig(
+    return EffectiveBranchConfig(
         repo=repo,
         base_ref="HEAD",
         branch="piw/example",
@@ -21,13 +28,32 @@ def effective(repo: Path) -> EffectiveTaskConfig:
         skill_paths=(repo.parent / "skills",),
         model="provider/model",
         thinking=ThinkingLevel.HIGH,
-        mcp_servers=("jira", "gitlab"),
         profile="developer",
         extensions=("npm:extension@1",),
         models_file=None,
         settings_file=None,
+        mcp_file=None,
         cpus=4,
         memory="8g",
+        timeout_seconds=60,
+    )
+
+
+def session_config(reference: Path) -> EffectiveSessionConfig:
+    """Create representative non-Git session settings."""
+
+    return EffectiveSessionConfig(
+        read_only_refs=(reference,),
+        skill_paths=(),
+        model="provider/model",
+        thinking=ThinkingLevel.HIGH,
+        profile="developer",
+        extensions=(),
+        models_file=None,
+        settings_file=None,
+        mcp_file=None,
+        cpus=2,
+        memory="4g",
         timeout_seconds=60,
     )
 
@@ -55,7 +81,7 @@ def test_sandbox_and_template_json_are_decoded(tmp_path: Path) -> None:
     assert client.has_template("piw-pi-test:latest")
 
 
-def test_create_uses_clone_resources_and_static_mcp(tmp_path: Path) -> None:
+def test_create_uses_clone_resources_and_read_only_references(tmp_path: Path) -> None:
     """Creation preserves the writable clone while mounting references read-only."""
 
     repo = tmp_path / "repo"
@@ -65,7 +91,7 @@ def test_create_uses_clone_resources_and_static_mcp(tmp_path: Path) -> None:
     client = SbxClient(runner)
     client.create(
         name="piw-repo-example",
-        task_config=effective(repo),
+        branch_config=effective(repo),
         template="piw-pi-test:latest",
         timeout_seconds=60,
     )
@@ -73,9 +99,32 @@ def test_create_uses_clone_resources_and_static_mcp(tmp_path: Path) -> None:
     assert "--clone" in command
     assert command[command.index("--cpus") : command.index("--cpus") + 2] == ("--cpus", "4")
     assert "--memory" in command
-    assert command.count("--static-mcp") == 2
+    assert "--static-mcp" not in command
     assert f"{tmp_path}:ro" not in command
     assert f"{tmp_path / 'skills'}:ro" in command
+
+
+def test_create_workspace_omits_clone_and_mounts_references(tmp_path: Path) -> None:
+    """Disposable workspaces use the same limits and read-only inputs without Git cloning."""
+
+    workspace = tmp_path / "workspace"
+    reference = tmp_path / "reference"
+    workspace.mkdir()
+    reference.mkdir()
+    runner = ScenarioRunner(workspace)
+
+    SbxClient(runner).create_workspace(
+        name="piw-chat-example",
+        workspace=workspace,
+        session_config=session_config(reference),
+        template="piw-pi-test:latest",
+        timeout_seconds=60,
+    )
+
+    command = runner.calls[-1]
+    assert "--clone" not in command
+    assert command[command.index("--cpus") : command.index("--cpus") + 2] == ("--cpus", "2")
+    assert f"{reference}:ro" in command
 
 
 def test_ancestor_reference_expands_to_disjoint_siblings(tmp_path: Path) -> None:
@@ -133,7 +182,7 @@ def test_create_snapshots_disjoint_reference_files(tmp_path: Path) -> None:
     runner = ScenarioRunner(repo)
     SbxClient(runner).create(
         name="piw-repo-example",
-        task_config=effective(repo),
+        branch_config=effective(repo),
         template="piw-pi-test:latest",
         timeout_seconds=60,
     )
@@ -161,6 +210,29 @@ def test_exec_stop_remove_and_template_lifecycle(tmp_path: Path) -> None:
     client.remove("task")
     assert not runner.sandboxes
     assert not runner.templates
+
+
+def test_custom_secret_uses_stdin_and_redacted_inventory(tmp_path: Path) -> None:
+    """Credential values never appear in the subprocess argument vector."""
+
+    runner = ScenarioRunner(tmp_path)
+    client = SbxClient(runner)
+    declaration = SandboxSecretConfig(
+        source_env="HOST_TOKEN",
+        sandbox_env="EXAMPLE_API_KEY",
+        hosts=("api.example.test",),
+        placeholder="sk-{rand}",
+    )
+    result = client.set_custom_secret(
+        declaration,
+        placeholder="sk-placeholder",
+        value="high-entropy-value",
+    )
+    assert "high-entropy-value" not in result.argv
+    assert runner.secret_inputs == ["high-entropy-value"]
+    inventory = client.list_global_secrets()
+    assert "sk-placeholder" in inventory
+    assert "high-entropy-value" not in inventory
 
 
 @pytest.mark.parametrize("payload", ["not-json", "[]"])

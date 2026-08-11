@@ -11,7 +11,7 @@ class ExitCode(IntEnum):
     USAGE = 2
     CONFIG = 10
     PREREQUISITE = 11
-    TASK = 12
+    SESSION = 12
     SANDBOX = 13
     UNSAFE = 14
     TIMEOUT = 15

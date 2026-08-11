@@ -53,6 +53,7 @@ class SubprocessRunner:
         command_env = os.environ.copy()
         if env:
             command_env.update(env)
+
         completed = subprocess.run(  # noqa: S603
             argv,
             cwd=cwd,
@@ -63,6 +64,7 @@ class SubprocessRunner:
             timeout=timeout_seconds,
             env=command_env,
         )
+
         return CommandResult(
             argv=argv,
             returncode=completed.returncode,
@@ -79,4 +81,5 @@ class SubprocessRunner:
 
 def render_command(argv: tuple[str, ...]) -> str:
     """Render a diagnostic command line without interpreting it."""
+
     return shlex.join(argv)
