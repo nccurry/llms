@@ -1023,6 +1023,92 @@ def test_attach_starts_named_conversation_with_runtime_overrides(tmp_path: Path)
     )
 
 
+def test_attach_refreshes_global_non_secret_pi_metadata(tmp_path: Path) -> None:
+    """Attach replaces sandbox metadata with the current configured files before Pi starts."""
+
+    models = tmp_path / "models.json"
+    settings = tmp_path / "settings.json"
+    mcp = tmp_path / "mcp.json"
+    models.write_text(json.dumps({"providers": {"before": {"models": []}}}))
+    settings.write_text(json.dumps({"theme": "dark"}))
+    mcp.write_text(json.dumps({"mcpServers": {"before": {}}}))
+    service, runner, repo = make_service(
+        tmp_path,
+        pi_config=PiConfig(models_file=models, settings_file=settings, mcp_file=mcp),
+    )
+    service.create_branch(
+        name="refresh",
+        branch_config=effective(service, repo, "refresh"),
+        batch=True,
+        dry_run=False,
+    )
+
+    models.write_text(json.dumps({"providers": {"after": {"models": []}}}))
+    settings.write_text(json.dumps({"theme": "light"}))
+    mcp.write_text(json.dumps({"mcpServers": {"after": {}}}))
+
+    service.attach("refresh")
+
+    assert json.loads(runner.seeded_files["models.json"]) == {
+        "providers": {"after": {"models": []}}
+    }
+    assert json.loads(runner.seeded_files["settings.json"])["theme"] == "light"
+    assert json.loads(runner.seeded_files["mcp.json"]) == {"mcpServers": {"after": {}}}
+    validation = max(index for index, call in enumerate(runner.calls) if "--list-models" in call)
+    pi_start = max(index for index, call in enumerate(runner.calls) if "pi" in call)
+    assert validation < pi_start
+
+
+def test_attach_does_not_start_a_session_when_metadata_validation_fails(tmp_path: Path) -> None:
+    """Invalid refreshed metadata leaves a batch-created session unattached."""
+
+    models = tmp_path / "models.json"
+    models.write_text(json.dumps({"providers": {"example": {"models": []}}}))
+    service, runner, repo = make_service(tmp_path, pi_config=PiConfig(models_file=models))
+    service.create_branch(
+        name="invalid-refresh",
+        branch_config=effective(service, repo, "invalid-refresh"),
+        batch=True,
+        dry_run=False,
+    )
+    runner.pi_config_error = "Warning: errors loading models.json: missing api"
+
+    with pytest.raises(PiwError) as captured:
+        service.attach("invalid-refresh")
+
+    assert captured.value.detail.kind == "invalid_pi_metadata"
+    assert service.store.load("invalid-refresh").session_started is False
+    assert not any(
+        call[:2] == ("sbx", "exec") and "pi" in call and "--list-models" not in call
+        for call in runner.calls
+    )
+
+
+def test_attach_rejects_missing_configured_pi_metadata(tmp_path: Path) -> None:
+    """A removed global metadata file cannot silently start an existing session."""
+
+    models = tmp_path / "models.json"
+    models.write_text(json.dumps({"providers": {"example": {"models": []}}}))
+    service, runner, repo = make_service(tmp_path, pi_config=PiConfig(models_file=models))
+    service.create_branch(
+        name="missing-refresh",
+        branch_config=effective(service, repo, "missing-refresh"),
+        batch=True,
+        dry_run=False,
+    )
+    models.unlink()
+
+    with pytest.raises(PiwError) as captured:
+        service.attach("missing-refresh")
+
+    assert captured.value.detail.kind == "missing_configured_path"
+    assert service.store.load("missing-refresh").session_started is False
+    assert not any(
+        call[:2] == ("sbx", "exec") and "pi" in call and "--list-models" not in call
+        for call in runner.calls
+    )
+
+
 def test_attach_selects_a_chat_conversation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

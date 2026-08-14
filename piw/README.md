@@ -118,9 +118,10 @@ piw chat research --dry-run --output yaml
 `--batch` creates a persistent chat without attaching Pi. It cannot be combined with
 `--temporary`, because an unattached temporary sandbox would be unreachable.
 
-`piw attach NAME` launches Pi in the existing workspace for either session type. It continues the
-latest conversation by default. `--new CONVERSATION` starts a separate saved conversation in that
-same sandbox and working tree; combine it with `--model`, `--thinking`, or `--prompt` for an
+`piw attach NAME` refreshes the configured non-secret Pi metadata (`models.json`, `settings.json`,
+and `mcp.json`) in the existing sandbox, then launches Pi in its existing workspace. It continues
+the latest conversation by default. `--new CONVERSATION` starts a separate saved conversation in
+that same sandbox and working tree; combine it with `--model`, `--thinking`, or `--prompt` for an
 independent reviewer or specialist. These overrides apply only to that attachment. `--select`
 opens Pi's saved-conversation picker. Attachments share writable files, so avoid concurrent edits
 unless the agents are deliberately coordinating.
@@ -134,7 +135,7 @@ unless the agents are deliberately coordinating.
 | `piw branch NAME [--existing BRANCH]` | Create a new branch or adopt an existing branch in a persistent private clone. |
 | `piw chat NAME` | Create a persistent repository-free workspace, then attach Pi. |
 | `piw chat [NAME] --temporary` | Run a disposable repository-free chat and remove it on exit. |
-| `piw attach NAME` | Continue the latest Pi conversation in a branch or chat session. |
+| `piw attach NAME` | Refresh configured Pi metadata and continue the latest conversation. |
 | `piw attach NAME --new CONVERSATION` | Start a separate conversation in the same sandbox and working tree. |
 | `piw attach NAME --select` | Open Pi's saved-conversation selector for the session. |
 | `piw list` | Reconcile saved branch and chat sessions with live sandboxes. |
@@ -230,9 +231,9 @@ sandbox as snapshots; editing those copies cannot affect the host files.
 
 Pi does not include MCP support in its core harness. Install a reviewed, pinned MCP client extension
 with `pi.extensions`, then point `pi.mcp_file` at that extension's ordinary non-secret JSON config.
-`piw` validates and copies the file to `~/.pi/agent/mcp.json` when it creates a session; it does not
-register servers with Docker or reinterpret the extension's schema. The same file can therefore use
-public HTTP, OAuth, or stdio servers supported by the selected extension:
+`piw` validates and copies the file to `~/.pi/agent/mcp.json` when it creates or attaches to a
+session; it does not register servers with Docker or reinterpret the extension's schema. The same
+file can therefore use public HTTP, OAuth, or stdio servers supported by the selected extension:
 
 ```json
 {
