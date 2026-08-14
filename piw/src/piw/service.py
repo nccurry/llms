@@ -842,19 +842,13 @@ class PiwService:
     def _validate_pi_config(
         self,
         sandbox: str,
-        session_config: EffectiveSessionConfig,
         *,
         workdir: Path,
+        has_metadata: bool,
     ) -> None:
         """Ask the installed Pi version to validate copied runtime metadata."""
 
-        if not any(
-            (
-                session_config.models_file,
-                session_config.settings_file,
-                session_config.mcp_file,
-            )
-        ):
+        if not has_metadata:
             return
         result = self.sbx.exec(
             sandbox,
@@ -870,6 +864,27 @@ class PiwService:
                 kind="invalid_pi_metadata",
                 hint="Fix the configured models, settings, or MCP file, then retry the session.",
             )
+
+    def _refresh_pi_config(self, sandbox: str, *, workdir: Path) -> None:
+        """Refresh configured non-secret Pi metadata before attaching to a saved sandbox."""
+
+        pi = self.config.pi
+        files = (pi.models_file, pi.settings_file, pi.mcp_file)
+        missing_files = [str(path) for path in files if path is not None and not path.is_file()]
+        if missing_files:
+            raise PiwError(
+                f"configured metadata files do not exist: {', '.join(missing_files)}",
+                code=ExitCode.CONFIG,
+                kind="missing_configured_path",
+            )
+
+        self._seed_pi_config(
+            sandbox,
+            models_file=pi.models_file,
+            settings_file=pi.settings_file,
+            mcp_file=pi.mcp_file,
+        )
+        self._validate_pi_config(sandbox, workdir=workdir, has_metadata=any(files))
 
     @staticmethod
     def _pi_command(launch: _PiLaunch) -> tuple[str, ...]:
@@ -1167,7 +1182,17 @@ class PiwService:
             settings_file=branch_config.settings_file,
             mcp_file=branch_config.mcp_file,
         )
-        self._validate_pi_config(plan.sandbox, branch_config, workdir=branch_config.repo)
+        self._validate_pi_config(
+            plan.sandbox,
+            workdir=branch_config.repo,
+            has_metadata=any(
+                (
+                    branch_config.models_file,
+                    branch_config.settings_file,
+                    branch_config.mcp_file,
+                )
+            ),
+        )
 
     @staticmethod
     def _branch_record(plan: _BranchPlan, branch_config: EffectiveBranchConfig) -> SessionRecord:
@@ -1357,7 +1382,17 @@ class PiwService:
             settings_file=session_config.settings_file,
             mcp_file=session_config.mcp_file,
         )
-        self._validate_pi_config(plan.sandbox, session_config, workdir=plan.workspace)
+        self._validate_pi_config(
+            plan.sandbox,
+            workdir=plan.workspace,
+            has_metadata=any(
+                (
+                    session_config.models_file,
+                    session_config.settings_file,
+                    session_config.mcp_file,
+                )
+            ),
+        )
 
     @staticmethod
     def _chat_record(
@@ -1547,6 +1582,8 @@ class PiwService:
                     code=ExitCode.SANDBOX,
                     kind="sandbox_start_failed",
                 )
+
+        self._refresh_pi_config(record.sandbox, workdir=Path(record.workspace))
 
         updated = replace(record, last_used_at=utc_now(), session_started=True)
         self.store.save(updated)
