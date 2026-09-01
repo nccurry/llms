@@ -1,6 +1,6 @@
 ---
 name: audit-codebase
-description: Run the complete code craftsmanship gate across current changes and affected structure. Use when the user says "run all audit skills" or "run the audits before continuing." Also use for a full code audit or craftsmanship pass. This skill combines structure, plain-language clarity, correctness, code quality, visual clarity, dead code, tests, and performance.
+description: Run the complete code craftsmanship gate across current changes and affected structure. Use when the user says "run all audit skills" or "run the audits before continuing." Also use for a full code audit or craftsmanship pass. This skill combines structure, plain-language clarity, correctness, code quality, unnecessary complexity, visual clarity, dead code, tests, and performance.
 ---
 
 # Audit Codebase
@@ -37,13 +37,16 @@ Apply these skills in order:
 2. `plain-language-audit`: word salad, vague prose, terminology, and conventional names.
 3. `correctness-reliability-audit`: behavior, state, errors, lifecycle, concurrency, and recovery.
 4. `code-quality-audit`: idiom, cohesion, control flow, necessity, and maintainability.
-5. `visual-code-audit`: scan path, whitespace, comments, indentation, and line shape.
-6. `dead-code-audit`: unused or obsolete code that can be removed safely.
-7. `audit-tests`: missing coverage for the selected change.
-8. `test-quality-audit`: weak assertions, poor test design, and flaky risk.
-9. `performance-audit`: measurable or strongly evidenced runtime and resource costs.
+5. `ponytail:ponytail-review` (or `ponytail:ponytail-audit` for an explicitly full-repository scope): unnecessary complexity, speculative abstractions, standard-library or native replacements, and deletable code.
+6. `visual-code-audit`: scan path, whitespace, comments, indentation, and line shape.
+7. `dead-code-audit`: unused or obsolete code that can be removed safely.
+8. `audit-tests`: missing coverage for the selected change.
+9. `test-quality-audit`: weak assertions, poor test design, and flaky risk.
+10. `performance-audit`: measurable or strongly evidenced runtime and resource costs.
 
 If a required specialist is unavailable, return `INCOMPLETE`. Name the missing skill and do not claim a complete audit.
+
+Treat the Ponytail specialist as a selected-scope gate. Use `ponytail:ponytail-review` for a target, active-change, or branch-diff scope; substitute `ponytail:ponytail-audit` for an explicitly full-repository scope. Capture its concise result in the gate ledger and fold its findings into this aggregate report rather than returning its standalone output directly.
 
 Dependency, application-security, and frontend-design audits are not part of this gate. Run them only through their separate skills.
 
