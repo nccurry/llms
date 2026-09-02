@@ -35,6 +35,7 @@ MANAGED_SKILLS = [
     "frontend-design-review",
     "performance-audit",
     "plain-language-audit",
+    "plc-execution",
     "plc-planning",
     "release-readiness",
     "test-quality-audit",
@@ -47,6 +48,9 @@ LEGACY_BACKUP_RE = re.compile(
 )
 INTERFACE_FIELD_RE = re.compile(
     r"^  (?P<key>display_name|short_description|default_prompt): (?P<value>.+)$"
+)
+POLICY_FIELD_RE = re.compile(
+    r"^  allow_implicit_invocation: (?P<value>true|false)$"
 )
 PLAIN_SCALAR_FORBIDDEN_PREFIXES = (
     "- ",
@@ -152,7 +156,10 @@ def parse_openai_interface(openai_yaml: Path) -> tuple[dict[str, str], list[str]
     lines = openai_yaml.read_text(encoding="utf-8").splitlines()
 
     required = {"display_name", "short_description", "default_prompt"}
+    section = ""
     interface_seen = False
+    policy_seen = False
+    implicit_invocation_seen = False
     for line in lines:
         if not line.strip():
             continue
@@ -160,24 +167,49 @@ def parse_openai_interface(openai_yaml: Path) -> tuple[dict[str, str], list[str]
             if interface_seen:
                 errors.append("agents/openai.yaml contains duplicate interface:")
             interface_seen = True
+            section = "interface"
+            continue
+        if line == "policy:":
+            if policy_seen:
+                errors.append("agents/openai.yaml contains duplicate policy:")
+            policy_seen = True
+            section = "policy"
             continue
 
         match = INTERFACE_FIELD_RE.fullmatch(line)
-        if not match:
-            errors.append(f"unsupported agents/openai.yaml line: {line!r}")
+        if match:
+            key = match.group("key")
+            if key in fields:
+                errors.append(f"agents/openai.yaml contains duplicate {key}")
+                continue
+            value = parse_quoted_scalar(match.group("value"))
+            if value is None:
+                errors.append(
+                    f"agents/openai.yaml {key} must be a valid quoted string"
+                )
+                continue
+            if section != "interface":
+                errors.append(
+                    f"agents/openai.yaml {key} must be nested under interface:"
+                )
+                continue
+            fields[key] = value
             continue
-        key = match.group("key")
-        if key in fields:
-            errors.append(f"agents/openai.yaml contains duplicate {key}")
+
+        if POLICY_FIELD_RE.fullmatch(line):
+            if implicit_invocation_seen:
+                errors.append(
+                    "agents/openai.yaml contains duplicate allow_implicit_invocation"
+                )
+            elif section != "policy":
+                errors.append(
+                    "agents/openai.yaml allow_implicit_invocation must be nested under policy:"
+                )
+            else:
+                implicit_invocation_seen = True
             continue
-        value = parse_quoted_scalar(match.group("value"))
-        if value is None:
-            errors.append(f"agents/openai.yaml {key} must be a valid quoted string")
-            continue
-        if not interface_seen:
-            errors.append(f"agents/openai.yaml {key} must be nested under interface:")
-            continue
-        fields[key] = value
+
+        errors.append(f"unsupported agents/openai.yaml line: {line!r}")
 
     if not interface_seen:
         errors.append("agents/openai.yaml is missing interface:")
