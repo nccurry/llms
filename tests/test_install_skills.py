@@ -74,6 +74,19 @@ class InstallSkillsTests(unittest.TestCase):
         openai_yaml = self.source / self.skill_name / "agents" / "openai.yaml"
         openai_yaml.write_text(
             "interface:\n"
+            '  display_name: "Sample Skill"\n'
+            '  short_description: "Audit sample code with clear evidence"\n'
+            f'  default_prompt: "Use ${self.skill_name} to audit this sample."\n'
+            "\n"
+            "policy:\n"
+            "  allow_implicit_invocation: false\n",
+            encoding="utf-8",
+        )
+        result = install_skills.validate_source(self.source)
+        self.assertTrue(result["valid"], result["errors"])
+
+        openai_yaml.write_text(
+            "interface:\n"
             "  display_name: Sample Skill\n"
             '  short_description: "Too short"\n'
             '  default_prompt: "Use $sample-skill-extra for this audit."\n',
