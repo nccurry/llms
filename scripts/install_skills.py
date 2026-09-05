@@ -40,6 +40,7 @@ MANAGED_SKILLS = [
     "release-readiness",
     "test-quality-audit",
     "visual-code-audit",
+    "work-visual-summary",
 ]
 
 NAME_RE = re.compile(r"^[a-z0-9-]{1,64}$")
