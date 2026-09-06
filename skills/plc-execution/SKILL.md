@@ -1,6 +1,6 @@
 ---
 name: plc-execution
-description: "Run selected Plan-Led Change (PLC) work with isolated subagents, audit checks, direct merges or merge requests, and questions for open decisions. Use only when the user calls $plc-execution."
+description: "Run selected Plan-Led Change (PLC) work with optional child agents and worktrees, regular audits during implementation, direct merges or merge requests, and questions for open decisions. Use only when the user calls $plc-execution."
 ---
 
 # PLC Execution
@@ -38,10 +38,13 @@ Use merge-request integration when the user wants a review and CI for each
 child branch. If the user does not name a route and the repository has no
 clear convention, stop and ask.
 
-For direct integration, use a clean integration worktree, which is a separate
-Git folder. The parent can use its main worktree only when the user named it as
-the merge target and it is clean. For merge-request integration, record each
-MR target branch. Ask the user if the target branch is not clear.
+Use the user-specified integration branch and worktree. If no target is named,
+choose a clean target. Prefer a non-default integration branch and linked
+worktree when the work needs isolation or child agents. Use `main`, another
+default branch, or the primary worktree only when the user named it as the
+clean merge target. Record the target branch and worktree before children
+start. For merge-request integration, record each MR target branch. Ask the
+user if the target branch is not clear.
 
 ## Set up the work
 
@@ -50,25 +53,44 @@ MR target branch. Ask the user if the target branch is not clear.
    repository rules, such as CQ. Use named design goals as acceptance criteria.
    If the user names Roci design goals, find the documents that state them.
    Do not guess them.
-2. Use the work list to order the selected phases. Split a phase only when the
-   jobs are separate. Work in parallel only when tasks own different files and
+2. Use the work list to order the selected phases. Use child agents only when
+   a phase has independent implementation blocks. Keep small or tightly coupled
+   work with one agent. Work in parallel only when tasks own different files and
    do not change the same API, schema, data format, or design choice.
-3. Create a clean integration branch and linked worktree from the chosen base
-   branch. Do not change a dirty worktree. Do not stash user work. Do not work
-   in the source checkout unless the user chose it as a clean merge target.
+3. Use the chosen clean target. Create an integration branch and linked
+   worktree when the work needs isolation or child agents. Do not change a
+   dirty worktree. Do not stash user work. Do not work in the source checkout
+   unless the user chose it as a clean merge target.
 
-Do not assume that a subagent gets a separate worktree. Some agent tools reuse
-the caller's folder. The parent creates and checks each child worktree before
-it starts the child.
+If child agents use separate worktrees, do not assume that the agent tool made
+them. Some tools reuse the caller's folder. The parent creates and checks each
+child worktree before it starts the child.
 
 ```text
 git worktree add -b <child-branch> <absolute-child-path> <integration-commit>
 git -C <absolute-child-path> status --short --branch
 ```
 
-Give each child a different branch and sibling folder. For example, use
-`ncurry/<plc>-p<phase>-<slice>`. Record the base commit. Do not put a child
-worktree inside another worktree.
+When children use separate worktrees, give each one a different branch and
+sibling folder. For example, use `ncurry/<plc>-p<phase>-<slice>`. Record the
+base commit. Do not put a child worktree inside another worktree.
+
+## Audit during implementation
+
+Run `$audit-codebase` regularly during implementation, whether one agent or
+several agents do the work. Run it after a meaningful block, often at a phase
+boundary. A meaningful block changes code, configuration, tests, or user
+behavior.
+
+- Audit a child's meaningful block before it hands work to the parent.
+- Audit the combined diff after a meaningful merge or at the phase boundary.
+- If one agent does the work, audit after each meaningful block or phase.
+- A discovery-only task or a tiny no-code edit can wait for the next meaningful
+  block.
+
+At every handoff or merge, read `git status --short` in the exact worktree.
+Do not use another worktree's status. If several tiny related blocks do not
+justify separate audits, audit them as one small group and record why.
 
 ## Allow discovery work
 
@@ -107,9 +129,10 @@ Each child must:
    for that phase.
 3. Run focused tests while working. Then run the project tests and checks that
    cover the change.
-4. Run `$audit-codebase` against its branch diff from the supplied base
-   commit. This is what "all audit skills" means. It runs every specialist
-   audit named by that skill.
+4. After a meaningful implementation block, run `$audit-codebase` against its
+   branch diff from the supplied base commit. This is what "all audit skills"
+   means. It runs every specialist audit named by that skill. A discovery-only
+   task or a tiny no-code edit can wait for the next meaningful block.
 5. Run extra audits that match the change. For UI work, run
    `frontend-design-review`. For a dependency change, run
    `dependency-auditor`.
@@ -127,7 +150,9 @@ Each child must:
 For direct integration, only the parent merges child branches. Before each
 merge, make sure that the child branch is clean and committed. Read its diff,
 test results, and `PASS` audit result. Merge one child at a time. Run tests
-for the combined change after each merge.
+after each merge. Run the required combined audit after a meaningful merge or
+at the phase boundary. Audit a small group only when no single child changed
+enough to warrant its own audit. Record that choice.
 
 ## Merge-request integration
 
@@ -164,9 +189,9 @@ After all child changes for one phase or dependency group are merged:
 4. Update the PLC phase status and results only after the phase checks pass.
    Do not call the selected work done if later phases or a user decision remain.
 
-Run the first combined audit before repairs. Run one final combined audit
-after all repairs. If a blocking finding remains, stop and ask for direction.
-Do not start another full audit without direction.
+Run the phase-close audit even if earlier handoff audits passed. After repairs,
+run one final audit. If a blocking finding remains, stop and ask for direction.
+Do not repeat a full audit without new work or new evidence.
 
 Leave completed child branches and worktrees until the user asks to clean
 them. This lets the user examine or recover the work. Some processes keep a
