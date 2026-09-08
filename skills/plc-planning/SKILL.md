@@ -46,6 +46,11 @@ evidence.
    - Give each required behavior a stable ID, acceptance criteria, and a
      concrete validation method.
    - Record scope, non-scope, risks, assumptions, and open questions.
+   - When a change affects a CLI, API, configuration, UI, or other public
+     surface, summarize the action, expected result, and compatibility in the
+     SRD. Add short expected-experience examples for each changed surface.
+     Include error, empty, or permission behavior when it matters. Write
+     `None` for internal-only work.
    - Explain the chosen design, relevant alternatives, changed boundaries,
      data flow, interfaces, and test design.
    - Avoid overly abstract LLM word salad in plan content, proposed abstraction

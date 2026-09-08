@@ -19,7 +19,7 @@ State the problem, the intended outcome, and the smallest useful result.
 
 ## Packet
 
-- [SRD.md](SRD.md): requirements and acceptance criteria
+- [SRD.md](SRD.md): requirements, public behavior, and acceptance criteria
 - [SADD.md](SADD.md): design and tradeoffs
 - [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md): phases and validation
 - [FIXTURES.md](FIXTURES.md): optional stable test cases or acceptance matrix

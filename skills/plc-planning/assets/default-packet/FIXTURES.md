@@ -1,7 +1,8 @@
 # <Feature> Fixtures And Acceptance Matrix
 
-Use this file only when stable examples, test data, API inventories, or visual
-reference cases help verify the work.
+Use this file only when stable examples, test data, API inventories, CLI output,
+or visual reference cases help verify the work. Copy expected-experience
+examples here when they need durable test coverage.
 
 ## Fixture Inventory
 

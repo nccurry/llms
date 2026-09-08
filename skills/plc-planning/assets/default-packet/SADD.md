@@ -29,7 +29,8 @@ or recovery paths when they change behavior.
 ## Interfaces And Data
 
 Define changed APIs, commands, schemas, records, files, configuration, and
-invalid-input behavior.
+invalid-input behavior. Explain how the design supports the public summary and
+expected-experience examples in `SRD.md`. Do not repeat those examples here.
 
 ## Quality And Safety
 
