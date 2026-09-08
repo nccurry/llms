@@ -23,10 +23,51 @@ Use one observable behavior or constraint per requirement.
 | --- | --- | --- | --- |
 | REQ-001 | Must | <observable behavior or constraint> | <objective evidence> |
 
+## User Experience And Public Surface
+
+Summarize behavior a user, API consumer, operator, or integrator can observe.
+Write `None` when this change has no public surface.
+
+| Surface | Action or input | Expected result | Compatibility |
+| --- | --- | --- | --- |
+| <CLI, API, configuration, UI, or other surface> | <action or input> | <visible result> | <new, changed, unchanged, or migration> |
+
+## Expected Experience
+
+Add short examples for each changed public surface. Include error, empty, or
+permission behavior when it matters. Use only the headings that apply.
+
+### CLI
+
+```text
+$ <command>
+<expected output>
+```
+
+### API
+
+```http
+<request>
+
+<response>
+```
+
+### Configuration
+
+```text
+<key>=<value>
+```
+
+### UI Flow
+
+1. <user action>
+2. <visible result>
+3. <error or empty-state behavior, when relevant>
+
 ## Interfaces And Data
 
-List changed APIs, commands, configuration, schemas, files, UI behavior, and
-state transitions. Write `None` when no public surface changes.
+Define the exact changed APIs, commands, configuration, schemas, files, and
+state transitions behind the public summary. State invalid-input behavior.
 
 ## Quality Attributes
 
