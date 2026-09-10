@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plain English"
+  short_description: "Use clear language from the start"
+  default_prompt: "Use $plain-english throughout this session."
