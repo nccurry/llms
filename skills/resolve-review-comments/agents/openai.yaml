@@ -1,0 +1,4 @@
+interface:
+  display_name: "Resolve Review Comments"
+  short_description: "Handle review comments across one or multiple MRs"
+  default_prompt: "Use $resolve-review-comments on these MRs or PRs: fix valid issues, explain each decision briefly, reply, resolve handled AI threads, and leave human threads open."

@@ -39,6 +39,7 @@ MANAGED_SKILLS = [
     "plc-execution",
     "plc-planning",
     "release-readiness",
+    "resolve-review-comments",
     "test-quality-audit",
     "visual-code-audit",
     "work-visual-summary",
