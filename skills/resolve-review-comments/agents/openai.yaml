@@ -1,4 +1,4 @@
 interface:
   display_name: "Resolve Review Comments"
-  short_description: "Handle review comments across one or multiple MRs"
-  default_prompt: "Use $resolve-review-comments on these MRs or PRs: fix valid issues, explain each decision briefly, reply, resolve handled AI threads, and leave human threads open."
+  short_description: "Handle review comments on GitLab, GitHub, and more"
+  default_prompt: "Use $resolve-review-comments on these code reviews, wherever they are hosted: fix valid issues, explain each decision briefly, reply, resolve handled AI threads, and leave human threads open."
