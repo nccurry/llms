@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design for Change"
+  short_description: "Build clear, adaptable, testable systems"
+  default_prompt: "Use $design-for-change to plan and implement this change."
