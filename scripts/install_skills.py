@@ -30,6 +30,7 @@ MANAGED_SKILLS = [
     "dead-code-audit",
     "dependency-auditor",
     "docs-sync",
+    "file-hygiene-audit",
     "figma-implement-design",
     "frontend-design",
     "frontend-design-review",

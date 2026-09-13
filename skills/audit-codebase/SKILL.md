@@ -1,6 +1,6 @@
 ---
 name: audit-codebase
-description: Run the complete code craftsmanship gate across current changes and affected structure. Use when the user says "run all audit skills" or "run the audits before continuing." Also use for a full code audit or craftsmanship pass. This skill combines structure, plain-language clarity, correctness, code quality, unnecessary complexity, visual clarity, dead code, tests, and performance.
+description: Run the complete code craftsmanship gate across current changes and affected structure. Use when the user says "run all audit skills" or "run the audits before continuing." Also use for a full code audit or craftsmanship pass. This skill combines structure, file hygiene, plain-language clarity, correctness, code quality, unnecessary complexity, visual clarity, dead code, tests, and performance.
 ---
 
 # Audit Codebase
@@ -34,15 +34,16 @@ Always inspect the repository root and relevant ancestor folders. Use them to ju
 Apply these skills in order:
 
 1. `abstraction-quality-audit`: ownership, file-tree structure, boundaries, naming, and modularity.
-2. `plain-language-audit`: word salad, vague prose, terminology, and conventional names.
-3. `correctness-reliability-audit`: behavior, state, errors, lifecycle, concurrency, and recovery.
-4. `code-quality-audit`: idiom, cohesion, control flow, necessity, and maintainability.
-5. `ponytail:ponytail-review` (or `ponytail:ponytail-audit` for an explicitly full-repository scope): unnecessary complexity, speculative abstractions, standard-library or native replacements, and deletable code.
-6. `visual-code-audit`: scan path, whitespace, comments, indentation, and line shape.
-7. `dead-code-audit`: unused or obsolete code that can be removed safely.
-8. `audit-tests`: missing coverage for the selected change.
-9. `test-quality-audit`: weak assertions, poor test design, and flaky risk.
-10. `performance-audit`: measurable or strongly evidenced runtime and resource costs.
+2. `file-hygiene-audit`: repository file policy, temporary artifacts, misplaced planning files, and safe cleanup candidates.
+3. `plain-language-audit`: word salad, vague prose, terminology, and conventional names.
+4. `correctness-reliability-audit`: behavior, state, errors, lifecycle, concurrency, and recovery.
+5. `code-quality-audit`: idiom, cohesion, control flow, necessity, and maintainability.
+6. `ponytail:ponytail-review` (or `ponytail:ponytail-audit` for an explicitly full-repository scope): unnecessary complexity, speculative abstractions, standard-library or native replacements, and deletable code.
+7. `visual-code-audit`: scan path, whitespace, comments, indentation, and line shape.
+8. `dead-code-audit`: unused or obsolete code that can be removed safely.
+9. `audit-tests`: missing coverage for the selected change.
+10. `test-quality-audit`: weak assertions, poor test design, and flaky risk.
+11. `performance-audit`: measurable or strongly evidenced runtime and resource costs.
 
 If a required specialist is unavailable, return `INCOMPLETE`. Name the missing skill and do not claim a complete audit.
 
@@ -67,7 +68,7 @@ Explicit user instructions override this policy. Interpret `fix findings` as fix
 
 ## Fixes and Verification
 
-Treat an audit-only request as read-only.
+Treat an audit-only request as read-only. Run the `file-hygiene-audit` on every aggregate pass, but send files to trash or relocate them only when the user expressly authorizes file cleanup. A request to audit, report, or fix ordinary findings does not by itself authorize file cleanup. Cleanup must use the host trash or recycle bin, never permanent deletion, and the final report must list every affected file.
 
 When fixes are authorized, correct blocking findings inside the approved scope. After each fix, rerun only the specialist that owns the finding and the tests or checks that cover the changed behavior. Verification must confirm the fix and adjacent regressions without reopening the codebase or creating unrelated cleanup work.
 
@@ -100,5 +101,6 @@ Separate the final report into:
 3. Deferred follow-ups.
 4. Validation evidence.
 5. Gates rerun and why.
+6. File cleanup actions: each `file-hygiene-audit` candidate's outcome, including files retained, relocated, moved to trash, blocked, or left ambiguous.
 
 For every finding, include severity, confidence, a tight file and line reference, evidence, impact, and a concrete correction. Report blind spots separately.
