@@ -29,6 +29,7 @@ MANAGED_SKILLS = [
     "correctness-reliability-audit",
     "dead-code-audit",
     "dependency-auditor",
+    "design-for-change",
     "docs-sync",
     "file-hygiene-audit",
     "figma-implement-design",
