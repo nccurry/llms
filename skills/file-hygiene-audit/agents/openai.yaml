@@ -1,0 +1,4 @@
+interface:
+  display_name: "File Hygiene Audit"
+  short_description: "Find and safely clean stray repository files"
+  default_prompt: "Use $file-hygiene-audit to find and safely handle temporary or stray repository files."
