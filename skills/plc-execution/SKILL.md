@@ -32,6 +32,23 @@ sub-phase, record:
 Run an item only after its prerequisites pass. A discovery task can run before
 a prerequisite only when it does not change that prerequisite.
 
+## Make a completion map
+
+Before editing, map each selected PLC requirement and named design goal to:
+
+- Its existing PLC identifier.
+- The phase or child that owns it.
+- The command or manual review that proves it.
+- Its current state: pending, verified, deferred, or blocked.
+
+Reuse the PLC's requirement IDs. Do not create a second durable plan. The map
+is execution evidence and can live in the work list or phase notes.
+
+When the user explicitly invokes `$unlazy`, use its gate ledger as the
+completion map's runnable-check record. Keep the PLC as the source of truth.
+Record an audit's scope, comparison base, and verdict as evidence; do not turn
+an agent skill into an uninspected shell command.
+
 Choose one merge route before the children start. Use direct integration when
 the user wants the parent to merge child branches into its chosen worktree.
 Use merge-request integration when the user wants a review and CI for each
@@ -114,6 +131,7 @@ Every child assignment must state:
 - Whether it can make a small fix outside its work to keep old code working.
   The default is no.
 - The tests and audits to run. State what the final report must contain.
+- The completion-map rows it owns and the proof for each row.
 
 Tell the child to edit only its assigned worktree. It must not edit the
 integration worktree, another child worktree, or `main`. It can commit its
@@ -149,10 +167,12 @@ Each child must:
 
 For direct integration, only the parent merges child branches. Before each
 merge, make sure that the child branch is clean and committed. Read its diff,
-test results, and `PASS` audit result. Merge one child at a time. Run tests
-after each merge. Run the required combined audit after a meaningful merge or
-at the phase boundary. Audit a small group only when no single child changed
-enough to warrant its own audit. Record that choice.
+test results, `PASS` audit result, and completion-map evidence. Re-run the
+child's stated tests or checks in the integration worktree before relying on
+the handoff. Merge one child at a time. Run tests after each merge. Run the
+required combined audit after a meaningful merge or at the phase boundary.
+Audit a small group only when no single child changed enough to warrant its
+own audit. Record that choice.
 
 ## Merge-request integration
 
@@ -186,7 +206,10 @@ After all child changes for one phase or dependency group are merged:
 3. If the combined work shows a defect or audit finding, start a repair child.
    Base its worktree on the latest integration commit. Use the selected merge
    route. It must get a `PASS` result before its merge.
-4. Update the PLC phase status and results only after the phase checks pass.
+4. Reconcile the completion map with the current user request. Every selected
+   requirement and design goal must have an owner and current proof. Surface a
+   deferred or blocked row as a handoff; do not call it complete.
+5. Update the PLC phase status and results only after the phase checks pass.
    Do not call the selected work done if later phases or a user decision remain.
 
 Run the phase-close audit even if earlier handoff audits passed. After repairs,
@@ -231,6 +254,7 @@ file, behavior, test, or design goal instead. `$audit-codebase` includes
 
 List the selected PLC files, phase order, dependencies, and parallel groups.
 State the merge route, every child branch and commit, every MR, each audit and
-test result, whether each design goal passed, and every open question. Merge
-the final target branch only when the user authorized it and all required
-tests, audits, reviews, and CI checks passed.
+test result, and the completion-map state for every requirement and design
+goal. Surface each deferred or blocked row and every open question. Merge the
+final target branch only when the user authorized it and all required tests,
+audits, reviews, and CI checks passed.
