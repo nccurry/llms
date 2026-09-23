@@ -1,0 +1,4 @@
+interface:
+  display_name: "PLC Alignment Audit"
+  short_description: "Check completed work against its plan"
+  default_prompt: "Use $plc-alignment-audit to check completed implementation against the guiding PLC document or plan."
