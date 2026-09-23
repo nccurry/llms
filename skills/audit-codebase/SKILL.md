@@ -44,6 +44,7 @@ Apply these skills in order:
 9. `audit-tests`: missing coverage for the selected change.
 10. `test-quality-audit`: weak assertions, poor test design, and flaky risk.
 11. `performance-audit`: measurable or strongly evidenced runtime and resource costs.
+12. `plc-alignment-audit`: when this session is working from a PLC document or plan, check completed work against it and report missing or conflicting implementation. Otherwise record `not applicable`.
 
 If a required specialist is unavailable, return `INCOMPLETE`. Name the missing skill and do not claim a complete audit.
 

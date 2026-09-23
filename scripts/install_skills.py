@@ -38,6 +38,7 @@ MANAGED_SKILLS = [
     "performance-audit",
     "plain-english",
     "plain-language-audit",
+    "plc-alignment-audit",
     "plc-execution",
     "plc-planning",
     "release-readiness",
