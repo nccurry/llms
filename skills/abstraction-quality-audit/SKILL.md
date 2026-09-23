@@ -12,7 +12,7 @@ description: Review file-tree structure, naming, ownership, responsibility bound
 3. Inspect the repository root and every ancestor folder of the target files.
 4. Decide whether each folder and file has a clear purpose and owner.
 5. Trace one representative workflow from its entry point to its observable effect.
-6. Inspect names across folders, files, types, methods, parameters, interfaces, and tests.
+6. Inspect names where they communicate ownership or boundaries; route wording defects to `plain-language-audit`. When dependencies change, inspect affected consumers and test placement.
 7. Compare each abstraction's cost with the complexity, boundary, or duplication that it removes.
 8. Report concrete findings with tight file and line references.
 

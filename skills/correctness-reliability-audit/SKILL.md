@@ -9,7 +9,7 @@ description: Audit code for behavioral correctness and reliable failure handling
 
 1. Identify the review scope from the user request or current changes.
 2. Read local instructions, contracts, schemas, and nearby tests.
-3. Trace representative success and failure paths from their entry points to observable effects.
+3. State concrete failure questions for the changed behavior, then trace success and failure paths from entry points to observable effects.
 4. Identify the state, invariants, ownership, and lifecycle rules on each path.
 5. Inspect boundary values, invalid inputs, partial failures, and repeated operations.
 6. Run focused tests or static checks when they can confirm a finding.
@@ -29,6 +29,8 @@ description: Audit code for behavioral correctness and reliable failure handling
 Check whether the code:
 
 - Preserves its stated and implied invariants.
+- Keeps affected producer and consumer contracts compatible. For protocol changes, inspect relevant wire and generated API behavior, including streaming, field presence, oneof membership, and naming.
+- Keeps behavior-sensitive generated artifacts and contract metadata consistent with their authoritative source; route documentation-only drift to `docs-sync`.
 - Handles success, empty, boundary, invalid-input, cancellation, and failure paths.
 - Makes state transitions legal, complete, and observable.
 - Propagates, translates, or handles errors without hiding important failures.
@@ -44,7 +46,7 @@ Check whether the code:
 - Use high confidence when execution, tests, or a complete path trace proves the defect.
 - Use medium confidence when the inspected control flow strongly implies the defect.
 - Put low-confidence candidates under blind spots and name the missing evidence.
-- Do not report a style preference as a correctness finding.
+- Do not report a style preference as a correctness finding. Distinguish path inspection from executed tests and actual integration evidence.
 
 ## Output Contract
 

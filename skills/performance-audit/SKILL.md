@@ -7,7 +7,7 @@ description: Audit code for measurable performance and resource risks. Use when 
 
 ## Workflow
 
-1. Identify the review scope and the workloads that matter.
+1. Identify the review scope and the workloads that matter. If no runtime work, resource use, or scale behavior is affected, report `not applicable` with a reason.
 2. Read local performance requirements, benchmarks, profiles, and framework guidance.
 3. Find hot paths, repeated paths, scale-sensitive loops, and expensive boundaries.
 4. Estimate cost from call frequency, input size, allocation behavior, and I/O count.
@@ -43,7 +43,7 @@ Check for:
 - Use medium confidence for strong static evidence, such as N+1 I/O or quadratic work on an expected large input.
 - Put low-confidence possibilities under blind spots. Do not block the audit on them.
 - Do not recommend a micro-optimization without a plausible workload and material cost.
-- Preserve clear code when an optimization has no evidence-based benefit.
+- Preserve clear code when an optimization has no evidence-based benefit. Distinguish static cost analysis from measurements; if a conclusion needs missing measurements, state that limit rather than implying a measured pass.
 
 ## Output Contract
 
