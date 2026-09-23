@@ -10,7 +10,7 @@ description: Audit an existing test suite for trustworthy behavior checks, meani
 1. Identify the test suite or feature area from the user request.
 2. Read local instructions, test-runner configuration, CI files, and nearby test patterns.
 3. Map important production behavior to the tests that claim to prove it.
-4. Read representative unit, integration, and end-to-end tests in full.
+4. Read representative unit, integration, and end-to-end tests in full. In an aggregate audit, focus on tests relied on to justify the change rather than expanding to unrelated suites.
 5. Run focused tests or coverage commands when useful.
 6. Treat coverage percentages as leads, not proof.
 7. Report concrete weaknesses before general strategy advice.
@@ -31,6 +31,7 @@ Check whether tests:
 - Cover state transitions, failures, boundaries, invalid input, lifecycle, and regressions.
 - Exercise each contract at the correct test level.
 - Use realistic fixtures without hiding important setup behind opaque helpers.
+- Actually construct the claimed scenario: fixture replacements must match, negative inputs must be invalid, and the intended failure path must be reached. Ask whether the assertion would fail for the specific regression it claims to prevent.
 - Avoid mocking the collaborators needed to prove that the behavior works.
 - Verify persistence, events, rendered UI, files, network effects, or errors when those effects are the contract.
 - Remain deterministic, isolated, and fast enough for their suite.

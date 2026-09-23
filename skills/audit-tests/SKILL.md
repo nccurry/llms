@@ -10,7 +10,7 @@ description: Audit recent code changes for missing unit, integration, or end-to-
 1. Use the base branch, pull-request base, or commit range that the user specified.
 2. If no range is given, detect the likely base and state the choice.
 3. Read local instructions, test documentation, CI files, manifests, and nearby test patterns.
-4. Map each changed behavior and failure path to existing tests.
+4. Map each changed behavior and failure path to the test that protects it, the level of evidence (unit or real-component integration), and any remaining gap.
 5. Inspect unit, integration, and end-to-end suites that can prove the change.
 6. Run focused tests when practical.
 7. Report concrete coverage gaps and exact test recommendations.
@@ -18,7 +18,7 @@ description: Audit recent code changes for missing unit, integration, or end-to-
 ## Routing Boundaries
 
 - Use this skill for missing coverage in a recent change.
-- Use `test-quality-audit` for suite trustworthiness, weak assertions, over-mocking, or flaky risk.
+- Use `test-quality-audit` for suite trustworthiness, weak assertions, over-mocking, or flaky risk. Share its assessment of tests relied on for coverage; link an ineffective-test finding instead of reporting the same issue again.
 - Use `correctness-reliability-audit` for defects in the production behavior itself.
 - Use `performance-audit` for missing benchmarks or performance-regression coverage.
 

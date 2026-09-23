@@ -11,12 +11,12 @@ description: Run the complete code craftsmanship gate across current changes and
 2. Select one scope and comparison base for every specialist.
 3. Read repository instructions and reconcile the work with current `main` when the workflow permits it.
 4. Stabilize the diff before auditing. Do not run the aggregate gate while edits are still arriving.
-5. Read each required specialist's current `SKILL.md` completely. Do not use a `.backup-*` copy.
-6. Run the complete specialist suite once and record each gate's scope, findings, and validation evidence in a gate ledger.
+5. Assess each specialist’s applicability from the diff and affected behavior. Read each applicable specialist's current `SKILL.md` completely. Do not use a `.backup-*` copy.
+6. Run the applicable specialists once and record their scope, findings, and evidence in one shared ledger.
 7. Merge duplicate findings under the specialist that owns the concern and classify their disposition.
 8. If fixes are authorized, fix blocking findings and rerun only the owning specialists and relevant tests during convergence.
 9. Perform at most one final aggregate verification after fixes converge, using the rules below.
-10. Return one verdict and the required report sections.
+10. Report the overall verdict and separate results for source review, automated checks, integration, and plan acceptance.
 
 ## Scope
 
@@ -29,9 +29,9 @@ Use the first available scope:
 
 Always inspect the repository root and relevant ancestor folders. Use them to judge whether the file tree communicates ownership clearly.
 
-## Required Specialists
+## Specialist Selection
 
-Apply these skills in order:
+Assess every skill below; run those relevant to the selected scope. Record `not applicable` with a reason when no relevant change or affected behavior exists. Missing evidence is `not checked` or `incomplete`, never `not applicable`. Honor explicit requests to inspect a particular area.
 
 1. `abstraction-quality-audit`: ownership, file-tree structure, boundaries, naming, and modularity.
 2. `file-hygiene-audit`: repository file policy, temporary artifacts, misplaced planning files, and safe cleanup candidates.
@@ -45,12 +45,23 @@ Apply these skills in order:
 10. `test-quality-audit`: weak assertions, poor test design, and flaky risk.
 11. `performance-audit`: measurable or strongly evidenced runtime and resource costs.
 12. `plc-alignment-audit`: when this session is working from a PLC document or plan, check completed work against it and report missing or conflicting implementation. Otherwise record `not applicable`.
+13. `docs-sync`: when changes affect documented behavior, examples, or generated documentation, check that maintained docs match the implementation.
 
-If a required specialist is unavailable, return `INCOMPLETE`. Name the missing skill and do not claim a complete audit.
+If an applicable specialist is unavailable, return `INCOMPLETE`. Name the missing skill and do not claim a complete audit.
 
 Treat the Ponytail specialist as a selected-scope gate. Use `ponytail:ponytail-review` for a target, active-change, or branch-diff scope; substitute `ponytail:ponytail-audit` for an explicitly full-repository scope. Capture its concise result in the gate ledger and fold its findings into this aggregate report rather than returning its standalone output directly.
 
+For Ponytail findings, require a replacement that preserves required behavior. One caller or implementation alone does not prove an abstraction is unnecessary. Route reachability claims to `dead-code-audit`; do not use line-count savings or its standalone “Ship” wording as an audit verdict. These rules govern Ponytail use in this aggregate audit.
+
 Dependency, application-security, and frontend-design audits are not part of this gate. Run them only through their separate skills.
+
+## Shared Evidence
+
+Use one ledger rather than separate reports from every specialist. Record the comparison base, reviewed revision, and any uncommitted changes (with a saved diff or equivalent identifier). Each result needs its scope, evidence location, and method: source inspection, test, lint, build, or integration run. Reuse older evidence only after checking that intervening changes do not invalidate it.
+
+Give each finding one ID, original finder and discovery method, owning specialist, source revision, fix revision or pending diff, and verification reference. Merging duplicates must preserve discovery credit. Completing the assigned requirement is acceptance evidence, not an audit discovery.
+
+Name who performed each review. Several skills applied by one agent are several review angles, not independent reviewers. When independent review is used, give the reviewer concrete failure questions tied to the change, such as whether an obsolete attempt can update a replacement device.
 
 ## Finding Ownership and Disposition
 
@@ -69,9 +80,11 @@ Explicit user instructions override this policy. Interpret `fix findings` as fix
 
 ## Fixes and Verification
 
-Treat an audit-only request as read-only. Run the `file-hygiene-audit` on every aggregate pass, but send files to trash or relocate them only when the user expressly authorizes file cleanup. A request to audit, report, or fix ordinary findings does not by itself authorize file cleanup. Cleanup must use the host trash or recycle bin, never permanent deletion, and the final report must list every affected file.
+Treat an audit-only request as read-only. Apply `file-hygiene-audit` to relevant file changes; send files to trash or relocate them only when the user expressly authorizes file cleanup. A request to audit, report, or fix ordinary findings does not by itself authorize file cleanup. Cleanup must use the host trash or recycle bin, never permanent deletion, and the final report must list every affected file.
 
 When fixes are authorized, correct blocking findings inside the approved scope. After each fix, rerun only the specialist that owns the finding and the tests or checks that cover the changed behavior. Verification must confirm the fix and adjacent regressions without reopening the codebase or creating unrelated cleanup work.
+
+Reserve aggregate audits for a settled feature or meaningful phase boundary. Group small corrections and refresh only affected evidence: wording changes need language review; fixture fixes need test-quality review and the coverage evidence they affect. Do not start another full audit for each correction.
 
 After fixes converge, perform one final aggregate verification:
 
@@ -88,14 +101,16 @@ Request direction before a fix changes a public API or wire contract, a schema o
 
 ## Output Contract
 
-Return one verdict:
+Report separate results for source review, automated checks, integration, and plan acceptance. For each, state passed, failed, pending/incomplete, or not applicable with supporting evidence or a reason. Source review does not establish formatter compliance or successful execution.
+
+Then return one overall verdict; it cannot pass while an applicable required check or acceptance step remains pending:
 
 - `PASS`: No blocking findings or deferred follow-ups remain.
 - `PASS WITH FOLLOW-UPS`: No blocking findings remain, but one or more nonblocking P3 findings were deferred.
 - `REWORK REQUIRED`: At least one blocking finding remains.
-- `INCOMPLETE`: A required skill, tool, scope, or validation step was unavailable.
+- `INCOMPLETE`: An applicable required review, validation, or acceptance step is pending or unavailable.
 
-Separate the final report into:
+Keep one concise report, using brief applicability notes and omitting empty finding sections. Cover:
 
 1. Blocking findings.
 2. Fixed findings.

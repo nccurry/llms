@@ -19,7 +19,8 @@ description: Audit source code for crisp visual readability, useful comments, me
 - Use this skill for whitespace, grouping, declaration order, line shape, indentation, comments, and scan path.
 - Use `code-quality-audit` for idiom, cohesion, control flow, and necessity.
 - Use `abstraction-quality-audit` for file-tree structure, ownership, layering, and modularity.
-- Use a formatter for mechanical style that the repository already defines.
+- Use a formatter for mechanical style that the repository already defines. A source-readability result must not imply formatter compliance. Formatter-only changes need no substantive visual review unless they create a concrete reading problem.
+- Route comment wording to `plain-language-audit` and missing contract explanations to `code-quality-audit`.
 
 ## Audit Criteria
 

@@ -16,7 +16,8 @@ description: Audit recent or proposed code for idiomatic design, simple control 
 
 ## Routing Boundaries
 
-- Use this skill for idiom, cohesion, control flow, necessity, comments, and general maintainability.
+- Use this skill for implementation idiom, cohesion within functions and classes, control flow, and comments explaining contracts or decisions.
+- Route wording to `plain-language-audit` and replacement of working code with simpler facilities to Ponytail; share one finding rather than repeating it.
 - Use `abstraction-quality-audit` for file-tree structure, ownership, layering, naming systems, and indirection.
 - Use `visual-code-audit` for whitespace, line shape, comment placement, and scan path.
 - Use `correctness-reliability-audit` for behavior, state, errors, lifecycle, and recovery.

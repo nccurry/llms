@@ -17,7 +17,7 @@ Use this skill to keep documentation aligned with actual behavior. Start from re
    - Internal-only implementation changed with no docs impact.
 4. Find docs that mention changed names, commands, flags, endpoints, screens, config keys, examples, or old behavior. Use structured docs tooling when available, then `rg`.
 5. Compare docs against implementation, tests, generated help, schemas, screenshots, or examples.
-6. Update docs with the smallest accurate change. Prefer precise, task-oriented wording over broad rewrites.
+6. For audit-only requests, report gaps without editing. When edits are authorized, update docs with the smallest accurate change. Prefer precise, task-oriented wording over broad rewrites.
 7. Run docs validation when available: docs build, link checker, snippet tests, generated API docs, screenshot update command, or markdown lint.
 
 ## Writing Criteria
@@ -34,6 +34,9 @@ Documentation should:
 
 ## Routing Boundaries
 
+- Use `plain-language-audit` for wording clarity; this skill owns agreement with the implementation.
+- Route behavior or compatibility defects exposed by documentation drift to `correctness-reliability-audit`, sharing one finding.
+- When `audit-codebase` invokes this skill, return scoped gaps and evidence to its shared ledger; leave the overall verdict to that skill.
 - Use `release-readiness` when preparing a versioned release, tag, or public changelog.
 - Use `frontend-design-review` when the main concern is whether screenshots or UI are visually correct.
 - Use `code-quality-audit` when docs drift reveals unclear or unstable implementation behavior.
