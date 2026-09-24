@@ -1,6 +1,6 @@
 ---
 name: audit-tests
-description: Audit recent code changes for missing unit, integration, or end-to-end coverage. Use for a branch, diff, pull request, commit, or active implementation. Use test-quality-audit instead when the main concern is whether an existing suite is trustworthy.
+description: "Review a code change for missing test coverage. Use for a branch, diff, PR, or commit; use test-quality-audit to judge whether existing tests prove behavior."
 ---
 
 # Audit Test Coverage

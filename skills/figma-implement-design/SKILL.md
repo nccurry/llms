@@ -1,6 +1,6 @@
 ---
 name: figma-implement-design
-description: Implement production UI code from a Figma design with visual fidelity. Use when the user provides a Figma URL, selected Figma node, design frame, component spec, or asks to translate Figma designs into repository code while preserving layout, tokens, assets, states, and accessibility.
+description: "Implement repository UI from a Figma design, preserving layout, assets, states, and project conventions. Use when Figma is the design source, not for editing Figma files."
 ---
 
 # Figma Implement Design

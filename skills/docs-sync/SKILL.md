@@ -1,6 +1,6 @@
 ---
 name: docs-sync
-description: Check and update documentation after code, API, CLI, configuration, behavior, or UI changes. Use when docs may be stale, when preparing a PR, when public behavior changes, or when the user asks to sync README, guides, examples, screenshots, changelogs, or generated docs with implementation.
+description: "Check or update maintained documentation against implementation changes. Use for documentation drift, changed public behavior, or requested docs synchronization."
 ---
 
 # Docs Sync

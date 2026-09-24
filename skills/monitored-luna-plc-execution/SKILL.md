@@ -1,6 +1,6 @@
 ---
 name: monitored-luna-plc-execution
-description: "Run selected PLC work with GPT-6 Luna max child agents, parent review of delivered code, and escalation to GPT-6 Sol medium when quality falls short. Use when the user requests monitored Luna PLC execution."
+description: "Run selected PLC work with GPT-6 Luna max child agents, parent review of delivered code, and escalation to GPT-6 Sol medium only for serious delivery failures. Use when the user requests monitored Luna PLC execution."
 ---
 
 # Monitored Luna PLC Execution
@@ -71,24 +71,41 @@ the combined code as well. Record concrete findings with files, behavior,
 missing criteria, or failing checks in the existing phase notes. Keep rejected
 work out of the integration target until repaired and reviewed.
 
-## Escalate on evidence
+## Escalate only for serious failures
 
-Escalate immediately when the parent confirms a serious delivery problem: a
-material correctness or security defect, missing core acceptance behavior,
-bypassed checks, unsupported claims that tests passed, or a design that needs
-substantial rework to meet the PLC. Findings from integration tests or external
-review count once the parent verifies them and attributes them to the delivery.
+Keep Luna max as the default. Standard audit findings, review comments, missing
+edge-case tests, local bugs, naming concerns, and ordinary refactoring are normal
+repair work. Give Luna clear feedback and let it fix them. A failed audit, a
+reviewer's severity label, the number of comments, or another repair round does
+not by itself justify Sol. Repeated minor findings alone never trigger escalation.
 
-For smaller, bounded issues, give the Luna child specific feedback and one
-repair attempt. Escalate if the repair still leaves a material issue, or if
-the same quality problem recurs in another delivery after feedback. A child
-finding and fixing a bug during implementation is normal; judge what it hands
-off as ready. A wording correction or formatting fix alone is not an escalation.
+Switch to Sol medium only when the parent verifies a serious problem in work
+presented as ready, such as:
 
-Do not treat unavailable tools, credentials, broken infrastructure, a known
-baseline failure, or an unanswered product decision as poor code quality.
-Handle those through the base workflow. Explain the evidence before attributing
-a failure to a child's work.
+- A major architectural mismatch that needs substantial redesign to meet the PLC.
+- A large missing part of the plan or a core workflow that was claimed complete
+  but is absent, disconnected, or fundamentally wrong.
+- Hallucinated APIs, implementation, test execution, or results that materially
+  undermine the delivery. Distinguish invented claims from incomplete logs or a
+  plainly reported failed check.
+- A severe correctness or security failure, such as demonstrated data loss or
+  a broken trust boundary, rather than a routine local defect.
+
+Judge the substance and impact, not the finding count. Before switching, inspect
+its code or requirement evidence and state why ordinary targeted repair is not
+adequate. A verified serious failure can justify an immediate switch; do not
+require another Luna attempt just to satisfy a retry count. If seriousness is
+unclear, investigate and keep Luna as the default instead of escalating on suspicion.
+
+Keep the acceptance bar unchanged: normal findings still need the repairs the
+base audit policy requires before integration. Staying with Luna does not mean
+accepting broken work. A child finding and fixing a problem during implementation
+is normal; judge the work it hands off as ready.
+
+Do not classify unavailable tools, credentials, broken infrastructure, known
+baseline failures, or unresolved product decisions as poor delivery. Handle them
+through the base workflow. Stop under its existing rules if progress is blocked;
+there is no automatic switch after a fixed number of repair rounds.
 
 When escalation is warranted:
 

@@ -1,6 +1,6 @@
 ---
 name: code-quality-audit
-description: Audit recent or proposed code for idiomatic design, simple control flow, cohesive units, useful comments, intuitive names, and maintainability. Use when the user asks whether code is clean, elegant, easy to follow, or ready for more work.
+description: "Review code for clarity, idiomatic implementation, and maintainability. Use for code-quality reviews; route behavior defects and structural issues to their specialists."
 ---
 
 # Code Quality Audit

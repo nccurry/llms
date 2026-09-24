@@ -34,4 +34,8 @@ reduces risk.
 - [ ] Dependencies between phases are explicit.
 - [ ] Every phase has validation and an exit criterion.
 - [ ] Required documentation changes are included in the relevant phase.
-- [ ] Review findings follow the policy in the PLC skill.
+- [ ] Required audits have no unresolved P1/P2 findings. P3 findings involving
+      correctness or security, inexpensive fixes, or an explicit zero-findings
+      requirement are fixed; other P3 findings are recorded as follow-ups.
+- [ ] Affected checks were rerun after fixes; the final audit verdict uses
+      current evidence and no required check remains incomplete.

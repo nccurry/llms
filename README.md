@@ -49,6 +49,9 @@ See the [piw README](piw/README.md) for requirements, configuration, commands, a
 
 The `skills/` directory is the source for the managed Codex, Claude, and Pi skills.
 
+Use [skill behavior checks](tests/skill-evals.md) to evaluate selection and workflow changes.
+Structural validation checks packaging; it does not establish agent performance.
+
 ### Commands
 
 List the managed skills and install targets:

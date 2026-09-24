@@ -1,6 +1,6 @@
 ---
 name: dependency-auditor
-description: Audit project dependencies for security advisories, outdated packages, incompatible licenses, maintenance risk, and dependency bloat. Use when reviewing manifests, lockfiles, package updates, CVEs, licenses, or supply-chain health. This audit is separate from the routine code craftsmanship gate.
+description: "Audit dependencies for advisories, version compatibility, licenses, maintenance risk, and bloat. Use for dependency reviews, separately from routine code audits."
 ---
 
 # Dependency Auditor

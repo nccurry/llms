@@ -1,6 +1,6 @@
 ---
 name: audit-codebase
-description: Run the complete code craftsmanship gate across current changes and affected structure. Use when the user says "run all audit skills" or "run the audits before continuing." Also use for a full code audit or craftsmanship pass. This skill combines structure, file hygiene, plain-language clarity, correctness, code quality, unnecessary complexity, visual clarity, dead code, tests, and performance.
+description: Run the combined code audit when asked for all audit skills, a full code audit, or a craftsmanship pass. Select applicable specialists and combine their findings and evidence.
 ---
 
 # Audit Codebase
@@ -9,7 +9,7 @@ description: Run the complete code craftsmanship gate across current changes and
 
 1. Decide whether the request is audit-only or part of authorized implementation work.
 2. Select one scope and comparison base for every specialist.
-3. Read repository instructions and reconcile the work with current `main` when the workflow permits it.
+3. Read repository instructions and record the selected comparison base. Inspect base changes when relevant; an audit-only request does not authorize merging or rebasing.
 4. Stabilize the diff before auditing. Do not run the aggregate gate while edits are still arriving.
 5. Assess each specialist’s applicability from the diff and affected behavior. Read each applicable specialist's current `SKILL.md` completely. Do not use a `.backup-*` copy.
 6. Run the applicable specialists once and record their scope, findings, and evidence in one shared ledger.
@@ -92,7 +92,7 @@ After fixes converge, perform one final aggregate verification:
 - Rerun the complete specialist suite only when a fix materially changes architecture, public contracts, persistence, concurrency, navigation or lifecycle, or multiple audit domains.
 - Otherwise rerun only invalidated specialists and produce the aggregate verdict from the refreshed ledger.
 - If no fixes followed the initial aggregate pass, use that pass as final evidence instead of repeating it.
-- Reconcile with current `main` before final verification. If `main` changes afterward, inspect its delta and rerun only the gates and tests that the delta invalidates.
+- Use the selected integration target or comparison base, which may differ from `main`. If authorized integration updates that base, inspect its delta and rerun only the gates and tests it invalidates. Do not change branches merely to perform a source review.
 - Do not invalidate code, performance, frontend, or test evidence for documentation changes that only record audit evidence or follow-up work.
 
 Default to at most one initial aggregate pass and one final aggregate verification. If blocking findings remain after final verification, report them and request direction. Do not start another aggregate audit automatically.
