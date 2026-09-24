@@ -7,7 +7,8 @@ description: "Run selected Plan-Led Change (PLC) work with optional child agents
 
 ## Use only when called
 
-Use this skill only when the user explicitly calls `$plc-execution`.
+Use this skill only when the user explicitly calls `$plc-execution`, or through
+`monitored-luna-plc-execution` when the user requests its monitored workflow.
 
 Use it for the PLC work that the user names. That work can be:
 

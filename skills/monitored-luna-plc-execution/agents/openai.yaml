@@ -1,0 +1,4 @@
+interface:
+  display_name: "Monitored Luna PLC Execution"
+  short_description: "Run PLC work with Luna and escalate poor deliveries"
+  default_prompt: "Use $monitored-luna-plc-execution to run these PLC phases with Luna max children, parent review, and Sol medium escalation when needed."
