@@ -1,6 +1,6 @@
 ---
 name: frontend-design-review
-description: Review rendered frontend UI for design quality, UX flow, accessibility, responsive behavior, visual polish, design-system compliance, and Figma fidelity. Use for UI PR reviews, design reviews, component reviews, visual QA, accessibility checks, and product interface critique.
+description: "Review rendered UI for usability, accessibility, responsiveness, and design fidelity. Use for UI critique or visual QA, not source-code formatting."
 ---
 
 # Frontend Design Review

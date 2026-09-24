@@ -1,6 +1,6 @@
 ---
 name: frontend-design
-description: Design and implement distinctive, production-grade frontend UI. Use when creating or substantially reshaping an app screen, page, component, dashboard, landing page, or interactive experience where visual direction, UX flow, copy, responsiveness, accessibility, and polish matter.
+description: "Design and implement new or substantially redesigned frontend UI. Use for screens, pages, and components needing visual and interaction design."
 ---
 
 # Frontend Design

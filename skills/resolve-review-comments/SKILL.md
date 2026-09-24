@@ -1,6 +1,6 @@
 ---
 name: resolve-review-comments
-description: "Handle comments on one or more code reviews in GitLab, GitHub, or other hosts. Fix valid issues, explain rejected suggestions, reply, and resolve AI threads from reviewers such as Greptile or CodeRabbit while leaving human threads open."
+description: "Handle requested PR or MR feedback: fix valid issues, explain rejected suggestions, and reply or resolve when authorized. Leave human threads open."
 ---
 
 # Resolve Review Comments

@@ -39,6 +39,7 @@ evidence.
      `IMPLEMENTATION_PLAN.md`.
    - Add `FIXTURES.md` only when stable fixtures, example inputs, API
      inventories, or an acceptance matrix will help implementation.
+   - If an optional file is omitted, remove its link from the generated packet.
    - Remove default sections that do not apply. Add repository-specific
      sections only when they record a real constraint or decision.
 
@@ -62,11 +63,12 @@ evidence.
 5. Plan delivery and review.
    - Divide the work into useful phases with dependencies, validation, and
      exit criteria.
-   - Use this policy in generated plans, templates, examples, phase exits, and
-     acceptance criteria: Fix all P1/P2 findings. Fix P3 findings when
-     inexpensive or explicitly required; otherwise record them. Rerun affected
-     specialists after fixes and run one aggregate verification after
-     convergence.
+   - When audit gates apply, record the acceptance policy in the generated plan
+     itself: fix all P1/P2 findings and P3 findings that involve correctness or
+     security, are inexpensive to fix, or are explicitly required. Record other
+     P3 findings as follow-ups. Rerun affected specialists after fixes and
+     produce one aggregate verdict after convergence, reusing valid evidence.
+     Do not require readers to have this skill installed to interpret the plan.
    - Do not require `resolve all findings`, `rerun until perfect`, or equivalent
      unbounded cleanup unless the user explicitly requires zero findings.
 

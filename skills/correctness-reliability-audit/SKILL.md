@@ -1,6 +1,6 @@
 ---
 name: correctness-reliability-audit
-description: Audit code for behavioral correctness and reliable failure handling. Use when reviewing logic, invariants, state transitions, error paths, resource ownership, concurrency, idempotency, retries, timeouts, or recovery behavior.
+description: "Review code for incorrect behavior and failure handling, including state transitions, concurrency, resource ownership, retries, and recovery."
 ---
 
 # Correctness and Reliability Audit

@@ -1,6 +1,6 @@
 ---
 name: plc-execution
-description: "Run selected Plan-Led Change (PLC) work with optional child agents and worktrees, regular audits during implementation, direct merges or merge requests, and questions for open decisions. Use only when the user calls $plc-execution."
+description: "Execute selected PLC phases when called as $plc-execution or by monitored-luna-plc-execution. Supports isolated children, audits, and direct or MR integration."
 ---
 
 # PLC Execution
@@ -65,6 +65,10 @@ start. For merge-request integration, record each MR target branch. Ask the
 user if the target branch is not clear.
 
 ## Set up the work
+
+Before dispatching children, locate `audit-codebase` and its applicable
+specialists. For MR integration, also locate `check-pr` and authenticated host
+tools. Report missing dependencies before assigning work that requires them.
 
 1. Read the root and scoped `AGENTS.md` files. Read every selected PLC, the
    source code, and the product and design documents for this work. Follow
@@ -149,18 +153,20 @@ Each child must:
 3. Run focused tests while working. Then run the project tests and checks that
    cover the change.
 4. After a meaningful implementation block, run `$audit-codebase` against its
-   branch diff from the supplied base commit. This is what "all audit skills"
-   means. It runs every specialist audit named by that skill. A discovery-only
+   branch diff from the supplied base commit. Assess every specialist named by
+   that skill and run those applicable to the change. A discovery-only
    task or a tiny no-code edit can wait for the next meaningful block.
 5. Run extra audits that match the change. For UI work, run
    `frontend-design-review`. For a dependency change, run
    `dependency-auditor`.
-6. Fix every finding that needs a change. Stop and ask if a finding needs a
-   technical, architectural, product, API, schema, stored-data, security, or
-   design choice.
-7. After fixes, run the affected audits and tests again. Get the final audit
-   result. Merge only when the result is `PASS`. `PASS WITH FOLLOW-UPS` is not
-   enough when the user says to fix every finding.
+6. Fix blocking findings under the audit policy. Stop and ask if a finding
+   needs an unresolved technical, architectural, product, API, schema,
+   stored-data, security, or design choice.
+7. After fixes, run the affected audits and tests again. Use `audit-codebase`'s
+   finding and verdict policy: `PASS` permits integration; `PASS WITH FOLLOW-UPS`
+   permits it only when the remaining findings are nonblocking and recorded.
+   Require `PASS` when the user asks for zero findings. `REWORK REQUIRED` and
+   `INCOMPLETE` do not permit integration.
 8. Commit a clean branch. Report the commit hash, files changed, tests run,
    audit result, fixes made, and decisions that stopped work.
 
@@ -168,10 +174,12 @@ Each child must:
 
 For direct integration, only the parent merges child branches. Before each
 merge, make sure that the child branch is clean and committed. Read its diff,
-test results, `PASS` audit result, and completion-map evidence. Re-run the
-child's stated tests or checks in the integration worktree before relying on
-the handoff. Merge one child at a time. Run tests after each merge. Run the
-required combined audit after a meaningful merge or at the phase boundary.
+test results, acceptable audit verdict, and completion-map evidence. Verify
+the child's checks against its delivered commit in its own worktree before
+relying on the handoff. Tests on the unchanged integration branch do not prove
+the child's change. Merge one child at a time. Run the affected integration
+checks after each merge. Run the required combined audit after a meaningful
+merge or at the phase boundary.
 Audit a small group only when no single child changed enough to warrant its
 own audit. Record that choice.
 
@@ -194,8 +202,8 @@ For each MR:
 5. Stop and ask when a comment needs a technical, architectural, product, API,
    data, security, or design decision.
 6. Wait for all required CI checks to pass after the final update. The parent
-   merges the MR only after the audit result is `PASS`, the CI is green, and
-   no actionable review comment remains.
+   merges the MR only after the audit verdict permits integration, the CI is
+   green, and no actionable review comment remains.
 
 ## Close a phase or group
 
@@ -204,9 +212,9 @@ After all child changes for one phase or dependency group are merged:
 1. Run all tests and checks for the phase or group in the integration worktree.
 2. Run `$audit-codebase` on the combined diff. For UI work, inspect the
    rendered UI against the stated design goals.
-3. If the combined work shows a defect or audit finding, start a repair child.
+3. If the combined work shows a blocking finding, start a repair child.
    Base its worktree on the latest integration commit. Use the selected merge
-   route. It must get a `PASS` result before its merge.
+   route. Its audit verdict must permit integration before its merge.
 4. Reconcile the completion map with the current user request. Every selected
    requirement and design goal must have an owner and current proof. Surface a
    deferred or blocked row as a handoff; do not call it complete.
@@ -214,8 +222,10 @@ After all child changes for one phase or dependency group are merged:
    Do not call the selected work done if later phases or a user decision remain.
 
 Run the phase-close audit even if earlier handoff audits passed. After repairs,
-run one final audit. If a blocking finding remains, stop and ask for direction.
-Do not repeat a full audit without new work or new evidence.
+refresh invalidated specialists and produce one final aggregate verdict under
+`audit-codebase`'s convergence rules. Reuse evidence that remains valid. If a
+blocking finding remains, stop and ask for direction. Do not repeat a full
+audit without new work or new evidence.
 
 Leave completed child branches and worktrees until the user asks to clean
 them. This lets the user examine or recover the work. Some processes keep a

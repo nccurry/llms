@@ -1,6 +1,6 @@
 ---
 name: plain-language-audit
-description: Audit abstraction names, code comments, docstrings, READMEs, and Markdown documentation for LLM-style word salad, vague or overly abstract prose, unclear terminology, and non-idiomatic names. Use when the user asks for plain-English clarity, a word-salad review, clearer naming, or conventional language and framework terminology.
+description: "Review names, comments, and documentation for unclear wording or unconventional terminology. Use for a plain-English, naming, or word-salad audit."
 ---
 
 # Plain-Language Audit

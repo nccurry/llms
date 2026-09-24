@@ -1,6 +1,6 @@
 ---
 name: release-readiness
-description: Prepare or audit a repository for release. Use before tagging, publishing, merging a release branch, drafting release notes, checking changelog quality, identifying breaking changes, verifying docs/tests/security status, or deciding whether a version is ready to ship.
+description: "Assess or prepare a versioned release, including notes, compatibility, artifacts, and validation. Use for release readiness, not ordinary branch checks."
 ---
 
 # Release Readiness

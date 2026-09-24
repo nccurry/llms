@@ -1,6 +1,6 @@
 ---
 name: work-visual-summary
-description: "Summarize current work with evidence-backed code, CLI, config, API, or UI examples. Use when the user asks what has been done, what is planned, what remains, or what an implementation will look like. Do not use for a generic summary that does not need examples or work status."
+description: "Explain work status or proposed behavior with concrete code, command, API, config, or UI examples. Use when examples help assess the work, not for routine status replies."
 ---
 
 # Work Visual Summary

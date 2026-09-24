@@ -1,6 +1,6 @@
 ---
 name: visual-code-audit
-description: Audit source code for crisp visual readability, useful comments, meaningful whitespace, calm indentation, consistent line shape, and an obvious scan path. Use for a visual code audit, readability pass, comment pass, style pass, eye-glide review, or wall-of-code review.
+description: "Review source-code readability: whitespace, line shape, comment placement, and reading order. Use for a visual code or readability audit, not rendered UI."
 ---
 
 # Visual Code Audit
