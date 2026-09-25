@@ -12,6 +12,7 @@ Use during planning and implementation. Build the smallest solution that stays c
 - Keep abstractions non-leaky: APIs should not expose implementation or infrastructure details. Keep effects at the edges for testability.
 - Prefer direct local code over speculative layers, interfaces, or configuration.
 - Organize around ownership and the main flow; preserve the user's scope and conventions.
+- Consider two likely unrelated changes: keep their code and tests independent where practical, and avoid shared editing points or contract changes that force them to move together.
 
 Before finishing: Is the main flow obvious? Can a likely change stay local? Can key behavior be tested without infrastructure?
 

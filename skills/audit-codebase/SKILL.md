@@ -33,7 +33,7 @@ Always inspect the repository root and relevant ancestor folders. Use them to ju
 
 Assess every skill below; run those relevant to the selected scope. Record `not applicable` with a reason when no relevant change or affected behavior exists. Missing evidence is `not checked` or `incomplete`, never `not applicable`. Honor explicit requests to inspect a particular area.
 
-1. `abstraction-quality-audit`: ownership, file-tree structure, boundaries, naming, and modularity.
+1. `abstraction-quality-audit`: ownership, file-tree structure, boundaries, naming, modularity, and whether unrelated changes can proceed independently.
 2. `file-hygiene-audit`: repository file policy, temporary artifacts, misplaced planning files, and safe cleanup candidates.
 3. `plain-language-audit`: word salad, vague prose, terminology, and conventional names.
 4. `correctness-reliability-audit`: behavior, state, errors, lifecycle, concurrency, and recovery.
@@ -71,6 +71,7 @@ Name who performed each review. Several skills applied by one agent are several 
 - Put low-confidence candidates under blind spots. Do not block the gate on them.
 - Require every P3 finding to cite a user, repository, language, or framework standard. Omit taste-only preferences.
 - Treat P1 and P2 findings as blocking.
+- In a change-scoped audit, separate existing structural debt from coupling the change adds or worsens. Keep existing debt as a follow-up unless it makes the change unsafe.
 - Treat a P3 as blocking only when it implies correctness or security risk, is trivial to fix, or the user explicitly requires zero findings.
 - Treat other P3 findings as deferred follow-ups.
 
