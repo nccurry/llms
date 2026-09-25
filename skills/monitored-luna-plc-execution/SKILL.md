@@ -18,6 +18,9 @@ the user's chosen MR, PR, or local integration target. Keep its authorization
 boundaries: choosing this skill does not authorize publishing or a final merge
 beyond the user's request.
 
+After parent review and merge, follow the base skill's suggestion for each
+child to clean up only its own worktree once it is no longer in use.
+
 ## Choose child models
 
 The parent keeps its current model and owns review and integration. Start

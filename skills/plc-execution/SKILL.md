@@ -140,8 +140,10 @@ Every child assignment must state:
 
 Tell the child to edit only its assigned worktree. It must not edit the
 integration worktree, another child worktree, or `main`. It can commit its
-branch. It cannot merge, rebase a shared branch, or delete a worktree. It can
-push or open an MR only when its assignment uses merge-request integration.
+branch. It cannot merge or rebase a shared branch. It may remove only its own
+worktree after the parent confirms its work is merged and the checks below
+pass. It can push or open an MR only when its assignment uses merge-request
+integration.
 
 Each child must:
 
@@ -227,9 +229,12 @@ refresh invalidated specialists and produce one final aggregate verdict under
 blocking finding remains, stop and ask for direction. Do not repeat a full
 audit without new work or new evidence.
 
-Leave completed child branches and worktrees until the user asks to clean
-them. This lets the user examine or recover the work. Some processes keep a
-worktree folder open.
+After the parent confirms a child's work is merged into the user-chosen target,
+suggest that the child remove its own worktree when no task or process needs it.
+Check the exact path. If uncommitted, untracked, or ignored files may be needed,
+leave the worktree until they are preserved.
+Never force removal or remove the integration worktree or another child's
+worktree. Leave branches unless the user asked to clean them up.
 
 ## Stop and ask
 
