@@ -1,6 +1,6 @@
 ---
 name: abstraction-quality-audit
-description: Review file-tree structure, naming, ownership, responsibility boundaries, dependency direction, modularity, and abstraction cost. Use when code is hard to locate, trace, or change. Also use for vague catch-all types or folders.
+description: Review file-tree structure, naming, ownership, responsibility boundaries, dependency direction, modularity, and abstraction cost. Use when code is hard to locate, trace, or change, or unrelated changes repeatedly interfere with each other.
 ---
 
 # Abstraction Quality Audit
@@ -49,6 +49,13 @@ Check whether the code:
 - Keeps lower-level code independent from host, adapter, persistence, UI, and third-party details.
 - Uses dependency injection, generics, inheritance, and composition only when their cost is justified.
 - Treats modularity as clear ownership, not a high count of modules.
+
+## Independent Changes
+
+- Trace two likely unrelated changes within the review scope. Check whether their code and tests can change independently across folder and package boundaries.
+- Look for shared files, exposed internals, contracts, or test setup that force unrelated work to coordinate. Separate textual merge conflicts from changes that merge cleanly but break each other's behavior.
+- Use available history to support recurring-conflict claims; shared files alone do not prove a defect. State when the risk is inferred.
+- Recommend the smallest change that removes unnecessary coordination. More folders, packages, or services are not goals in themselves.
 
 ## Output Contract
 
