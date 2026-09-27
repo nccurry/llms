@@ -1,6 +1,6 @@
 ---
 name: plc-execution
-description: "Execute selected PLC phases when called as $plc-execution or by monitored-luna-plc-execution. Supports isolated children, audits, and direct or MR integration."
+description: "Execute selected PLC work when called as $plc-execution or by monitored-luna-plc-execution. Supports isolated children, audits, and direct or MR integration."
 ---
 
 # PLC Execution
@@ -15,17 +15,24 @@ Use it for the PLC work that the user names. That work can be:
 - One entire PLC.
 - One or more phases or sub-phases in one PLC.
 - Related phases or sub-phases in several PLCs.
+- A concrete block of work that does not match phase boundaries.
 
-The user must name the PLC files and the phases to run. If the selection is not
-clear, stop and ask. Use `plc-planning` to create or repair a PLC. This skill
-can run discovery work inside an existing PLC.
+Prefer named phases or sub-phases when the user selects them. If the user
+describes a concrete block of work, use that block as the scope, even when it
+covers only part of a phase or crosses phase boundaries. Treat phase names
+mentioned alongside the block as context unless the user explicitly asks to
+complete those phases. Find the relevant PLC files from the request and
+repository context. Do not expand the block to whole phases. Ask if the scope
+or relevant PLC cannot be identified, or if the block conflicts with the PLC.
+Use `plc-planning` to create or repair a PLC. This skill can run discovery work
+inside an existing PLC.
 
 ## Choose the work and merge route
 
-Before you create a worktree, make a work list. For every selected phase or
-sub-phase, record:
+Before you create a worktree, make a work list. For every selected work item,
+record:
 
-- The PLC file and exact phase or sub-phase.
+- The PLC file and selected phase, sub-phase, or user-defined block.
 - Its prerequisites, including phases in other PLC files.
 - Its design goals, files, behavior, tests, and audits.
 - Whether it is ready, blocked, or a discovery task.
@@ -35,10 +42,11 @@ a prerequisite only when it does not change that prerequisite.
 
 ## Make a completion map
 
-Before editing, map each selected PLC requirement and named design goal to:
+Before editing, map each PLC requirement and named design goal in the selected
+work to:
 
 - Its existing PLC identifier.
-- The phase or child that owns it.
+- The work item or child that owns it.
 - The command or manual review that proves it.
 - Its current state: pending, verified, deferred, or blocked.
 
@@ -75,10 +83,10 @@ tools. Report missing dependencies before assigning work that requires them.
    repository rules, such as CQ. Use named design goals as acceptance criteria.
    If the user names Roci design goals, find the documents that state them.
    Do not guess them.
-2. Use the work list to order the selected phases. Use child agents only when
-   a phase has independent implementation blocks. Keep small or tightly coupled
-   work with one agent. Work in parallel only when tasks own different files and
-   do not change the same API, schema, data format, or design choice.
+2. Use the work list to order the selected work. Use child agents only when
+   a work item has independent implementation blocks. Keep small or tightly
+   coupled work with one agent. Work in parallel only when tasks own different
+   files and do not change the same API, schema, data format, or design choice.
 3. Use the chosen clean target. Create an integration branch and linked
    worktree when the work needs isolation or child agents. Do not change a
    dirty worktree. Do not stash user work. Do not work in the source checkout
@@ -105,7 +113,7 @@ boundary. A meaningful block changes code, configuration, tests, or user
 behavior.
 
 - Audit a child's meaningful block before it hands work to the parent.
-- Audit the combined diff after a meaningful merge or at the phase boundary.
+- Audit the combined diff after a meaningful merge or at a work item boundary.
 - If one agent does the work, audit after each meaningful block or phase.
 - A discovery-only task or a tiny no-code edit can wait for the next meaningful
   block.
@@ -128,8 +136,7 @@ product, API, data, security, or design option. Stop and ask the user first.
 Every child assignment must state:
 
 - The absolute worktree path, branch, and base commit.
-- The PLC file, exact phase or sub-phase, acceptance criteria, and design
-  goals.
+- The PLC file, selected work item, acceptance criteria, and design goals.
 - The prerequisites that must pass before the child starts.
 - The chosen merge route. For an MR, state its target branch and who opens it.
 - The files, APIs, and behavior the child owns. State what it must not change.
@@ -151,7 +158,7 @@ Each child must:
    before editing.
 2. Change only its assigned files and behavior. Update the PLC or product
    documents if the change alters documented behavior or the record of results
-   for that phase.
+   for that work item.
 3. Run focused tests while working. Then run the project tests and checks that
    cover the change.
 4. After a meaningful implementation block, run `$audit-codebase` against its
@@ -181,7 +188,7 @@ the child's checks against its delivered commit in its own worktree before
 relying on the handoff. Tests on the unchanged integration branch do not prove
 the child's change. Merge one child at a time. Run the affected integration
 checks after each merge. Run the required combined audit after a meaningful
-merge or at the phase boundary.
+merge or at the work item boundary.
 Audit a small group only when no single child changed enough to warrant its
 own audit. Record that choice.
 
@@ -189,7 +196,7 @@ own audit. Record that choice.
 
 For merge-request integration, follow the assignment to decide whether the
 child or parent opens the MR. By default, the child opens an MR from its branch
-to the recorded target branch. Its MR description names the PLC phase,
+to the recorded target branch. Its MR description names the selected work,
 behavior, tests, audits, and known dependencies.
 
 For each MR:
@@ -207,11 +214,11 @@ For each MR:
    merges the MR only after the audit verdict permits integration, the CI is
    green, and no actionable review comment remains.
 
-## Close a phase or group
+## Close a work item or group
 
-After all child changes for one phase or dependency group are merged:
+After all child changes for one work item or dependency group are merged:
 
-1. Run all tests and checks for the phase or group in the integration worktree.
+1. Run all tests and checks for the work item or group in the integration worktree.
 2. Run `$audit-codebase` on the combined diff. For UI work, inspect the
    rendered UI against the stated design goals.
 3. If the combined work shows a blocking finding, start a repair child.
@@ -220,10 +227,11 @@ After all child changes for one phase or dependency group are merged:
 4. Reconcile the completion map with the current user request. Every selected
    requirement and design goal must have an owner and current proof. Surface a
    deferred or blocked row as a handoff; do not call it complete.
-5. Update the PLC phase status and results only after the phase checks pass.
-   Do not call the selected work done if later phases or a user decision remain.
+5. Update the PLC results after the selected checks pass. Mark a phase complete
+   only when all of its requirements pass. Do not call the selected work done if
+   another selected work item or a user decision remains.
 
-Run the phase-close audit even if earlier handoff audits passed. After repairs,
+Run this combined audit even if earlier handoff audits passed. After repairs,
 refresh invalidated specialists and produce one final aggregate verdict under
 `audit-codebase`'s convergence rules. Reuse evidence that remains valid. If a
 blocking finding remains, stop and ask for direction. Do not repeat a full
@@ -243,7 +251,7 @@ Stop and ask the user immediately if:
 - You cannot tell what to do next.
 - The PLC, source code, or design documents disagree.
 - The PLC, source code, or design documents do not define important behavior.
-- A dependency between selected PLC phases is missing or unclear.
+- A dependency between selected work items is missing or unclear.
 - The next step changes a public API, stored data, or schema beyond the PLC.
 - The next step changes a data format, migration, security model, or design
   goal beyond the PLC.
@@ -268,7 +276,8 @@ file, behavior, test, or design goal instead. `$audit-codebase` includes
 
 ## Finish
 
-List the selected PLC files, phase order, dependencies, and parallel groups.
+List the selected PLC files, work items, their order, dependencies, and parallel
+groups.
 State the merge route, every child branch and commit, every MR, each audit and
 test result, and the completion-map state for every requirement and design
 goal. Surface each deferred or blocked row and every open question. Merge the
