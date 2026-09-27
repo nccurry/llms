@@ -18,6 +18,11 @@ the user's chosen MR, PR, or local integration target. Keep its authorization
 boundaries: choosing this skill does not authorize publishing or a final merge
 beyond the user's request.
 
+If a technical decision needs to be made that isn't obvious, the parent or
+child must stop and ask. A child sends the facts, options, and question to the
+parent and waits. The parent asks the user before work that depends on the
+decision continues.
+
 After parent review and merge, follow the base skill's suggestion for each
 child to clean up only its own worktree once it is no longer in use.
 
@@ -39,11 +44,30 @@ Pass model and effort explicitly to the subagent tool. With
 A full-history fork inherits the parent's model and cannot select these models.
 Tell children not to spawn further agents; the parent owns delegation and model
 selection. Use subagents rather than creating separate user-facing tasks.
+Include this skill's audit and decision rules in every child assignment.
 
 Check the available tool schema before dispatch. If either required model or
 effort is unavailable, report the limitation and ask for an alternative before
 dispatching affected work. Do not silently inherit a model or claim that a model
 was used when the tool did not accept it.
+
+## Require child audits before integration
+
+Each implementation child runs `$audit-codebase` on its own branch diff and
+personally applies every specialist listed by that skill, even when the base
+workflow would mark one not applicable. Record when a specialist finds no
+relevant issue. Also run the base skill's extra audits for UI or dependency
+changes.
+
+The child fixes every actionable finding in its assigned work, including
+nonblocking findings, and reruns the affected audits and tests. It must reach
+`PASS`, not `PASS WITH FOLLOW-UPS`, before either agent opens an MR/PR or the
+parent merges its work. If a finding needs work outside its assignment or an
+unclear technical decision, stop and ask through the parent. Report findings
+that are incorrect with evidence; do not silently discard them.
+
+The parent checks the child's audit evidence and reviews the diff before any
+merge. Keep the base skill's combined audit after integration.
 
 ## Review the work yourself
 
@@ -100,10 +124,10 @@ adequate. A verified serious failure can justify an immediate switch; do not
 require another Luna attempt just to satisfy a retry count. If seriousness is
 unclear, investigate and keep Luna as the default instead of escalating on suspicion.
 
-Keep the acceptance bar unchanged: normal findings still need the repairs the
-base audit policy requires before integration. Staying with Luna does not mean
-accepting broken work. A child finding and fixing a problem during implementation
-is normal; judge the work it hands off as ready.
+Keep the child audit gate above: all actionable findings need repair before
+integration. Staying with Luna does not mean accepting broken work. A child
+finding and fixing a problem during implementation is normal; judge the work
+it hands off as ready.
 
 Do not classify unavailable tools, credentials, broken infrastructure, known
 baseline failures, or unresolved product decisions as poor delivery. Handle them
