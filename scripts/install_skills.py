@@ -36,6 +36,7 @@ MANAGED_SKILLS = [
     "frontend-design",
     "frontend-design-review",
     "monitored-luna-plc-execution",
+    "monitored-sol-plc-execution",
     "performance-audit",
     "plain-english",
     "plain-language-audit",
