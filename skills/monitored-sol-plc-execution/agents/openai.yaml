@@ -1,4 +1,4 @@
 interface:
   display_name: "Monitored Sol PLC Execution"
-  short_description: "Run PLC work with Sol and review serious failures"
-  default_prompt: "Use $monitored-sol-plc-execution to run this PLC work with Sol medium children, parent review, and repair handoffs for serious delivery failures."
+  short_description: "Run PLC work with Sol medium and parent review"
+  default_prompt: "Use $monitored-sol-plc-execution to run this PLC work with Sol medium children and parent review."
