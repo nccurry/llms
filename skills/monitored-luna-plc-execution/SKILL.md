@@ -42,6 +42,9 @@ Pass model and effort explicitly to the subagent tool. With
 `collaboration.spawn_agent`, set `model`, `reasoning_effort`, and
 `fork_turns="none"`; provide the base skill's full assignment in the message.
 A full-history fork inherits the parent's model and cannot select these models.
+Include the base skill's absolute paths and load instruction for `plain-english`,
+`design-for-change`, and `verify-before-claiming` in that message, since this
+child does not inherit the parent's loaded skills.
 Tell children not to spawn further agents; the parent owns delegation and model
 selection. Use subagents rather than creating separate user-facing tasks.
 Include this skill's audit and decision rules in every child assignment.

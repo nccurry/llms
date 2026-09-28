@@ -45,6 +45,7 @@ MANAGED_SKILLS = [
     "release-readiness",
     "resolve-review-comments",
     "test-quality-audit",
+    "verify-before-claiming",
     "visual-code-audit",
     "work-visual-summary",
 ]
