@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Before Claiming"
+  short_description: "Check evidence before reporting results"
+  default_prompt: "Use $verify-before-claiming to check the evidence for this work."

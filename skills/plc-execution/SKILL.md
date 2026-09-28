@@ -27,6 +27,19 @@ or relevant PLC cannot be identified, or if the block conflicts with the PLC.
 Use `plc-planning` to create or repair a PLC. This skill can run discovery work
 inside an existing PLC.
 
+## Load the working skills
+
+Before assigning work, read and apply [plain-english](../plain-english/SKILL.md),
+[design-for-change](../design-for-change/SKILL.md), and
+[verify-before-claiming](../verify-before-claiming/SKILL.md). Resolve their
+absolute paths from the sibling or installed skill folders. If one is missing,
+report the missing dependency before dispatching a child.
+
+The parent uses these skills when choosing the block, reviewing work, and
+reporting results. Give every child the resolved absolute `SKILL.md` paths and
+tell it to read and apply all three before it starts its assigned block. Do not
+rely on a child's inherited context to load them.
+
 ## Choose the work and merge route
 
 Before you create a worktree, make a work list. For every selected work item,
@@ -83,9 +96,10 @@ tools. Report missing dependencies before assigning work that requires them.
    repository rules, such as CQ. Use named design goals as acceptance criteria.
    If the user names Roci design goals, find the documents that state them.
    Do not guess them.
-2. Use the work list to order the selected work. Use child agents only when
-   a work item has independent implementation blocks. Keep small or tightly
-   coupled work with one agent. Work in parallel only when tasks own different
+2. Use the work list to order the selected work. Assign at least one child to
+   work on the selected block, including a single tightly coupled block or a
+   discovery task. Keep tightly coupled work with one child. Use more children
+   only for independent blocks. Work in parallel only when tasks own different
    files and do not change the same API, schema, data format, or design choice.
 3. Use the chosen clean target. Create an integration branch and linked
    worktree when the work needs isolation or child agents. Do not change a
@@ -144,6 +158,8 @@ Every child assignment must state:
   The default is no.
 - The tests and audits to run. State what the final report must contain.
 - The completion-map rows it owns and the proof for each row.
+- The absolute paths to `plain-english`, `design-for-change`, and
+  `verify-before-claiming`, with an instruction to read and apply each skill.
 
 Tell the child to edit only its assigned worktree. It must not edit the
 integration worktree, another child worktree, or `main`. It can commit its
@@ -154,8 +170,8 @@ integration.
 
 Each child must:
 
-1. Read the source, PLC, design goals, prerequisites, and local instructions
-   before editing.
+1. Read the three assigned skills, source, PLC, design goals, prerequisites,
+   and local instructions before editing. Report which skill files it loaded.
 2. Change only its assigned files and behavior. Update the PLC or product
    documents if the change alters documented behavior or the record of results
    for that work item.
