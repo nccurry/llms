@@ -1,6 +1,6 @@
 ---
 name: plc-execution
-description: "Execute selected PLC work when called as $plc-execution or by monitored-luna-plc-execution. Supports isolated children, audits, and direct or MR integration."
+description: "Execute selected PLC work when called as $plc-execution or by a monitored PLC execution skill. Supports isolated children, audits, and direct or MR integration."
 ---
 
 # PLC Execution
@@ -8,7 +8,8 @@ description: "Execute selected PLC work when called as $plc-execution or by moni
 ## Use only when called
 
 Use this skill only when the user explicitly calls `$plc-execution`, or through
-`monitored-luna-plc-execution` when the user requests its monitored workflow.
+`monitored-luna-plc-execution` or `monitored-sol-plc-execution` when the user
+requests either monitored workflow.
 
 Use it for the PLC work that the user names. That work can be:
 
