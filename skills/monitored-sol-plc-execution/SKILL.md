@@ -1,6 +1,6 @@
 ---
 name: monitored-sol-plc-execution
-description: "Run selected PLC work with GPT-6 Sol medium child agents, parent review of delivered code, and repair handoffs for serious delivery failures. Use when the user requests monitored Sol PLC execution."
+description: "Run selected PLC work with GPT-6 Sol medium child agents and parent review of delivered code. Use when the user requests monitored Sol PLC execution."
 ---
 
 # Monitored Sol PLC Execution
@@ -29,9 +29,9 @@ child to clean up only its own worktree once it is no longer in use.
 ## Choose child models
 
 The parent keeps its current model and owns review and integration. Start
-implementation and repair children with `gpt-6-sol` and reasoning effort
-`medium`. Keep that choice across phases and context compaction unless the user
-asks for a different model.
+implementation children with `gpt-6-sol` and reasoning effort `medium`. Keep
+that choice across phases and context compaction unless the user asks for a
+different model.
 
 Use subagents for bounded work as the base skill describes. Do not split tightly
 coupled work just to increase the agent count. The parent can implement small
@@ -98,70 +98,12 @@ Reproduce checks needed to establish correctness against the delivered commit
 in its worktree before integration. Run the base skill's integration checks on
 the combined code as well. Record concrete findings with files, behavior,
 missing criteria, or failing checks in the existing phase notes. Keep rejected
-work out of the integration target until repaired and reviewed.
-
-## Hand off only serious failures
-
-Keep Sol medium as the child model. Standard audit findings, review comments,
-missing edge-case tests, local bugs, naming concerns, and ordinary refactoring
-are normal repair work. Give the child clear feedback and let it fix them. A
-failed audit, a reviewer's severity label, the number of comments, or another
-repair round does not by itself justify a replacement child. Repeated minor
-findings alone never trigger a handoff.
-
-Use a replacement child only when the parent verifies a serious problem in
-work presented as ready, such as:
-
-- A major architectural mismatch that needs substantial redesign to meet the PLC.
-- A large missing part of the plan or a core workflow that was claimed complete
-  but is absent, disconnected, or fundamentally wrong.
-- Hallucinated APIs, implementation, test execution, or results that materially
-  undermine the delivery. Distinguish invented claims from incomplete logs or a
-  plainly reported failed check.
-- A severe correctness or security failure, such as demonstrated data loss or
-  a broken trust boundary, rather than a routine local defect.
-
-Judge the substance and impact, not the finding count. Before handing off,
-inspect the code or requirement evidence and state why ordinary targeted repair
-is not adequate. A verified serious failure can justify an immediate handoff;
-do not require another attempt just to satisfy a retry count. If seriousness is
-unclear, investigate and let the current child repair its work.
-
-Keep the child audit gate above: all actionable findings need repair before
-integration. Keeping the current child does not mean accepting broken work. A
-child finding and fixing a problem during implementation is normal; judge the
-work it hands off as ready.
-
-Do not classify unavailable tools, credentials, broken infrastructure, known
-baseline failures, or unresolved product decisions as poor delivery. Handle them
-through the base workflow. Stop under its existing rules if progress is blocked;
-there is no automatic handoff after a fixed number of repair rounds.
-
-When a serious failure warrants a handoff:
-
-1. Notify the user in the current task immediately. State the concrete problem,
-   its evidence, and what work will move to another Sol medium child.
-2. Record the reason and affected branch or commit in the existing work list or
-   phase notes.
-3. Let unrelated children finish, then review their output under the same rules.
-   Pause the affected child before handing its files to a replacement; never
-   allow two writers to own the same worktree. Preserve its changes and evidence.
-4. Spawn a Sol medium repair child with the rejected diff, findings, acceptance
-   criteria, and required checks. Record its worktree, branch, and base. If a
-   defect is already integrated, start from the latest integration commit as
-   the base skill requires.
-5. Review the repair and rerun affected tests and audits before accepting it.
-   Sol work must meet the same standard. If a blocking finding remains after
-   repair and final audit, follow the base skill's stop-and-ask rule; do not
-   lower the standard or invent another automatic model tier.
-
-For example: "The phase 2 delivery loses queued writes on retry, and the
-regression test reproduces it. I stopped that child and assigned the repair to
-another GPT-6 Sol (medium) child. I will review its work before integration."
+work out of the integration target until repaired and reviewed. Give the child
+concrete feedback and review its repair. If a blocking finding remains after
+repair and final audit, follow the base skill's stop-and-ask rule.
 
 ## Finish
 
 Include the base skill's completion evidence. Also state which model and effort
-were used, whether a serious-failure handoff occurred, why, and whether the
-affected work passed parent review after repair. Preserve unresolved findings
-and open decisions instead of reporting the selected work complete.
+were used and whether the work passed parent review. Preserve unresolved
+findings and open decisions instead of reporting the selected work complete.
