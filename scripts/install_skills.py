@@ -31,6 +31,7 @@ MANAGED_SKILLS = [
     "dependency-auditor",
     "design-for-change",
     "docs-sync",
+    "explain-technical-choices",
     "file-hygiene-audit",
     "figma-implement-design",
     "frontend-design",

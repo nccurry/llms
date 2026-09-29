@@ -1,0 +1,4 @@
+interface:
+  display_name: "Explain Technical Choices"
+  short_description: "Understand an agent's technical question"
+  default_prompt: "Use $explain-technical-choices to explain this agent's question with concrete examples and tradeoffs so I can decide."
