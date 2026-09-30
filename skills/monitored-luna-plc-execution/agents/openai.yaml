@@ -1,4 +1,4 @@
 interface:
   display_name: "Monitored Luna PLC Execution"
   short_description: "Run PLC work with Luna and escalate serious failures"
-  default_prompt: "Use $monitored-luna-plc-execution to run this PLC work with Luna max children, parent review, and Sol medium escalation only for serious delivery failures."
+  default_prompt: "Use $monitored-luna-plc-execution to run this PLC work with Luna max children, parent review, and Sol 6.1 medium escalation only for serious delivery failures."

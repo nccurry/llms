@@ -1,6 +1,6 @@
 ---
 name: monitored-luna-plc-execution
-description: "Run selected PLC work with GPT-6 Luna max child agents, parent review of delivered code, and escalation to GPT-6 Sol medium only for serious delivery failures. Use when the user requests monitored Luna PLC execution."
+description: "Run selected PLC work with GPT-6 Luna max child agents, parent review of delivered code, and escalation to GPT-6.1 Sol medium only for serious delivery failures. Use when the user requests monitored Luna PLC execution."
 ---
 
 # Monitored Luna PLC Execution
@@ -30,7 +30,7 @@ child to clean up only its own worktree once it is no longer in use.
 
 The parent keeps its current model and owns review and integration. Start
 implementation children with `gpt-6-luna` and reasoning effort `max`. After a
-quality escalation, use `gpt-6-sol` with reasoning effort `medium` for repairs
+quality escalation, use `gpt-6.1-sol` with reasoning effort `medium` for repairs
 and all new children for the rest of the selected work. Keep that choice across
 phases and context compaction. Do not switch back unless the user asks.
 
@@ -109,7 +109,7 @@ repair work. Give Luna clear feedback and let it fix them. A failed audit, a
 reviewer's severity label, the number of comments, or another repair round does
 not by itself justify Sol. Repeated minor findings alone never trigger escalation.
 
-Switch to Sol medium only when the parent verifies a serious problem in work
+Switch to Sol 6.1 medium only when the parent verifies a serious problem in work
 presented as ready, such as:
 
 - A major architectural mismatch that needs substantial redesign to meet the PLC.
@@ -148,7 +148,7 @@ When escalation is warranted:
    finish, then review their output under the same rules. Pause the affected
    child before handing its files to a replacement; never allow two writers
    to own the same worktree. Preserve its changes and evidence.
-4. Spawn a Sol medium repair child with the rejected diff, findings, acceptance
+4. Spawn a Sol 6.1 medium repair child with the rejected diff, findings, acceptance
    criteria, and required checks. Record its worktree, branch, and base. If a
    defect is already integrated, start from the latest integration commit as
    the base skill requires.
@@ -157,7 +157,7 @@ When escalation is warranted:
    repair and final audit, follow the base skill's stop-and-ask rule; do not
    lower the standard or invent another automatic model tier.
 
-For example: "I switched from GPT-6 Luna (max) to GPT-6 Sol (medium). The phase 2
+For example: "I switched from GPT-6 Luna (max) to GPT-6.1 Sol (medium). The phase 2
 delivery loses queued writes on retry, and the regression test reproduces it.
 Sol will repair this branch and handle new assignments for the remaining work."
 
