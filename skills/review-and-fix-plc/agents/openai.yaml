@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review and Fix PLC"
+  short_description: "Subagent reviews a PLC; parent fixes findings"
+  default_prompt: "Use $review-and-fix-plc to review this PLC with a subagent and fix supported findings."
