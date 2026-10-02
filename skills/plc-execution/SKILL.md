@@ -89,8 +89,10 @@ user if the target branch is not clear.
 ## Set up the work
 
 Before dispatching children, locate `audit-codebase` and its applicable
-specialists. For MR integration, also locate `check-pr` and authenticated host
-tools. Report missing dependencies before assigning work that requires them.
+specialists. For MR integration, also find authenticated tools for the repository
+host, such as `gh`, `glab`, or MCP tools. They must let you read review comments
+and CI results. Report missing dependencies before assigning work that requires
+them.
 
 1. Read the root and scoped `AGENTS.md` files. Read every selected PLC, the
    source code, and the product and design documents for this work. Follow
@@ -218,7 +220,8 @@ behavior, tests, audits, and known dependencies.
 
 For each MR:
 
-1. Use `$check-pr` to wait for review comments and CI results.
+1. Use the repository host's tools to check review comments and CI results.
+   Wait for pending reviews and checks, then read their results.
 2. Fix actionable comments that fit the assigned work. Run affected tests and
    audits after each fix.
 3. Ignore a comment only when it is informational, already fixed, outside the
@@ -227,8 +230,9 @@ For each MR:
 4. Do not resolve an actionable comment only to make the MR look clean.
 5. Stop and ask when a comment needs a technical, architectural, product, API,
    data, security, or design decision.
-6. Wait for all required CI checks to pass after the final update. The parent
-   merges the MR only after the audit verdict permits integration, the CI is
+6. Recheck review comments and CI results after each update. Wait for all
+   required CI checks to pass after the final update. The parent merges the MR
+   only after the audit verdict permits integration, the CI is
    green, and no actionable review comment remains.
 
 ## Close a work item or group
