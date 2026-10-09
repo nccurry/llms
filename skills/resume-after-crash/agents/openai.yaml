@@ -1,4 +1,4 @@
 interface:
   display_name: "Resume After a Crash"
-  short_description: "Recover the plan and resume interrupted agent work"
-  default_prompt: "Use $resume-after-crash to continue the planned work after the harness crash and resume or replace interrupted subagents."
+  short_description: "Find recent agent sessions and tell them to recover"
+  default_prompt: "Use $resume-after-crash to find recently active top-level agent sessions and tell unfinished sessions to recover themselves and their interrupted subagents."
