@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clean Stale Worktrees"
+  short_description: "Remove merged local git work"
+  default_prompt: "Use $clean-stale-worktrees to remove local branches and linked worktrees that are already merged into main."

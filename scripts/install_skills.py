@@ -25,6 +25,7 @@ MANAGED_SKILLS = [
     "abstraction-quality-audit",
     "audit-codebase",
     "audit-tests",
+    "clean-stale-worktrees",
     "code-quality-audit",
     "correctness-reliability-audit",
     "dead-code-audit",
