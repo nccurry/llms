@@ -47,6 +47,7 @@ MANAGED_SKILLS = [
     "review-and-fix-plc",
     "release-readiness",
     "resolve-review-comments",
+    "resume-after-crash",
     "test-quality-audit",
     "verify-before-claiming",
     "visual-code-audit",
