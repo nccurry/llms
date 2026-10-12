@@ -6,6 +6,12 @@
       "version": "1.7.0",
       "python": "3.13",
       "source": "https://github.com/oraios/serena",
+      "config": {
+        "gui_log_window": false,
+        "web_dashboard": true,
+        "web_dashboard_open_on_launch": false,
+        "web_dashboard_interface": "browser"
+      },
       "dependency_overrides": {
         "urllib3": "2.8.0",
         "werkzeug": "3.1.9"

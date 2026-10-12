@@ -433,8 +433,17 @@ def private_permissions(path: Path, *, copy_from: Path | None = None) -> None:
         path.chmod(0o700 if path.is_dir() else 0o600)
 
 
-def update_file(path: Path, text: str, *, dry_run: bool = False) -> str:
+def update_file(
+    path: Path,
+    text: str,
+    *,
+    dry_run: bool = False,
+    expected_digest: str | None = None,
+) -> str:
     old = path.read_text(encoding="utf-8") if path.exists() else None
+    digest = hashlib.sha256(old.encode("utf-8")).hexdigest() if old is not None else ""
+    if expected_digest is not None and digest != expected_digest:
+        raise RuntimeError(f"Configuration changed during rendering: {path}")
     if old == text:
         return "unchanged"
     if dry_run:
@@ -553,6 +562,45 @@ def merge_codex(path: Path, servers: dict[str, Any], *, dry_run: bool = False) -
     return update_file(path, result, dry_run=dry_run)
 
 
+def serena_home() -> Path:
+    selected = os.environ.get("SERENA_HOME", "").strip()
+    return Path(selected or Path.home() / ".serena").resolve()
+
+
+def serena_configuration(*, apply: bool = False, dry_run: bool = False) -> dict[str, Any]:
+    settings = manifest()["tools"]["serena"]["config"]
+    python = TOOLS / "uv/serena-agent" / (
+        "Scripts/python.exe" if os.name == "nt" else "bin/python"
+    )
+    if not python.is_file():
+        return {
+            "action": "requires tools:install",
+            "configured": False,
+            "settings": settings,
+        }
+    result = json.loads(
+        run(
+            [
+                str(python),
+                str(ROOT / "scripts/render_serena_config.py"),
+                json.dumps(settings),
+                str(serena_home() / "serena_config.yml"),
+            ],
+            timeout=30,
+        )
+    )
+    text = result.pop("text")
+    original_digest = result.pop("original_digest")
+    path = Path(result["config"])
+    result["configured"] = path.is_file() and result["current"] == settings
+    if apply:
+        result["action"] = update_file(
+            path, text, dry_run=dry_run, expected_digest=original_digest
+        )
+        result["configured"] = result["configured"] or not dry_run
+    return result
+
+
 def servers() -> dict[str, Any]:
     environment = tool_env()
     launch_env = {
@@ -562,8 +610,15 @@ def servers() -> dict[str, Any]:
     configured = {
         "serena": {
             "command": tool_command("serena")[0],
-            "args": ["start-mcp-server", "--project-from-cwd", "--context", "codex"],
-            "env": launch_env,
+            "args": [
+                "start-mcp-server",
+                "--project-from-cwd",
+                "--context",
+                "codex",
+                "--open-web-dashboard",
+                "false",
+            ],
+            "env": {**launch_env, "SERENA_HOME": str(serena_home())},
             "startup_timeout_sec": 60,
         },
         "gitnexus": {
@@ -624,6 +679,34 @@ def require_standard_profiles(target: str) -> None:
         raise RuntimeError(
             "Managed agent setup supports the standard ~/.codex profile; clear a custom CODEX_HOME before configuration. Skills-only installation supports custom destinations."
         )
+    for host in selected_hosts(target):
+        path = host_config(host)
+        if host == "pi" or not path.is_file():
+            continue
+        if host == "codex":
+            entry = tomllib.loads(path.read_text(encoding="utf-8")).get(
+                "mcp_servers", {}
+            ).get("serena", {})
+        else:
+            if path.suffix == ".jsonc" and not (TOOLS / "npm/package.json").is_file():
+                continue  # Preview reports that JSONC validation awaits installation.
+            data = read_host_json(path)
+            container = (
+                data.get("mcp", {})
+                if host == "opencode"
+                else data.get("mcpServers", {})
+            )
+            entry = container.get("servers", container).get("serena", {})
+        environment = entry.get("environment" if host == "opencode" else "env", {})
+        override = environment.get("SERENA_HOME", "").strip()
+        if override and (
+            not Path(override).is_absolute()
+            or Path(override).resolve() != serena_home()
+        ):
+            raise RuntimeError(
+                f"{host} has a different Serena home. Set SERENA_HOME to its existing "
+                "absolute home before configuring, or deliberately remove that host override."
+            )
 
 
 def jsonc_document(path: Path, desired: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -682,12 +765,10 @@ def host_servers(host: str) -> dict[str, Any]:
     if host != "codex":
         for server in selected.values():
             server.pop("startup_timeout_sec", None)
-        selected["serena"]["args"] = [
-            "start-mcp-server",
-            "--project-from-cwd",
-            "--context",
-            "claude-code" if host == "claude" else "ide",
-        ]
+        arguments = selected["serena"]["args"]
+        arguments[arguments.index("--context") + 1] = (
+            "claude-code" if host == "claude" else "ide"
+        )
     return selected
 
 
@@ -761,7 +842,11 @@ def preview(target: str) -> dict[str, Any]:
                 "upstream_setup": "would run supported upstream installers; native plugin changes are host-dependent",
             }
         )
-    return {"hosts": planned, "writes": False}
+    return {
+        "serena": serena_configuration(apply=True, dry_run=True),
+        "hosts": planned,
+        "writes": False,
+    }
 
 
 def skill_health(target: str) -> dict[str, Any]:
@@ -926,6 +1011,7 @@ def configure(target: str) -> dict[str, Any]:
     ]
     if missing:
         raise RuntimeError("Install pinned tools first: " + ", ".join(missing))
+    serena = serena_configuration(apply=True)
     home = Path.home()
     for host in selected_hosts(target):
         upstream = []
@@ -994,9 +1080,21 @@ def configure(target: str) -> dict[str, Any]:
         # Use cq's maintained skill/instruction installer. Claude's plugin route
         # needs Claude CLI; other hosts can be configured without their binaries.
         if host != "claude" or shutil.which("claude"):
-            upstream.append(
-                run(tool_command("cq") + ["install", "--target", host], timeout=90)
+            cq_config_path = host_config(host)
+            cq_original_config = (
+                cq_config_path.read_text(encoding="utf-8")
+                if host == "codex" and cq_config_path.is_file()
+                else None
             )
+            try:
+                upstream.append(
+                    run(tool_command("cq") + ["install", "--target", host], timeout=90)
+                )
+            finally:
+                # Native cq setup replaces its MCP entry. Keep user tool policy,
+                # environment and timeouts for the preserving merge below.
+                if cq_original_config is not None:
+                    update_file(cq_config_path, cq_original_config)
         else:
             limitations.append(
                 "cq's Claude plugin installation requires Claude CLI; rerun agents:configure after installing that client"
@@ -1044,6 +1142,7 @@ def configure(target: str) -> dict[str, Any]:
             }
         )
     return {
+        "serena": serena,
         "hosts": results,
         "disabled_integrations": [
             name
@@ -1191,8 +1290,12 @@ def doctor(target: str) -> dict[str, Any]:
         )
     skills = skill_health(target)
     problems.extend(skills["problems"])
+    serena = serena_configuration()
+    if not serena["configured"]:
+        problems.append("Serena dashboard preferences do not match managed settings")
     return {
         "tools": tools,
+        "serena": serena,
         "hosts": hosts,
         "skills": skills,
         "problems": problems,
@@ -1215,6 +1318,12 @@ def emit(result: dict[str, Any], output: str) -> None:
         return
     if result.get("lockfile"):
         print(f"npm lock: {result['action']}; {result['lockfile']}")
+    if result.get("serena"):
+        serena = result["serena"]
+        print(
+            "Serena preferences: "
+            + serena.get("action", f"configured={serena['configured']}")
+        )
     for tool in result.get("tools", []):
         selected = tool.get("version", tool.get("pinned", tool.get("expected")))
         observed = tool.get("installed", tool.get("version"))

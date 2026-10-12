@@ -127,6 +127,41 @@ need an added MCP bridge. A successful package installation does not establish t
 server, index, or host integration works. Check `doctor` and perform real queries in the selected
 project before relying on them.
 
+### Multiple repos, workspaces, and agents
+
+The managed Serena setup uses a separate stdio connection for each agent session and
+`--project-from-cwd` to select its current checkout. No repo names, repo list, fixed
+project directory, or shared HTTP endpoint are written into host configuration. An agent
+working from a projectless chat must activate the exact repo or worktree explicitly.
+
+`task agents:configure` also merges these generic preferences into Serena's user-level
+configuration, preserving other settings, registered projects, and comments:
+
+```yaml
+gui_log_window: false
+web_dashboard: true
+web_dashboard_open_on_launch: false
+web_dashboard_interface: browser
+```
+
+The configuration lives in `~/.serena/serena_config.yml`, or under `SERENA_HOME` when
+set. Setup records that selected home in the managed Serena launch environment so desktop
+and CLI sessions read the same preferences. A conflicting existing host override is
+rejected before changes; select its existing home explicitly rather than silently
+switching data directories. Changes use the existing private backup and atomic update
+process. Dry runs preview them without writes, and `doctor` checks both preferences and
+host launch arguments.
+New sessions keep a local dashboard available without launching native windows, tray
+icons, or browser tabs. Open a dashboard on demand through Serena's `open_dashboard`
+tool or its logged localhost URL. Existing sessions retain their startup settings.
+
+This follows [Serena's multiple-project guidance](https://oraios.github.io/serena/02-usage/040_workflow.html).
+Separate repos and worktrees need independent project state. HTTP sharing is useful when
+every connected agent deliberately uses the same checkout; a single global endpoint can
+switch the active project underneath other agents. The browser interface is supported
+across platforms; the pinned release labels its shared tray manager experimental.
+See [dashboard settings](https://oraios.github.io/serena/02-usage/060_dashboard.html).
+
 Run installed CLIs through Task without adding their package caches to global PATH:
 
 ```bash
