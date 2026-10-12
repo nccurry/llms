@@ -606,8 +606,10 @@ def digest_path(path: Path) -> str | None:
     for item in sorted(path.rglob("*")):
         if not item.is_file():
             continue
-        relative = item.relative_to(path).as_posix()
-        digest.update(relative.encode("utf-8"))
+        relative = item.relative_to(path)
+        if "__pycache__" in relative.parts:
+            continue
+        digest.update(relative.as_posix().encode("utf-8"))
         digest.update(b"\0")
         digest.update(item.read_bytes())
         digest.update(b"\0")
