@@ -1,50 +1,62 @@
 ---
 name: frontend-design
-description: "Design and implement new or substantially redesigned frontend UI. Use for screens, pages, and components needing visual and interaction design."
+description: "Design and implement new or substantially redesigned component-based UI for web or native apps. Use for screens, pages, and components needing visual and interaction design."
 ---
 
 # Frontend Design
 
-Use this skill when the deliverable is new or substantially redesigned frontend UI. Create an interface with a clear product point of view, not a generic template.
+Create an interface with a clear purpose using the project's component and
+layout system. Discover framework APIs and project facts in source and local
+docs rather than imposing a web framework or a particular native toolkit.
 
 ## Workflow
 
-1. Identify the product, audience, main user task, constraints, and success criteria from the prompt and repository context.
-2. Read local design guidance first: `AGENTS.md`, design-system docs, Storybook, component directories, design tokens, theme files, existing pages, and brand assets.
-3. Choose a compact design direction before coding:
-   - Purpose: the single job this screen must do.
-   - Tone: the visual and interaction personality that fits the product.
-   - Palette: 4-6 named tokens or CSS variables.
-   - Type: display, body, and utility roles using project-approved fonts when available.
-   - Layout: information hierarchy and responsive structure.
-   - Signature: one memorable design move tied to the product's subject matter.
-4. Check the plan against the common generic defaults: centered hero, vague cards, ornamental gradients, one-note palettes, empty marketing copy, and arbitrary animation.
-5. Implement using the project's framework, routing, state, components, tokens, and data patterns.
-6. Make the first viewport useful. For apps and tools, show the working experience first instead of a marketing splash unless the user explicitly asked for a landing page.
-7. Add complete states: loading, empty, error, disabled, hover, focus, selected, success, destructive, and mobile states where relevant.
-8. Validate with screenshots or browser inspection when practical, including desktop and mobile widths.
+1. Identify audience, main task, constraints, and success criteria from the
+   request and repository.
+2. Read local agent/design guidance, component examples or catalogs, tokens,
+   themes, existing screens, and assets.
+3. Choose hierarchy, tone, typography roles, layout, and relevant states before
+   coding. Reuse approved components, variants, and palette; add new design
+   elements only when they serve this product.
+4. Implement with the existing component, routing, state, data, and lifecycle
+   patterns. Define who owns layout, input, and state instead of duplicating
+   responsibilities across parent and child components.
+5. Make the initial view useful for the main task. Use direct copy, consistent
+   action names, and loading/empty/error/disabled/selected/focus states as needed.
+6. Inspect rendered output using the app's supported browser, preview, screenshot,
+   or native host. Check relevant narrow/wide sizes, long text, and content scale.
 
-## Design Criteria
+## Component and flexbox layout
 
-Check whether the interface:
+Use the framework's existing layout primitives and documented flexbox semantics.
+Do not assume CSS names or browser defaults in a native component system.
 
-- Has one clear primary task and action hierarchy.
-- Uses project components and tokens before inventing new ones.
-- Feels specific to the domain through layout, copy, typography, imagery, data, or interaction.
-- Uses restraint: one signature visual idea, disciplined supporting elements.
-- Treats copy as interface material: direct verbs, sentence case, no filler, consistent action names.
-- Supports keyboard navigation, visible focus, sufficient contrast, responsive layout, and reduced-motion preferences.
-- Avoids decorative UI cards, nested cards, arbitrary blobs, generic gradients, and hero-scale type inside compact controls.
-- Keeps text from overlapping or overflowing at realistic mobile and desktop sizes.
+- Let the parent own flow, spacing, alignment, and available size; let reusable
+  components express intrinsic content and meaningful constraints.
+- Select row/column direction, gap, wrapping, alignment, and justification for
+  the actual information hierarchy. Avoid manual positions for ordinary flow.
+- Define grow, shrink, basis/intrinsic size, and min/max constraints deliberately.
+  Check default minimum sizes when flexible text or panels refuse to shrink.
+- Give scrolling and overflow to a clear owner. Check nested layouts have the
+  bounds they need; do not hide overflow to conceal an unreachable action.
+- Reuse component variants and tokens. Avoid copying a screen-specific layout
+  into a shared component or inventing wrappers for every spacing adjustment.
+- Check resizing, localization/long labels, empty/dense data, text scaling, and
+  dynamic content. Fixed sizes need a real platform/product reason.
 
-## Routing Boundaries
+## Design and acceptance
 
-- Use `figma-implement-design` when Figma is the source of truth.
-- Use `frontend-design-review` when evaluating an existing UI rather than creating or reshaping it.
-- Use `visual-code-audit` when the request is about source-code readability instead of rendered interface quality.
+Support the platform's input conventions, keyboard navigation, visible focus,
+labels, contrast, and relevant accessibility/reduced-motion behavior. Keep the
+main action clear and controls usable at realistic sizes. Use purposeful visual
+hierarchy instead of decorative cards, arbitrary gradients, or marketing filler
+inside an application.
 
-## Output Contract
+Use `figma-implement-design` when Figma is the source of truth,
+`frontend-design-review` for existing rendered UI, and `visual-code-audit` for
+source formatting.
 
-For implementation work, summarize the design direction, meaningful UI changes, and validation performed. If validation could not be run, say what remains to inspect.
-
-For design-only requests, provide a concise design brief with purpose, tone, palette, typography roles, layout, signature element, key states, and acceptance criteria.
+For implementation, show representative component/layout examples, meaningful
+behavior, and the rendered states/sizes checked. Name validation gaps.
+For design-only work, provide the proposed hierarchy, component reuse, layout
+behavior, states, and acceptance criteria.

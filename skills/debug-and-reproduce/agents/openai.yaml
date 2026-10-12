@@ -1,0 +1,4 @@
+interface:
+  display_name: "Debug and Reproduce"
+  short_description: "Reproduce failures and verify the smallest sound fix"
+  default_prompt: "Use $debug-and-reproduce to reproduce this failure, isolate its cause, and verify the fix."

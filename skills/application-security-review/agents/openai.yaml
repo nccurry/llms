@@ -1,0 +1,4 @@
+interface:
+  display_name: "Application Security Review"
+  short_description: "Review trust boundaries and concrete security failures"
+  default_prompt: "Use $application-security-review to inspect the affected trust boundaries and report concrete security findings."

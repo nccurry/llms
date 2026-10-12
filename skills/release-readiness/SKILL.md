@@ -34,7 +34,7 @@ Check:
 
 - Use `docs-sync` for documentation updates outside a release decision.
 - Use `dependency-auditor` for deep dependency risk analysis.
-- Use `pre-merge` or `verify` for general branch readiness when release notes and versioning are not in scope.
+- For ordinary branch readiness, inspect the current diff and required project checks with `verify-before-claiming`; use `audit-codebase` when a combined review is requested. Do not require a release workflow without release scope.
 
 ## Output Contract
 

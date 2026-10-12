@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "tools": {
+    "serena": {
+      "package": "serena-agent",
+      "version": "1.7.0",
+      "python": "3.13",
+      "source": "https://github.com/oraios/serena",
+      "dependency_overrides": {
+        "urllib3": "2.8.0",
+        "werkzeug": "3.1.9"
+      }
+    },
+    "ast-grep": {
+      "package": "@ast-grep/cli",
+      "version": "0.50.0",
+      "source": "https://github.com/ast-grep/ast-grep"
+    },
+    "gitnexus": {
+      "package": "gitnexus",
+      "version": "1.6.12",
+      "source": "https://github.com/abhigyanpatwari/GitNexus",
+      "license": "PolyForm-Noncommercial-1.0.0",
+      "license_url": "https://github.com/abhigyanpatwari/GitNexus/blob/v1.6.12/LICENSE",
+      "integration_enabled": true
+    },
+    "cq": {
+      "version": "0.18.0",
+      "release": "https://github.com/mozilla-ai/cq/releases/download/cli/v0.18.0",
+      "checksums": {
+        "cq_Darwin_arm64.tar.gz": "865dc6d33a71328b27cd25c165d09b07edab5959bdc01f82b8e151bcfae97a66",
+        "cq_Darwin_x86_64.tar.gz": "8c25bbe46f7f14d5d618ac7830a2065b36270a98036391e076d56695b710365b",
+        "cq_Linux_arm64.tar.gz": "bcff3c53a0307adf402a3526658fbdd300c4277f6f98fe10753fe169db60c85f",
+        "cq_Linux_x86_64.tar.gz": "27787adbe5ac2ab8daab833033f1c37ea3b0e8fa3b8a8b39db15e9a2aba3dc2c",
+        "cq_Windows_arm64.zip": "e50b09c4c1aba75bb250208ee4b922fff7d67f7de407d8c5f2d2ab2f9035da07",
+        "cq_Windows_x86_64.zip": "1ff1b7e97b5a0ec4656e8df14b3cec6fbb5198458caec2bd98eace8a9e7017ee"
+      },
+      "source": "https://github.com/mozilla-ai/cq"
+    }
+  },
+  "external_skills": [
+    {
+      "name": "ponytail-review",
+      "url": "https://raw.githubusercontent.com/DietrichGebert/ponytail/9cc65d03aa2da1db7121b912d03596409ee340b8/skills/ponytail-review/SKILL.md",
+      "sha256": "33fe4ebe22a460924e5d4a261e223df22e409cc94ab76182bee9fb91a3ef022e",
+      "repository": "DietrichGebert/ponytail",
+      "commit": "9cc65d03aa2da1db7121b912d03596409ee340b8",
+      "license": "MIT",
+      "license_url": "https://raw.githubusercontent.com/DietrichGebert/ponytail/9cc65d03aa2da1db7121b912d03596409ee340b8/LICENSE",
+      "license_sha256": "fb1bc6909ac3ef82d5c22106e32ef682b0cff66788fa915fb9b53b15c9d2f3ab"
+    },
+    {
+      "name": "ponytail-audit",
+      "url": "https://raw.githubusercontent.com/DietrichGebert/ponytail/9cc65d03aa2da1db7121b912d03596409ee340b8/skills/ponytail-audit/SKILL.md",
+      "sha256": "2b3223a02c386d1263e1b08343cb8eb3a53e444cdafb1d79e26c8ec2a8fcad28",
+      "repository": "DietrichGebert/ponytail",
+      "commit": "9cc65d03aa2da1db7121b912d03596409ee340b8",
+      "license": "MIT",
+      "license_url": "https://raw.githubusercontent.com/DietrichGebert/ponytail/9cc65d03aa2da1db7121b912d03596409ee340b8/LICENSE",
+      "license_sha256": "fb1bc6909ac3ef82d5c22106e32ef682b0cff66788fa915fb9b53b15c9d2f3ab"
+    }
+  ],
+  "skill_dependencies": {
+    "audit-codebase": [
+      "ponytail-review",
+      "ponytail-audit",
+      "application-security-review"
+    ],
+    "monitored-sol-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "monitored-luna-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ]
+  }
+}

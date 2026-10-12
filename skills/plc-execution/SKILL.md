@@ -1,306 +1,181 @@
 ---
 name: plc-execution
-description: "Execute selected PLC work when called as $plc-execution or by a monitored PLC execution skill. Supports isolated children, audits, and direct or MR integration."
+disable-model-invocation: true
+description: "Execute selected PLC work when called as $plc-execution or by a monitored PLC execution skill. Supports isolated children, strict audits, and direct or MR integration."
 ---
 
 # PLC Execution
 
-## Use only when called
+## Invocation and selected work
 
-Use this skill only when the user explicitly calls `$plc-execution`, or through
-`monitored-luna-plc-execution` or `monitored-sol-plc-execution` when the user
-requests either monitored workflow.
+Use only when the user calls `$plc-execution` or requests
+`monitored-luna-plc-execution` or `monitored-sol-plc-execution`.
 
-Use it for the PLC work that the user names. That work can be:
+Execute the named PLC, phases, sub-phases, related phases, or concrete block.
+A user-defined block is the scope even if it crosses phase boundaries. Phase
+names mentioned as context do not expand that block. Locate the PLC from the
+request and repository; ask when the selected scope cannot be established or
+materially conflicts with it. Use `plc-planning` to create or repair the packet.
+Discovery can run within an existing PLC.
 
-- One entire PLC.
-- One or more phases or sub-phases in one PLC.
-- Related phases or sub-phases in several PLCs.
-- A concrete block of work that does not match phase boundaries.
-
-Prefer named phases or sub-phases when the user selects them. If the user
-describes a concrete block of work, use that block as the scope, even when it
-covers only part of a phase or crosses phase boundaries. Treat phase names
-mentioned alongside the block as context unless the user explicitly asks to
-complete those phases. Find the relevant PLC files from the request and
-repository context. Do not expand the block to whole phases. Ask if the scope
-or relevant PLC cannot be identified, or if the block conflicts with the PLC.
-Use `plc-planning` to create or repair a PLC. This skill can run discovery work
-inside an existing PLC.
-
-## Load the working skills
-
-Before assigning work, read and apply [plain-english](../plain-english/SKILL.md),
+Before dispatch, read [plain-english](../plain-english/SKILL.md),
 [design-for-change](../design-for-change/SKILL.md), and
-[verify-before-claiming](../verify-before-claiming/SKILL.md). Resolve their
-absolute paths from the sibling or installed skill folders. If one is missing,
-report the missing dependency before dispatching a child.
+[verify-before-claiming](../verify-before-claiming/SKILL.md). Resolve their absolute
+paths. Give every child those paths and explicit load instructions; inherited
+context is not proof that it read them. Report missing dependencies before
+assigning affected work.
 
-The parent uses these skills when choosing the block, reviewing work, and
-reporting results. Give every child the resolved absolute `SKILL.md` paths and
-tell it to read and apply all three before it starts its assigned block. Do not
-rely on a child's inherited context to load them.
+## Prepare the work and integration
 
-## Choose the work and merge route
+Read root/scoped `AGENTS.md`, selected PLC files, source, and relevant product
+and design documentation. Discover named goals in the owning project documents
+and use them as acceptance criteria; do not guess project facts.
 
-Before you create a worktree, make a work list. For every selected work item,
-record:
+Make one work list containing each selected block, prerequisites, owner, files,
+behavior, design goals, tests, audits, and readiness. Run a block only after its
+prerequisites pass. Discovery may precede a prerequisite when it cannot alter
+that prerequisite.
 
-- The PLC file and selected phase, sub-phase, or user-defined block.
-- Its prerequisites, including phases in other PLC files.
-- Its design goals, files, behavior, tests, and audits.
-- Whether it is ready, blocked, or a discovery task.
+Map each selected requirement and named design goal to its existing PLC ID,
+owner, proving check/review, and state: pending, verified, deferred, or blocked.
+Keep this completion map in the existing work list or phase notes; do not create
+a second durable plan. Record audit scope, base, and verdict as evidence, not an
+uninspected shell command.
 
-Run an item only after its prerequisites pass. A discovery task can run before
-a prerequisite only when it does not change that prerequisite.
+Choose and record the integration route, target branch, worktree, and base
+before dispatch. Follow the user's choice, then established repository/session
+conventions. Ask if a material integration choice remains unresolved.
 
-## Make a completion map
+- Direct integration: the parent merges child branches into the chosen target.
+- MR/PR integration: branches receive host review and CI. Read
+  [the MR procedure](references/merge-request-integration.md) when this route
+  applies, including its review, comment-resolution, and CI gates.
 
-Before editing, map each PLC requirement and named design goal in the selected
-work to:
+Prefer a separate non-default integration branch/worktree for isolation. Use
+`main`, another default branch, or the source checkout only when the user chose
+it as the clean target. Do not alter or stash a dirty user checkout.
 
-- Its existing PLC identifier.
-- The work item or child that owns it.
-- The command or manual review that proves it.
-- Its current state: pending, verified, deferred, or blocked.
+Locate `audit-codebase` and its required specialists before dispatch. For MR
+work, verify authenticated host tools can read reviews and CI. Missing required
+tools leave the dependent step incomplete; continue independent work.
 
-Reuse the PLC's requirement IDs. Do not create a second durable plan. The map
-is execution evidence and can live in the work list or phase notes.
+## Children and worktrees
 
-When the user explicitly invokes `$unlazy`, use its gate ledger as the
-completion map's runnable-check record. Keep the PLC as the source of truth.
-Record an audit's scope, comparison base, and verdict as evidence; do not turn
-an agent skill into an uninspected shell command.
+Assign at least one implementation or discovery child, including for a single
+tightly coupled block. Use more only for independent file ownership and
+contracts. Do not parallelize writers that share an API, schema, data format, or
+unresolved design choice.
 
-Choose one merge route before the children start. Use direct integration when
-the user wants the parent to merge child branches into its chosen worktree.
-Use merge-request integration when the user wants a review and CI for each
-child branch. If the user does not name a route and the repository has no
-clear convention, stop and ask.
-
-Use the user-specified integration branch and worktree. If no target is named,
-choose a clean target. Prefer a non-default integration branch and linked
-worktree when the work needs isolation or child agents. Use `main`, another
-default branch, or the primary worktree only when the user named it as the
-clean merge target. Record the target branch and worktree before children
-start. For merge-request integration, record each MR target branch. Ask the
-user if the target branch is not clear.
-
-## Set up the work
-
-Before dispatching children, locate `audit-codebase` and its applicable
-specialists. For MR integration, also find authenticated tools for the repository
-host, such as `gh`, `glab`, or MCP tools. They must let you read review comments
-and CI results. Report missing dependencies before assigning work that requires
-them.
-
-1. Read the root and scoped `AGENTS.md` files. Read every selected PLC, the
-   source code, and the product and design documents for this work. Follow
-   repository rules, such as CQ. Use named design goals as acceptance criteria.
-   If the user names Roci design goals, find the documents that state them.
-   Do not guess them.
-2. Use the work list to order the selected work. Assign at least one child to
-   work on the selected block, including a single tightly coupled block or a
-   discovery task. Keep tightly coupled work with one child. Use more children
-   only for independent blocks. Work in parallel only when tasks own different
-   files and do not change the same API, schema, data format, or design choice.
-3. Use the chosen clean target. Create an integration branch and linked
-   worktree when the work needs isolation or child agents. Do not change a
-   dirty worktree. Do not stash user work. Do not work in the source checkout
-   unless the user chose it as a clean merge target.
-
-If child agents use separate worktrees, do not assume that the agent tool made
-them. Some tools reuse the caller's folder. The parent creates and checks each
-child worktree before it starts the child.
+The parent creates and checks each child worktree; spawning may reuse the
+caller folder. Use a distinct branch and sibling folder outside other worktrees.
+Record the immutable base and read status in that exact checkout:
 
 ```text
 git worktree add -b <child-branch> <absolute-child-path> <integration-commit>
 git -C <absolute-child-path> status --short --branch
 ```
 
-When children use separate worktrees, give each one a different branch and
-sibling folder. For example, use `ncurry/<plc>-p<phase>-<slice>`. Record the
-base commit. Do not put a child worktree inside another worktree.
+Read [the child assignment requirements](references/child-assignment.md) before
+dispatch. Include the absolute worktree and skill paths, scope, prerequisites,
+acceptance, ownership, integration route, check plan, reporting requirements,
+and authorization limits. Children do not spawn agents: the parent owns all
+implementation and audit delegation.
 
-## Audit during implementation
+Children edit only their assigned checkout and files, run focused checks,
+request audit of stabilized work, fix supported findings, and deliver a clean
+commit with current evidence. They do not merge/rebase shared branches. Pushes
+and MR creation require the assigned authorized route.
 
-Run `$audit-codebase` regularly during implementation, whether one agent or
-several agents do the work. Run it after a meaningful block, often at a phase
-boundary. A meaningful block changes code, configuration, tests, or user
-behavior.
+## Strict independent audits
 
-- Audit a child's meaningful block before it hands work to the parent.
-- Audit the combined diff after a meaningful merge or at a work item boundary.
-- If one agent does the work, audit after each meaningful block or phase.
-- A discovery-only task or a tiny no-code edit can wait for the next meaningful
-  block.
+After a meaningful block, the implementation child pauses edits and requests
+review from the parent with its exact base, revision/diff, and evidence. The
+parent follows `audit-codebase`: one read-only reviewer per required specialist,
+at most three concurrently, with no recursive delegation. Give implementation
+children time to yield slots. Review the combined diff after meaningful
+integration or at a work-item boundary even when handoff audits passed.
 
-At every handoff or merge, read `git status --short` in the exact worktree.
-Do not use another worktree's status. If several tiny related blocks do not
-justify separate audits, audit them as one small group and record why.
+Assess every listed domain and run required specialists. Add rendered UI review
+or dependency review when relevant; include the security gate when applicable.
+A discovery-only task or tiny no-code edit can wait for the next meaningful
+block; group related small corrections and record the reason.
 
-## Allow discovery work
+Fix every supported actionable in-scope finding, including P3. The parent owns
+the ledger, deduplication, evidence checks, fix ownership, and expensive tests.
+The assigned writer makes repairs after reviewers finish. Refresh invalidated
+reviews/checks against stabilized changes; preserve unaffected evidence.
+Only `PASS` permits integration. `REWORK REQUIRED`, `INCOMPLETE`, or recorded
+in-scope follow-ups do not satisfy strict acceptance.
 
-A discovery task can read source code, trace behavior, run tests, and make a
-small reversible experiment in its own worktree. Its report must state the
-facts found, tests run, options, and questions.
+Read `git status --short` in the exact worktree at each handoff/integration.
+Source review, passing CI, and a child's report are distinct evidence; none
+replaces parent inspection of the delivered diff and relevant surrounding code.
 
-Do not merge an experiment that chooses an unanswered technical, architectural,
-product, API, data, security, or design option. Stop and ask the user first.
+## Parent review and phase close
 
-## Give each child clear instructions
+Read [the parent review requirements](references/parent-review.md) before the
+first delivery. Verify checks against the actual child commit in its checkout
+before integration; tests on the old integration tree do not prove that change.
+Integrate one child at a time and run affected integration checks.
 
-Every child assignment must state:
+After a work item or dependency group:
 
-- The absolute worktree path, branch, and base commit.
-- The PLC file, selected work item, acceptance criteria, and design goals.
-- The prerequisites that must pass before the child starts.
-- The chosen merge route. For an MR, state its target branch and who opens it.
-- The files, APIs, and behavior the child owns. State what it must not change.
-- Whether it can make a small fix outside its work to keep old code working.
-  The default is no.
-- The tests and audits to run. State what the final report must contain.
-- The completion-map rows it owns and the proof for each row.
-- The absolute paths to `plain-english`, `design-for-change`, and
-  `verify-before-claiming`, with an instruction to read and apply each skill.
+1. Run its required checks against the combined integration tree.
+2. Run the combined strict audit. For UI changes inspect the rendered behavior
+   against the design goals.
+3. Assign any needed repair to a child based on the latest integration commit;
+   review and verify it before accepting it.
+4. Reconcile the completion map with current source and the user request.
+   Selected requirements need owners and current proof.
+5. Update PLC results only after their checks pass. Mark a whole phase complete
+   only when all its requirements passed, even if the selected block was smaller.
 
-Tell the child to edit only its assigned worktree. It must not edit the
-integration worktree, another child worktree, or `main`. It can commit its
-branch. It cannot merge or rebase a shared branch. It may remove only its own
-worktree after the parent confirms its work is merged and the checks below
-pass. It can push or open an MR only when its assignment uses merge-request
-integration.
+Use `audit-codebase`'s bounded convergence: one initial pass and at most one final
+aggregate verification, refreshing affected evidence. If work remains, report
+the exact repair, missing proof, or material decision rather than repeating an
+unchanged full audit or declaring completion.
 
-Each child must:
+After confirming delivery and checks, suggest removing only that child's
+worktree when no process needs it. Check the exact path and preserve needed
+modified, untracked, or ignored files first. Never force removal, remove another
+worktree, or delete branches without cleanup authorization.
 
-1. Read the three assigned skills, source, PLC, design goals, prerequisites,
-   and local instructions before editing. Report which skill files it loaded.
-2. Change only its assigned files and behavior. Update the PLC or product
-   documents if the change alters documented behavior or the record of results
-   for that work item.
-3. Run focused tests while working. Then run the project tests and checks that
-   cover the change.
-4. After a meaningful implementation block, run `$audit-codebase` against its
-   branch diff from the supplied base commit. Assess every specialist named by
-   that skill and run those applicable to the change. A discovery-only
-   task or a tiny no-code edit can wait for the next meaningful block.
-5. Run extra audits that match the change. For UI work, run
-   `frontend-design-review`. For a dependency change, run
-   `dependency-auditor`.
-6. Fix blocking findings under the audit policy. Stop and ask if a finding
-   needs an unresolved technical, architectural, product, API, schema,
-   stored-data, security, or design choice.
-7. After fixes, run the affected audits and tests again. Use `audit-codebase`'s
-   finding and verdict policy: `PASS` permits integration; `PASS WITH FOLLOW-UPS`
-   permits it only when the remaining findings are nonblocking and recorded.
-   Require `PASS` when the user asks for zero findings. `REWORK REQUIRED` and
-   `INCOMPLETE` do not permit integration.
-8. Commit a clean branch. Report the commit hash, files changed, tests run,
-   audit result, fixes made, and decisions that stopped work.
+## Resolve decisions without needless interruptions
 
-## Direct integration
+Inspect the PLC, source, project conventions, and existing user authorization
+before raising a question. Make routine reversible implementation choices
+within those constraints; unfamiliarity or several reasonable options alone
+does not require user input.
 
-For direct integration, only the parent merges child branches. Before each
-merge, make sure that the child branch is clean and committed. Read its diff,
-test results, acceptable audit verdict, and completion-map evidence. Verify
-the child's checks against its delivered commit in its own worktree before
-relying on the handoff. Tests on the unchanged integration branch do not prove
-the child's change. Merge one child at a time. Run the affected integration
-checks after each merge. Run the required combined audit after a meaningful
-merge or at the work item boundary.
-Audit a small group only when no single child changed enough to warrant its
-own audit. Record that choice.
+A child brings unresolved facts/options to the parent and pauses only dependent
+work. The parent resolves implementation details and asks the user only when
+the remaining choice materially affects:
 
-## Merge-request integration
+- Requirements or acceptance, including a consequential conflict between the
+  PLC and current behavior.
+- Public contracts, stored data, migrations, security, or architectural
+  boundaries beyond what was authorized.
+- Scope, integration authorization, or a recovery step that risks user work.
+- A genuine product/design tradeoff or required validation that cannot safely
+  be satisfied within the current task.
 
-For merge-request integration, follow the assignment to decide whether the
-child or parent opens the MR. By default, the child opens an MR from its branch
-to the recorded target branch. Its MR description names the selected work,
-behavior, tests, audits, and known dependencies.
+Continue independent work while waiting. Explain the concrete consequence and
+ask a focused question; do not ask again about an already settled choice.
+Record an answer in the PLC when it changes requirements, design, or acceptance.
 
-For each MR:
-
-1. Use the repository host's tools to check review comments and CI results.
-   Wait for pending reviews and checks, then read their results.
-2. Fix actionable comments that fit the assigned work. Run affected tests and
-   audits after each fix.
-3. Ignore a comment only when it is informational, already fixed, outside the
-   assigned work, or approved by the user. Give a short reason before you
-   resolve it.
-4. Do not resolve an actionable comment only to make the MR look clean.
-5. Stop and ask when a comment needs a technical, architectural, product, API,
-   data, security, or design decision.
-6. Recheck review comments and CI results after each update. Wait for all
-   required CI checks to pass after the final update. The parent merges the MR
-   only after the audit verdict permits integration, the CI is
-   green, and no actionable review comment remains.
-
-## Close a work item or group
-
-After all child changes for one work item or dependency group are merged:
-
-1. Run all tests and checks for the work item or group in the integration worktree.
-2. Run `$audit-codebase` on the combined diff. For UI work, inspect the
-   rendered UI against the stated design goals.
-3. If the combined work shows a blocking finding, start a repair child.
-   Base its worktree on the latest integration commit. Use the selected merge
-   route. Its audit verdict must permit integration before its merge.
-4. Reconcile the completion map with the current user request. Every selected
-   requirement and design goal must have an owner and current proof. Surface a
-   deferred or blocked row as a handoff; do not call it complete.
-5. Update the PLC results after the selected checks pass. Mark a phase complete
-   only when all of its requirements pass. Do not call the selected work done if
-   another selected work item or a user decision remains.
-
-Run this combined audit even if earlier handoff audits passed. After repairs,
-refresh invalidated specialists and produce one final aggregate verdict under
-`audit-codebase`'s convergence rules. Reuse evidence that remains valid. If a
-blocking finding remains, stop and ask for direction. Do not repeat a full
-audit without new work or new evidence.
-
-After the parent confirms a child's work is merged into the user-chosen target,
-suggest that the child remove its own worktree when no task or process needs it.
-Check the exact path. If uncommitted, untracked, or ignored files may be needed,
-leave the worktree until they are preserved.
-Never force removal or remove the integration worktree or another child's
-worktree. Leave branches unless the user asked to clean them up.
-
-## Stop and ask
-
-Stop and ask the user immediately if:
-
-- You cannot tell what to do next.
-- The PLC, source code, or design documents disagree.
-- The PLC, source code, or design documents do not define important behavior.
-- A dependency between selected work items is missing or unclear.
-- The next step changes a public API, stored data, or schema beyond the PLC.
-- The next step changes a data format, migration, security model, or design
-  goal beyond the PLC.
-- An audit fix goes outside assigned work or creates a real tradeoff.
-- A review comment needs a technical, architectural, product, API, data,
-  security, or design decision.
-- A required test or check cannot run, and the parent cannot safely fix the
-  problem.
-
-Do not ask about a small local coding choice that the PLC and source already
-answer. Report the facts, options, and question. Write the user's answer in
-the PLC if it changes the plan or the tests that must pass.
-
-## Write plainly
-
-Write every assignment, phase note, question, and report in plain English. Use
-the product's existing names and concrete facts. Prefer short sentences. State
-what changed, why, and which tests passed. Do not make up broad labels. Do not
-use vague words such as "holistic," "seamless," or "robust." Name the exact
-file, behavior, test, or design goal instead. `$audit-codebase` includes
-`plain-language-audit`.
+Discovery may trace code, run checks, and make a small reversible experiment in
+its own checkout. Separate facts, options, and experiments in its report. Do
+not integrate an experiment that commits the user to a material unanswered
+product, contract, data, security, or architecture choice.
 
 ## Finish
 
-List the selected PLC files, work items, their order, dependencies, and parallel
-groups.
-State the merge route, every child branch and commit, every MR, each audit and
-test result, and the completion-map state for every requirement and design
-goal. Surface each deferred or blocked row and every open question. Merge the
-final target branch only when the user authorized it and all required tests,
-audits, reviews, and CI checks passed.
+Write assignments, notes, and reports in plain English using existing product
+names. Show representative behavior/command/config examples when they help the
+user assess the result.
+
+Report selected work and prerequisites, integration route, child branches and
+commits, actual models when prescribed, MR/PRs, audit and check evidence, and
+completion-map states. Preserve every open requirement, decision, and missing
+check. Final target integration requires existing user authorization and all
+required reviews, tests, audits, and CI.

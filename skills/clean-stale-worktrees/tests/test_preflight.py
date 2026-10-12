@@ -264,6 +264,7 @@ class RepositoryTests(unittest.TestCase):
         self.assertNotEqual(result['method'], 'noFileChanges')
         self.assertIn('Subproject commit', result['unmatchedChanges'][0]['exactChange'])
 
+    @unittest.skipIf(os.name == 'nt', 'Windows does not permit colon filenames')
     def test_literal_pathspec_names_do_not_hide_unmatched_files(self):
         self.branch()
         self.write(':!file', 'must be checked\n')
@@ -275,13 +276,15 @@ class RepositoryTests(unittest.TestCase):
         self.branch()
         self.write('binary', b'\x00one\x00')
         source = self.commit('binary content')
-        os.chmod(Path(self.root) / 'file', 0o755)
-        mode = self.commit('executable mode')
+        self.g('update-index', '--chmod=+x', 'file')
+        self.g('commit', '-m', 'executable mode')
+        mode = self.head()
         self.g('checkout', 'main')
         self.g('cherry-pick', source, mode)
         self.write('binary', b'\x00later\x00')
-        os.chmod(Path(self.root) / 'file', 0o644)
-        self.commit('later binary and mode')
+        self.g('add', '-A')
+        self.g('update-index', '--chmod=-x', 'file')
+        self.g('commit', '-m', 'later binary and mode')
         result = self.check()
         # Earlier exact snapshot proves both bytes and mode.
         self.assertTrue(result['confirmed'], result)
@@ -309,8 +312,10 @@ class RepositoryTests(unittest.TestCase):
         self.squash()
         path = str(Path(self.directory.name) / name)
         self.g('worktree', 'add', path, 'feature')
-        return path
+        # Git reports forward-slash paths on Windows as well as POSIX.
+        return Path(path).as_posix()
 
+    @unittest.skipIf(os.name == 'nt', 'POSIX directory mode restrictions are not Windows ACLs')
     def test_readonly_ignored_directory_blocks_before_removal(self):
         worktree = self.worktree()
         cache = Path(worktree) / 'cache'
@@ -326,6 +331,7 @@ class RepositoryTests(unittest.TestCase):
         self.assertTrue(cache.exists())
         self.assertTrue(self.g('show-ref', '--verify', 'refs/heads/feature'))
 
+    @unittest.skipIf(os.name == 'nt', 'Requires POSIX directory modes and unprivileged symlinks')
     def test_readonly_file_and_external_symlink_are_safe_to_inspect(self):
         worktree = self.worktree()
         cache = Path(worktree) / 'cache'
