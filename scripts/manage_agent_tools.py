@@ -1091,10 +1091,24 @@ def configure(target: str) -> dict[str, Any]:
                     run(tool_command("cq") + ["install", "--target", host], timeout=90)
                 )
             finally:
-                # Native cq setup replaces its MCP entry. Keep user tool policy,
-                # environment and timeouts for the preserving merge below.
+                # Restore only cq's entry so other settings edited during native
+                # setup survive. The managed merge below applies local defaults.
                 if cq_original_config is not None:
-                    update_file(cq_config_path, cq_original_config)
+                    import tomlkit
+
+                    current = cq_config_path.read_text(encoding="utf-8")
+                    document = tomlkit.parse(current)
+                    previous = tomlkit.parse(cq_original_config).get("mcp_servers", {})
+                    configured = document.setdefault("mcp_servers", tomlkit.table())
+                    if "cq" in previous:
+                        configured["cq"] = previous["cq"]
+                    else:
+                        configured.pop("cq", None)
+                    update_file(
+                        cq_config_path,
+                        tomlkit.dumps(document),
+                        expected_digest=hashlib.sha256(current.encode("utf-8")).hexdigest(),
+                    )
         else:
             limitations.append(
                 "cq's Claude plugin installation requires Claude CLI; rerun agents:configure after installing that client"
