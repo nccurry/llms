@@ -2,6 +2,30 @@ version: '3'
 
 silent: true
 
+vars:
+  MISE: '"{{.ROOT_DIR}}/.tools/bin/mise{{if eq OS "windows"}}.exe{{end}}"'
+  UV: '{{.MISE}} exec -- uv'
+  PYTHON_VERSION:
+    sh: 'cat "{{.ROOT_DIR}}/piw/.python-version"'
+  PYTHON: '{{.UV}} run --isolated --no-project --python "{{.PYTHON_VERSION}}" --with-requirements "{{.ROOT_DIR}}/agent-runtime.txt" python'
+  TARGET: '{{default "all" .TARGET}}'
+  OUTPUT: '{{default "text" .OUTPUT}}'
+  INHERITED_PATH: '{{default (default .PATH .Path) .LLMS_ORIGINAL_PATH}}'
+
+env:
+  MISE_DATA_DIR: '{{.ROOT_DIR}}/.tools/mise/data'
+  MISE_CACHE_DIR: '{{.ROOT_DIR}}/.tools/mise/cache'
+  MISE_CONFIG_DIR: '{{.ROOT_DIR}}/.tools/mise/config'
+  MISE_STATE_DIR: '{{.ROOT_DIR}}/.tools/mise/state'
+  MISE_SYSTEM_CONFIG_DIR: '{{.ROOT_DIR}}/.tools/mise/system'
+  MISE_CEILING_PATHS: '{{dir .ROOT_DIR}}'
+  MISE_TMP_DIR: '{{.ROOT_DIR}}/.tools/tmp'
+  UV_PYTHON_INSTALL_DIR: '{{.ROOT_DIR}}/.tools/python'
+  UV_CACHE_DIR: '{{.ROOT_DIR}}/.tools/uv-cache'
+  LLMS_CALLER_CWD: '{{default .USER_WORKING_DIR .LLMS_CALLER_CWD}}'
+  LLMS_ORIGINAL_PATH: '{{.INHERITED_PATH}}'
+  PATH: '{{.ROOT_DIR}}/.tools/bin{{if eq OS "windows"}};{{else}}:{{end}}{{.ROOT_DIR}}/.tools/mise/data/shims{{if eq OS "windows"}};{{default "C:/Windows" .SystemRoot}}/System32;{{default "C:/Windows" .SystemRoot}}/System32/WindowsPowerShell/v1.0;{{else}}:{{end}}{{.INHERITED_PATH}}'
+
 includes:
   piw:
     taskfile: ./piw/Taskfile.yml
@@ -10,19 +34,101 @@ includes:
 tasks:
   default:
     desc: List available repository tasks.
-    cmd: '{{.TASK_EXE}} --list'
+    cmd: '{{.MISE}} exec -- task --list'
 
-  setup:
+  deps:install:
+    aliases: [setup]
     desc: Install pinned tools and synchronize project dependencies.
     cmds:
-      - mise install --locked
+      - task: deps:tools
+      - task: deps:runtime
       - task: piw:sync
 
+  deps:runtime:
+    desc: Prepare the uv-managed Python libraries used by setup commands.
+    cmd: '{{.PYTHON}} -c "import tomlkit"'
+
+  deps:tools:
+    desc: Install the native prerequisites pinned by mise.
+    preconditions:
+      - sh: '{{.MISE}} --version'
+        msg: Run bootstrap.sh or bootstrap.ps1 to prepare project-local mise and Task.
+    cmds:
+      - '{{.MISE}} install --locked --yes'
+      - '{{.MISE}} reshim'
+
+  deps:verify:
+    desc: Show resolved native development tools.
+    cmds:
+      - '{{.MISE}} --version'
+      - '{{.MISE}} exec -- task --version'
+      - '{{.UV}} --version'
+      - '{{.MISE}} exec -- node --version'
+      - '{{.MISE}} which task'
+      - '{{.MISE}} which uv'
+      - '{{.MISE}} which node'
+
+  deps:versions:
+    desc: Report selected native and agent tool versions.
+    cmds:
+      - task: deps:verify
+      - '{{.MISE}} ls --current'
+      - '{{.PYTHON}} scripts/manage_agent_tools.py --command versions --target {{.TARGET}} --output {{.OUTPUT}}'
+
+  deps:check:
+    desc: Report available native and agent tool updates.
+    cmds:
+      - '{{.MISE}} outdated'
+      - '{{.PYTHON}} scripts/manage_agent_tools.py --command check --target {{.TARGET}} --output {{.OUTPUT}}'
+
+  tools:install:
+    desc: Install pinned Serena, ast-grep, GitNexus, and local cq.
+    cmds:
+      - task: deps:tools
+      - '{{.PYTHON}} scripts/manage_agent_tools.py --command install --target {{.TARGET}} --output {{.OUTPUT}}'
+
+  agents:configure:
+    desc: Merge supported host integrations while preserving existing configuration.
+    cmds:
+      - '{{.PYTHON}} scripts/manage_agent_tools.py --command configure --target {{.TARGET}} --output {{.OUTPUT}}'
+
+  tools:lock:
+    desc: Refresh the npm tool lock after changing declared package pins.
+    cmd: '{{.PYTHON}} scripts/manage_agent_tools.py --command lock --output {{.OUTPUT}}'
+
+  tools:run:
+    desc: Run a local agent tool in the caller's project or worktree.
+    requires:
+      vars:
+        - name: TOOL
+          enum: [serena, ast-grep, gitnexus, cq]
+    cmd: '{{.PYTHON}} scripts/manage_agent_tools.py --command run --tool {{.TOOL}} -- {{.CLI_ARGS}}'
+
+  doctor:
+    desc: Report native and agent tool versions and host configuration state.
+    cmds:
+      - task: deps:verify
+      - '{{.PYTHON}} scripts/manage_agent_tools.py --command doctor --target {{.TARGET}} --output {{.OUTPUT}}'
+
+  install:
+    desc: Install the complete personal agent environment in order.
+    cmds:
+      - task: deps:install
+      - task: tools:install
+      - task: skills:install
+      - task: agents:configure
+      - task: doctor
+
+  install:dry-run:
+    desc: Preview agent tools, skills, and configuration without installing them.
+    cmds:
+      - '{{.PYTHON}} scripts/manage_agent_tools.py --command preview --target {{.TARGET}} --output {{.OUTPUT}}'
+      - '{{.PYTHON}} scripts/install_skills.py --target {{.TARGET}} --dry-run --output {{.OUTPUT}}'
+
   test:
-    desc: Run all deterministic repository tests.
+    desc: Run the piw application tests without live Docker Sandboxes.
     cmds:
       - task: piw:test
-      - task: skills:test
 
   check:
     desc: Run the full nonmutating local quality gate.
@@ -42,60 +148,82 @@ tasks:
       - task: skills:check
 
   skills:list:
-    desc: List managed skills and resolved install targets.
-    cmds:
-      - uv run --isolated --python 3.14 python scripts/install_skills.py --command list
+    desc: List managed skills, dependencies, and resolved install targets.
+    cmd: '{{.PYTHON}} scripts/install_skills.py --command list --target {{.TARGET}} --output {{.OUTPUT}}'
 
   skills:validate:
-    desc: Validate managed skill folder shape and metadata.
-    cmds:
-      - uv run --isolated --python 3.14 python scripts/install_skills.py --command validate
+    desc: Validate managed skill folder shape, references, and metadata.
+    cmd: '{{.PYTHON}} scripts/install_skills.py --command validate --output {{.OUTPUT}}'
 
   skills:check:
-    desc: Validate managed skills and run installer tests.
+    desc: Fetch and validate the actual managed skill payloads.
     cmds:
+      - task: skills:fetch
       - task: skills:validate
-      - task: skills:test
+
+  skills:fetch:
+    desc: Fetch and verify pinned external skills without installing live copies.
+    cmd: '{{.PYTHON}} scripts/install_skills.py --command fetch --output {{.OUTPUT}}'
 
   skills:test:
-    desc: Run installer and cleanup skill tests.
+    desc: Run the existing Git cleanup safety checks when changing that script.
     env:
-      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONDONTWRITEBYTECODE: '1'
     cmds:
-      - uv run --isolated --python 3.14 python -m unittest discover -s tests -p "test_*.py"
-      - uv run --isolated --python 3.14 python -m unittest discover -s skills/clean-stale-worktrees/tests -p "test_*.py"
+      - '{{.PYTHON}} -m unittest discover -s skills/clean-stale-worktrees/tests -p "test_*.py"'
 
   skills:dry-run:
-    desc: Show what skill installation would change.
-    cmds:
-      - uv run --isolated --python 3.14 python scripts/install_skills.py --target all --dry-run
+    desc: Show what skill installation would change for TARGET (default all).
+    cmd: '{{.PYTHON}} scripts/install_skills.py --target {{.TARGET}} --dry-run --output {{.OUTPUT}}'
 
   skills:dry-run:codex:
     desc: Show what the Codex skill installation would change.
     cmds:
-      - uv run --isolated --python 3.14 python scripts/install_skills.py --target codex --dry-run
+      - task: skills:dry-run
+        vars: {TARGET: codex}
+
+  skills:dry-run:claude:
+    desc: Show what the Claude skill installation would change.
+    cmds:
+      - task: skills:dry-run
+        vars: {TARGET: claude}
 
   skills:dry-run:pi:
     desc: Show what the Pi skill installation would change.
     cmds:
-      - uv run --isolated --python 3.14 python scripts/install_skills.py --target pi --dry-run
+      - task: skills:dry-run
+        vars: {TARGET: pi}
+
+  skills:dry-run:opencode:
+    desc: Show what the OpenCode skill installation would change.
+    cmds:
+      - task: skills:dry-run
+        vars: {TARGET: opencode}
 
   skills:install:
-    desc: Install managed skills for Codex, Claude, and Pi.
-    cmds:
-      - uv run --isolated --python 3.14 python scripts/install_skills.py --target all
+    desc: Install managed and required external skills for TARGET (default all).
+    cmd: '{{.PYTHON}} scripts/install_skills.py --target {{.TARGET}} --output {{.OUTPUT}}'
 
   skills:install:codex:
-    desc: Install managed skills for Codex only.
+    desc: Install managed and required external skills for Codex.
     cmds:
-      - uv run --isolated --python 3.14 python scripts/install_skills.py --target codex
+      - task: skills:install
+        vars: {TARGET: codex}
 
   skills:install:claude:
-    desc: Install managed skills for Claude only.
+    desc: Install managed and required external skills for Claude.
     cmds:
-      - uv run --isolated --python 3.14 python scripts/install_skills.py --target claude
+      - task: skills:install
+        vars: {TARGET: claude}
 
   skills:install:pi:
-    desc: Install managed skills for Pi only.
+    desc: Install managed and required external skills for Pi.
     cmds:
-      - uv run --isolated --python 3.14 python scripts/install_skills.py --target pi
+      - task: skills:install
+        vars: {TARGET: pi}
+
+  skills:install:opencode:
+    desc: Install managed and required external skills for OpenCode.
+    cmds:
+      - task: skills:install
+        vars: {TARGET: opencode}

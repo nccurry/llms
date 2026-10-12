@@ -63,14 +63,16 @@ evidence.
 5. Plan delivery and review.
    - Divide the work into useful phases with dependencies, validation, and
      exit criteria.
-   - When audit gates apply, record the acceptance policy in the generated plan
-     itself: fix all P1/P2 findings and P3 findings that involve correctness or
-     security, are inexpensive to fix, or are explicitly required. Record other
-     P3 findings as follow-ups. Rerun affected specialists after fixes and
-     produce one aggregate verdict after convergence, reusing valid evidence.
-     Do not require readers to have this skill installed to interpret the plan.
-   - Do not require `resolve all findings`, `rerun until perfect`, or equivalent
-     unbounded cleanup unless the user explicitly requires zero findings.
+   - When audit gates apply, record strict acceptance in the generated plan:
+     fix every supported actionable finding in scope, including P3. Use
+     focused read-only specialist reviewers against the same stabilized
+     revision, in waves of at most three; the parent verifies evidence,
+     combines findings, and owns fixes/checks. Missing required evidence
+     remains incomplete. Do not require this skill to interpret the plan.
+   - Keep the audit bounded: one initial aggregate pass and at most one final
+     aggregate verification, refreshing affected reviews/checks and preserving
+     valid evidence. Separate outside-scope debt from required repairs; do not
+     create unrelated cleanup or repeat unchanged full audits.
 
 6. Validate before handoff.
    - Check that every major requirement maps to design and tests.

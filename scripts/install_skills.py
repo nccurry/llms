@@ -13,16 +13,20 @@ import argparse
 import hashlib
 import json
 import os
+import posixpath
 import re
 import shutil
 import sys
+import tempfile
 import time
+import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Any
 
-
 MANAGED_SKILLS = [
     "abstraction-quality-audit",
+    "application-security-review",
     "audit-codebase",
     "audit-tests",
     "clean-stale-worktrees",
@@ -30,6 +34,7 @@ MANAGED_SKILLS = [
     "correctness-reliability-audit",
     "dead-code-audit",
     "dependency-auditor",
+    "debug-and-reproduce",
     "design-for-change",
     "docs-sync",
     "explain-technical-choices",
@@ -47,6 +52,7 @@ MANAGED_SKILLS = [
     "plc-planning",
     "review-and-fix-plc",
     "release-readiness",
+    "repo-navigation",
     "resolve-review-comments",
     "resume-after-crash",
     "test-quality-audit",
@@ -62,9 +68,7 @@ LEGACY_BACKUP_RE = re.compile(
 INTERFACE_FIELD_RE = re.compile(
     r"^  (?P<key>display_name|short_description|default_prompt): (?P<value>.+)$"
 )
-POLICY_FIELD_RE = re.compile(
-    r"^  allow_implicit_invocation: (?P<value>true|false)$"
-)
+POLICY_FIELD_RE = re.compile(r"^  allow_implicit_invocation: (?P<value>true|false)$")
 PLAIN_SCALAR_FORBIDDEN_PREFIXES = (
     "- ",
     "? ",
@@ -98,7 +102,7 @@ def display_path(path: Path) -> str:
     return str(path.expanduser().absolute())
 
 
-def parse_frontmatter(skill_md: Path) -> tuple[dict[str, str], list[str]]:
+def parse_frontmatter(skill_md: Path) -> tuple[dict[str, Any], list[str]]:
     errors: list[str] = []
     lines = skill_md.read_text(encoding="utf-8").splitlines()
 
@@ -114,8 +118,9 @@ def parse_frontmatter(skill_md: Path) -> tuple[dict[str, str], list[str]]:
     if end_index is None:
         return {}, ["SKILL.md frontmatter must end with ---"]
 
-    data: dict[str, str] = {}
-    for raw_line in lines[1:end_index]:
+    data: dict[str, Any] = {}
+    frontmatter_lines = iter(lines[1:end_index])
+    for raw_line in frontmatter_lines:
         if not raw_line.strip():
             continue
         if raw_line[:1].isspace() or ":" not in raw_line:
@@ -126,6 +131,31 @@ def parse_frontmatter(skill_md: Path) -> tuple[dict[str, str], list[str]]:
         value = value.strip()
         if key in data:
             errors.append(f"duplicate frontmatter key: {key}")
+            continue
+        if key == "disable-model-invocation":
+            if value not in {"true", "false"}:
+                errors.append("disable-model-invocation must be a YAML boolean")
+            else:
+                data[key] = value == "true"
+            continue
+        if value in {">", ">-"}:
+            # Upstream Ponytail uses a folded description. Keep the supported
+            # metadata format narrow instead of accepting arbitrary YAML.
+            if key != "description":
+                errors.append(
+                    f"folded frontmatter is only supported for description: {key}"
+                )
+                continue
+            folded: list[str] = []
+            for continuation in frontmatter_lines:
+                if continuation and not continuation.startswith("  "):
+                    errors.append(
+                        "folded description must be the final frontmatter field"
+                    )
+                    break
+                folded.append(continuation.strip())
+            value = " ".join(folded).strip()
+            data[key] = value
             continue
         if value.startswith(("'", '"')) or value.endswith(("'", '"')):
             parsed_value = parse_quoted_scalar(value)
@@ -197,9 +227,7 @@ def parse_openai_interface(openai_yaml: Path) -> tuple[dict[str, str], list[str]
                 continue
             value = parse_quoted_scalar(match.group("value"))
             if value is None:
-                errors.append(
-                    f"agents/openai.yaml {key} must be a valid quoted string"
-                )
+                errors.append(f"agents/openai.yaml {key} must be a valid quoted string")
                 continue
             if section != "interface":
                 errors.append(
@@ -220,6 +248,9 @@ def parse_openai_interface(openai_yaml: Path) -> tuple[dict[str, str], list[str]
                 )
             else:
                 implicit_invocation_seen = True
+                fields["allow_implicit_invocation"] = POLICY_FIELD_RE.fullmatch(
+                    line
+                ).group("value")
             continue
 
         errors.append(f"unsupported agents/openai.yaml line: {line!r}")
@@ -233,7 +264,9 @@ def parse_openai_interface(openai_yaml: Path) -> tuple[dict[str, str], list[str]
     return fields, errors
 
 
-def validate_skill(source: Path, name: str) -> dict[str, Any]:
+def validate_skill(
+    source: Path, name: str, *, external: bool = False
+) -> dict[str, Any]:
     skill_dir = source / name
     skill_md = skill_dir / "SKILL.md"
     openai_yaml = skill_dir / "agents" / "openai.yaml"
@@ -244,12 +277,14 @@ def validate_skill(source: Path, name: str) -> dict[str, Any]:
 
     if not skill_md.is_file():
         errors.append("SKILL.md is missing")
-        frontmatter: dict[str, str] = {}
+        frontmatter: dict[str, Any] = {}
     else:
         frontmatter, frontmatter_errors = parse_frontmatter(skill_md)
         errors.extend(frontmatter_errors)
 
-    unexpected = sorted(set(frontmatter) - {"name", "description"})
+    unexpected = sorted(
+        set(frontmatter) - {"name", "description", "disable-model-invocation"}
+    )
     if unexpected:
         errors.append(f"unexpected frontmatter keys: {', '.join(unexpected)}")
 
@@ -257,9 +292,13 @@ def validate_skill(source: Path, name: str) -> dict[str, Any]:
     if actual_name != name:
         errors.append(f"frontmatter name must be {name!r}, got {actual_name!r}")
     if actual_name and not NAME_RE.match(actual_name):
-        errors.append("frontmatter name must contain only lowercase letters, digits, and hyphens")
+        errors.append(
+            "frontmatter name must contain only lowercase letters, digits, and hyphens"
+        )
     if actual_name.startswith("-") or actual_name.endswith("-") or "--" in actual_name:
-        errors.append("frontmatter name cannot start/end with hyphen or contain consecutive hyphens")
+        errors.append(
+            "frontmatter name cannot start/end with hyphen or contain consecutive hyphens"
+        )
 
     description = frontmatter.get("description", "")
     if not description:
@@ -269,9 +308,9 @@ def validate_skill(source: Path, name: str) -> dict[str, Any]:
     if "<" in description or ">" in description:
         errors.append("frontmatter description cannot contain angle brackets")
 
-    if not openai_yaml.is_file():
+    if not openai_yaml.is_file() and not external:
         errors.append("agents/openai.yaml is missing")
-    else:
+    elif openai_yaml.is_file():
         interface, interface_errors = parse_openai_interface(openai_yaml)
         errors.extend(interface_errors)
         short_description = interface.get("short_description", "")
@@ -280,23 +319,227 @@ def validate_skill(source: Path, name: str) -> dict[str, Any]:
         default_prompt = interface.get("default_prompt", "")
         skill_token = re.compile(rf"\${re.escape(name)}(?![a-z0-9-])")
         if default_prompt and not skill_token.search(default_prompt):
-            errors.append(f"default_prompt must mention ${name} as an exact skill token")
+            errors.append(
+                f"default_prompt must mention ${name} as an exact skill token"
+            )
+        if not external:
+            explicit_only = interface.get("allow_implicit_invocation") == "false"
+            portable_explicit_only = frontmatter.get("disable-model-invocation", False)
+            if explicit_only != portable_explicit_only:
+                errors.append(
+                    "explicit-only invocation must agree between agents/openai.yaml and disable-model-invocation"
+                )
 
     return {"skill": name, "valid": not errors, "errors": errors}
 
 
-def validate_source(source: Path) -> dict[str, Any]:
+def dependency_manifest(source: Path) -> dict[str, Any]:
+    """Custom sources remain offline and independent of this repository."""
+    if source.resolve() != default_source().resolve():
+        return {}
+    path = repo_root() / "agent-dependencies.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if data.get("schema_version") != 1:
+        raise ValueError("unsupported agent dependency manifest schema")
+    return data
+
+
+def external_cache() -> Path:
+    return repo_root() / ".tools" / "external-skills"
+
+
+def external_specs(manifest: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    specs: dict[str, dict[str, Any]] = {}
+    for spec in manifest.get("external_skills", []):
+        name = spec.get("name", "")
+        if (
+            not NAME_RE.fullmatch(name)
+            or name.startswith("-")
+            or name.endswith("-")
+            or "--" in name
+        ):
+            raise ValueError(f"invalid external skill name: {name!r}")
+        if name in specs or name in MANAGED_SKILLS:
+            raise ValueError(f"duplicate skill ownership: {name}")
+        for field in (
+            "url",
+            "sha256",
+            "commit",
+            "license",
+            "license_url",
+            "license_sha256",
+        ):
+            if not isinstance(spec.get(field), str) or not spec[field]:
+                raise ValueError(f"{name}: missing external skill {field}")
+        for field in ("sha256", "license_sha256"):
+            if not re.fullmatch(r"[0-9a-f]{64}", spec[field]):
+                raise ValueError(f"{name}: invalid {field}")
+        if not re.fullmatch(r"[0-9a-f]{40}", spec["commit"]):
+            raise ValueError(f"{name}: source must use a full pinned commit")
+        for field in ("url", "license_url"):
+            parsed = urllib.parse.urlparse(spec[field])
+            if (
+                parsed.scheme != "https"
+                or not parsed.netloc
+                or spec["commit"] not in parsed.path
+            ):
+                raise ValueError(
+                    f"{name}: {field} must use HTTPS and the pinned commit"
+                )
+        specs[name] = spec
+    return specs
+
+
+def pinned_external_errors(path: Path, spec: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    for filename, field in (("SKILL.md", "sha256"), ("LICENSE", "license_sha256")):
+        file = path / filename
+        if not file.is_file():
+            errors.append(f"required external {filename} is missing")
+        elif hashlib.sha256(file.read_bytes()).hexdigest() != spec[field]:
+            errors.append(f"external {filename} checksum does not match pinned source")
+    return errors
+
+
+def download_pinned(url: str, expected_hash: str) -> bytes:
+    with urllib.request.urlopen(url, timeout=30) as response:
+        data = response.read(2_000_001)
+    if len(data) > 2_000_000:
+        raise ValueError("external skill download exceeds 2 MB")
+    if hashlib.sha256(data).hexdigest() != expected_hash:
+        raise ValueError(f"external download checksum mismatch: {url}")
+    return data
+
+
+def prepare_external_skills(manifest: dict[str, Any], destination: Path) -> Path:
+    """Verify every upstream payload before publishing it into the local cache."""
+    specs = external_specs(manifest)
+    payloads: dict[str, tuple[bytes, bytes]] = {}
+    for name, spec in specs.items():
+        cached = external_cache() / name
+        if not pinned_external_errors(cached, spec):
+            payloads[name] = (
+                (cached / "SKILL.md").read_bytes(),
+                (cached / "LICENSE").read_bytes(),
+            )
+        else:
+            payloads[name] = (
+                download_pinned(spec["url"], spec["sha256"]),
+                download_pinned(spec["license_url"], spec["license_sha256"]),
+            )
+    for name, (skill, license_bytes) in payloads.items():
+        spec = specs[name]
+        path = destination / name
+        path.mkdir(parents=True, exist_ok=True)
+        (path / "SKILL.md").write_bytes(skill)
+        (path / "LICENSE").write_bytes(license_bytes)
+        (path / "SOURCE.json").write_text(
+            json.dumps(spec, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+    return destination
+
+
+def markdown_reference_errors(skill_dir: Path, bundle: dict[str, Path]) -> list[str]:
+    errors: list[str] = []
+    link = re.compile(r"\[[^\]]+\]\((?:<([^>]+)>|([^\s)]+))[^)]*\)")
+    for file in sorted(skill_dir.rglob("*.md")):
+        fence: str | None = None
+        for number, line in enumerate(file.read_text(encoding="utf-8").splitlines(), 1):
+            marker = re.match(r"^\s*(`{3,}|~{3,})", line)
+            if marker:
+                if fence is None:
+                    fence = marker.group(1)[0]
+                elif marker.group(1)[0] == fence:
+                    fence = None
+                continue
+            if fence is not None:
+                continue
+            # Inline code can show Markdown syntax without creating a link.
+            prose = re.sub(r"(`+).*?\1", "", line)
+            for match in link.finditer(prose):
+                target = match.group(1) or match.group(2)
+                if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", target) or target.startswith(
+                    ("#", "/", "~")
+                ):
+                    continue
+                target = urllib.parse.unquote(target.split("#", 1)[0].split("?", 1)[0])
+                if not target or re.search(r"[<>{}$]|\.\.\.|(?:^|/)path/to/", target):
+                    continue
+                # Every source root is installed under one shared skills
+                # directory, including external roots cached elsewhere.
+                parent = posixpath.join(
+                    skill_dir.name, file.parent.relative_to(skill_dir).as_posix()
+                )
+                installed_reference = posixpath.normpath(
+                    posixpath.join(parent, target.replace("\\", "/"))
+                )
+                parts = installed_reference.split("/")
+                owner = parts[0]
+                relative = file.relative_to(skill_dir).as_posix()
+                if owner not in bundle:
+                    errors.append(
+                        f"{relative}:{number}: local Markdown reference is outside the installed skill bundle: {target!r}"
+                    )
+                elif not bundle[owner].joinpath(*parts[1:]).exists():
+                    errors.append(
+                        f"{relative}:{number}: missing local Markdown reference {target!r}"
+                    )
+    return errors
+
+
+def validate_source(
+    source: Path,
+    *,
+    manifest: dict[str, Any] | None = None,
+    external_source: Path | None = None,
+) -> dict[str, Any]:
+    manifest = dependency_manifest(source) if manifest is None else manifest
+    specs = external_specs(manifest)
+    external_source = external_cache() if external_source is None else external_source
+    bundle = {name: source / name for name in MANAGED_SKILLS}
+    bundle.update({name: external_source / name for name in specs})
     skills = [validate_skill(source, name) for name in MANAGED_SKILLS]
+    for skill in skills:
+        skill["errors"].extend(
+            markdown_reference_errors(source / skill["skill"], bundle)
+        )
+        skill["valid"] = not skill["errors"]
+    for name, spec in specs.items():
+        skill = validate_skill(external_source, name, external=True)
+        skill["errors"].extend(pinned_external_errors(external_source / name, spec))
+        skill["errors"].extend(
+            markdown_reference_errors(external_source / name, bundle)
+        )
+        skill["valid"] = not skill["errors"]
+        skills.append(skill)
     errors = [
-        f"{skill['skill']}: {error}"
-        for skill in skills
-        for error in skill["errors"]
+        f"{skill['skill']}: {error}" for skill in skills for error in skill["errors"]
     ]
+    available = {skill["skill"] for skill in skills if skill["valid"]}
+    declared = set(MANAGED_SKILLS) | set(specs)
+    for owner, dependencies in manifest.get("skill_dependencies", {}).items():
+        if owner not in declared:
+            errors.append(f"dependency owner is not managed: {owner}")
+        if not isinstance(dependencies, list) or any(
+            not isinstance(name, str) for name in dependencies
+        ):
+            errors.append(f"{owner}: skill dependencies must be a list of names")
+            continue
+        for name in dependencies:
+            if name not in declared:
+                errors.append(
+                    f"{owner}: required skill dependency is not declared: {name}"
+                )
+            elif name not in available:
+                errors.append(
+                    f"{owner}: required skill dependency is missing or invalid: {name}"
+                )
     return {
         "command": "validate",
         "source": display_path(source),
         "valid": not errors,
         "skills": skills,
+        "dependencies": manifest.get("skill_dependencies", {}),
         "errors": errors,
     }
 
@@ -308,6 +551,8 @@ def resolve_targets(args: argparse.Namespace) -> dict[str, Path]:
         if args.codex_dir
         else Path(os.environ["CODEX_SKILLS_DIR"]).expanduser()
         if os.environ.get("CODEX_SKILLS_DIR")
+        else Path(os.environ["CODEX_HOME"]).expanduser() / "skills"
+        if os.environ.get("CODEX_HOME")
         else home / ".codex" / "skills"
         if (home / ".codex" / "skills").exists()
         else home / ".agents" / "skills"
@@ -326,7 +571,19 @@ def resolve_targets(args: argparse.Namespace) -> dict[str, Path]:
         if os.environ.get("PI_SKILLS_DIR")
         else home / ".pi" / "agent" / "skills"
     )
-    return {"codex": codex_dir, "claude": claude_dir, "pi": pi_dir}
+    opencode_dir = (
+        Path(args.opencode_dir).expanduser()
+        if args.opencode_dir
+        else Path(os.environ["OPENCODE_SKILLS_DIR"]).expanduser()
+        if os.environ.get("OPENCODE_SKILLS_DIR")
+        else home / ".config" / "opencode" / "skills"
+    )
+    return {
+        "codex": codex_dir,
+        "claude": claude_dir,
+        "pi": pi_dir,
+        "opencode": opencode_dir,
+    }
 
 
 def selected_targets(targets: dict[str, Path], selected: str) -> dict[str, Path]:
@@ -423,14 +680,18 @@ def rollback_skill(result: dict[str, Any], timestamp: str, target_name: str) -> 
 
     if action == "updated" and backup:
         if destination.exists():
-            errors.append("could not restore backup because the destination still exists")
+            errors.append(
+                "could not restore backup because the destination still exists"
+            )
         elif not backup.exists():
             errors.append(f"backup is missing: {backup}")
         else:
             try:
                 shutil.move(str(backup), str(destination))
                 if digest_path(destination) != result["destination_digest_before"]:
-                    errors.append("restored backup digest does not match the prior installation")
+                    errors.append(
+                        "restored backup digest does not match the prior installation"
+                    )
             except Exception as error:
                 errors.append(f"could not restore backup: {error}")
 
@@ -442,12 +703,13 @@ def archive_legacy_backups(
     target_name: str,
     target_dir: Path,
     dry_run: bool,
+    managed_names: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     if not target_dir.is_dir():
         return []
 
     results: list[dict[str, Any]] = []
-    managed = set(MANAGED_SKILLS)
+    managed = set(MANAGED_SKILLS if managed_names is None else managed_names)
     for candidate in sorted(target_dir.iterdir()):
         if not candidate.is_dir():
             continue
@@ -550,7 +812,9 @@ def install_skill(
         stage_path.rename(destination)
         installed_digest = digest_path(destination)
         if installed_digest != source_digest:
-            raise RuntimeError(f"installed skill digest mismatch for {source_skill.name}")
+            raise RuntimeError(
+                f"installed skill digest mismatch for {source_skill.name}"
+            )
     except Exception as error:
         if previous_moved or promotion_attempted:
             rollback_result = {
@@ -589,7 +853,22 @@ def install_skills(
     source: Path,
     targets: dict[str, Path],
     dry_run: bool,
+    *,
+    manifest: dict[str, Any] | None = None,
+    external_source: Path | None = None,
 ) -> dict[str, Any]:
+    manifest = dependency_manifest(source) if manifest is None else manifest
+    external_source = external_cache() if external_source is None else external_source
+    validation = validate_source(
+        source, manifest=manifest, external_source=external_source
+    )
+    if not validation["valid"]:
+        raise ValueError(
+            "skill validation failed before installation: "
+            + "; ".join(validation["errors"])
+        )
+    sources = {name: source / name for name in MANAGED_SKILLS}
+    sources.update({name: external_source / name for name in external_specs(manifest)})
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     run_id = f"{timestamp}-{os.getpid()}-{time.time_ns()}"
     target_results: dict[str, Any] = {}
@@ -597,11 +876,13 @@ def install_skills(
     completed: list[tuple[str, dict[str, Any]]] = []
     try:
         for target_name, target_dir in targets.items():
-            legacy_backups = archive_legacy_backups(target_name, target_dir, dry_run)
+            legacy_backups = archive_legacy_backups(
+                target_name, target_dir, dry_run, list(sources)
+            )
             skills: list[dict[str, Any]] = []
-            for skill_name in MANAGED_SKILLS:
+            for skill_name, source_skill in sources.items():
                 result = install_skill(
-                    source / skill_name,
+                    source_skill,
                     target_dir / skill_name,
                     target_name,
                     dry_run,
@@ -646,6 +927,7 @@ def list_skills(source: Path, targets: dict[str, Path]) -> dict[str, Any]:
         "command": "list",
         "source": display_path(source),
         "managed_skills": MANAGED_SKILLS,
+        "external_skills": list(external_specs(dependency_manifest(source))),
         "targets": {
             name: {
                 "skills_dir": display_path(path),
@@ -671,6 +953,15 @@ def emit(result: dict[str, Any], output: str) -> None:
         print("Skills:")
         for skill in result["managed_skills"]:
             print(f"  {skill}")
+        for skill in result["external_skills"]:
+            print(f"  {skill} (pinned external dependency)")
+        return
+
+    if command == "fetch":
+        prefix = "Dry run: " if result["dry_run"] else ""
+        print(
+            f"{prefix}verified pinned external skill payloads: {', '.join(result['skills'])}"
+        )
         return
 
     if command == "validate":
@@ -706,12 +997,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
             "installation. Exit code 0 means success. Exit code 1 means failure."
         ),
     )
-    parser.add_argument("--command", choices=["list", "validate", "install"], default="install")
-    parser.add_argument("--target", choices=["all", "codex", "claude", "pi"], default="all")
+    parser.add_argument(
+        "--command", choices=["list", "fetch", "validate", "install"], default="install"
+    )
+    parser.add_argument(
+        "--target", choices=["all", "codex", "claude", "pi", "opencode"], default="all"
+    )
     parser.add_argument("--source", default=str(default_source()))
     parser.add_argument("--codex-dir")
     parser.add_argument("--claude-dir")
     parser.add_argument("--pi-dir")
+    parser.add_argument("--opencode-dir")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--output", choices=["text", "json"], default="text")
     return parser.parse_args(argv)
@@ -727,7 +1023,54 @@ def main(argv: list[str]) -> int:
             emit(list_skills(source, targets), args.output)
             return 0
 
-        validation = validate_source(source)
+        manifest = dependency_manifest(source)
+        if args.command in {"fetch", "install"} and manifest.get("external_skills"):
+            if args.dry_run:
+                with tempfile.TemporaryDirectory(
+                    prefix="llms-external-skills-"
+                ) as workspace:
+                    external_source = prepare_external_skills(manifest, Path(workspace))
+                    validation = validate_source(
+                        source, manifest=manifest, external_source=external_source
+                    )
+                    if not validation["valid"]:
+                        emit(validation, args.output)
+                        return 1
+                    if args.command == "fetch":
+                        emit(
+                            {
+                                "command": "fetch",
+                                "dry_run": True,
+                                "skills": list(external_specs(manifest)),
+                            },
+                            args.output,
+                        )
+                    else:
+                        result = install_skills(
+                            source,
+                            targets,
+                            True,
+                            manifest=manifest,
+                            external_source=external_source,
+                        )
+                        emit(result, args.output)
+                    return 0
+            prepare_external_skills(manifest, external_cache())
+
+        validation = validate_source(source, manifest=manifest)
+        if args.command == "fetch":
+            if not validation["valid"]:
+                emit(validation, args.output)
+                return 1
+            emit(
+                {
+                    "command": "fetch",
+                    "dry_run": args.dry_run,
+                    "skills": list(external_specs(manifest)),
+                },
+                args.output,
+            )
+            return 0
         if args.command == "validate":
             emit(validation, args.output)
             return 0 if validation["valid"] else 1

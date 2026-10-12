@@ -1,50 +1,57 @@
 ---
 name: frontend-design-review
-description: "Review rendered UI for usability, accessibility, responsiveness, and design fidelity. Use for UI critique or visual QA, not source-code formatting."
+description: "Review rendered component-based UI for usability, accessibility, resizing, and design fidelity in web or native apps. Use for UI critique or visual QA, not source-code formatting."
 ---
 
 # Frontend Design Review
 
-Use this skill to evaluate existing frontend work. Focus on what users see and do, then connect findings to code or design-system evidence.
+Review what users see and do, then connect findings to component/layout code
+and project standards. Discover the framework's actual behavior in source and
+docs; do not assume a particular toolkit or browser-only implementation.
 
 ## Workflow
 
-1. Identify the review target: PR, branch diff, route, component, screenshot, Figma link, deployed URL, or local app.
-2. Read local design and product guidance first: `AGENTS.md`, design-system docs, Storybook, token files, accessibility rules, existing screens, and Figma references if provided.
-3. Inspect the implementation in context. Prefer rendered browser review and screenshots over source-only judgment when a runnable app is available.
-4. Review the core user task: entry point, information hierarchy, primary action, feedback, exit/cancel path, and error recovery.
-5. Check design-system compliance: components, variants, tokens, spacing, typography, colors, theming, and documented exceptions.
-6. Check craft: responsive layout, state coverage, copy, motion, density, contrast, keyboard navigation, focus, and visible affordances.
-7. Compare against Figma or screenshots when available. Note exact mismatches and whether they are acceptable design-system substitutions.
-8. Report findings first, ordered by user impact.
+1. Establish the target: diff, route, screen/component, screenshot, design
+   reference, deployed app, or local host.
+2. Read relevant agent, product, design, token, component, and accessibility
+   guidance. Inspect the implementation with connected layout and state owners.
+3. Prefer rendered review through the available browser or native host.
+   A screenshot proves only the shown state; source-only inspection cannot
+   establish usable rendering, focus order, or runtime interactions.
+4. Exercise the main task, feedback, cancellation, and failure recovery.
+   Compare supplied design references and existing component conventions.
+5. Check relevant viewport/window sizes, long content, empty/dense data, text
+   scale, input modes, and state transitions.
+6. Report evidenced findings in user-impact order.
 
-## Review Criteria
+## Review criteria
 
-Evaluate:
+- Main task/action hierarchy, direct copy, and useful loading/error/empty states.
+- Existing components, variants, tokens, typography, spacing, and themes used
+  consistently; approved designs preserved or deviations explained.
+- Parent/child layout ownership and reusable component boundaries remain clear.
+- Flex direction, gap, wrapping, grow/shrink, basis, min/max sizes, alignment,
+  and justification produce the intended hierarchy.
+- Text and flexible panels can shrink appropriately; fixed constraints do not
+  clip content or hide actions. Scroll/overflow has one clear owner and bounds.
+- Resizing, long/localized labels, content scaling, and dynamic data avoid
+  overlap, clipping, jitter, awkward wrapping, and inaccessible controls.
+- Platform input conventions, keyboard operation, focus, labels, contrast,
+  semantics, target sizes, and reduced motion are usable where supported.
 
-- Frictionless use: the main task is obvious, efficient, and not split across unnecessary steps.
-- Visual hierarchy: headings, grouping, spacing, density, and action prominence guide the eye.
-- Design system fit: existing components and tokens are used consistently.
-- Fidelity: implementation matches approved Figma specs or has documented deviations.
-- Accessibility: keyboard operation, focus visibility, labels, contrast, reduced motion, target size, zoom, and screen-reader semantics.
-- Responsiveness: mobile, tablet, desktop, long text, empty data, and high-density data remain usable.
-- Trust: loading, empty, error, destructive, confirmation, and AI-generated-content states are clear and actionable.
-- Polish: no overlaps, clipping, jitter, broken alignment, awkward wrapping, or generic visual filler.
+Validate flex properties against the actual layout engine. Browser defaults
+and CSS spellings are not evidence for native component behavior.
 
-## Routing Boundaries
+## Routing and report
 
-- Use `frontend-design` when creating or redesigning UI.
-- Use `figma-implement-design` when implementing from a Figma source.
-- Use `visual-code-audit` when reviewing source-code presentation rather than rendered UI.
+Use `frontend-design` for new/redesigned UI, `figma-implement-design` for
+implementation from Figma, and `visual-code-audit` for source presentation.
 
-## Output Contract
+Report each finding with screen/component, inspected evidence, user impact, and
+concrete correction. Use P1 for blocked tasks or critical accessibility/design
+contracts, P2 for significant usability/layout defects, and P3 for smaller
+evidenced inconsistencies. Include routes, source, and screenshots when useful.
 
-Lead with findings ordered by severity:
-
-- `P1`: Blocks task completion, breaks accessibility, violates a critical design-system contract, or creates serious user confusion.
-- `P2`: Significant UX, responsive, fidelity, or polish issue that should be fixed before shipping.
-- `P3`: Smaller visual, copy, state, or consistency improvement.
-
-Each finding must include the affected screen/component, evidence inspected, why it matters to the user, and a concrete fix direction. Include screenshots, routes, or file references when available.
-
-If no meaningful issues are found, say so clearly and state what was inspected, which viewports or states were checked, and what remains unverified.
+If no issue is found, state exactly which sizes, states, and interactions were
+checked and what remains unverified. When delegated by `audit-codebase`, return
+read-only findings/evidence; the parent owns the aggregate verdict and fixes.

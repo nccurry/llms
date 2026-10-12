@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repo Navigation"
+  short_description: "Find behavior with focused source and symbol queries"
+  default_prompt: "Use $repo-navigation to locate and trace the behavior needed for this change."

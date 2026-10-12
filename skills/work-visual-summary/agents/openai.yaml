@@ -1,4 +1,4 @@
 interface:
   display_name: "Work Visual Summary"
-  short_description: "Show work with concrete visual examples"
-  default_prompt: "Use $work-visual-summary to show the current work with concrete examples of what is done, planned, and remaining."
+  short_description: "Explain the subject or work with concrete examples"
+  default_prompt: "Use $work-visual-summary to explain this subject or work with representative code, command, config, API, or UI examples."

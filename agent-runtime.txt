@@ -1,0 +1,2 @@
+# Python libraries for the setup commands; uv owns this environment.
+tomlkit==0.15.1
