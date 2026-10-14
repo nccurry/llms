@@ -63,6 +63,9 @@ evidence.
 5. Plan delivery and review.
    - Divide the work into useful phases with dependencies, validation, and
      exit criteria.
+   - For behavior that varies by platform/backend, map affected variants to
+     proving checks and acceptance owners. Record deferrals and the prerequisite
+     that revisits them; one passing variant does not verify the others.
    - When audit gates apply, record strict acceptance in the generated plan:
      fix every supported actionable finding in scope, including P3. Use
      focused read-only specialist reviewers against the same stabilized

@@ -16,7 +16,12 @@ enough surrounding code to judge it. Review subsequent repairs too. Check:
 
 Reproduce checks needed for correctness against the delivered commit in its
 worktree. Coordinate expensive builds so reviewers do not compete for them.
-Run required combined checks after integration.
+Verify the combined source before its final-target merge; afterward confirm the
+delivered tree and run required post-merge checks. Reuse valid evidence when the
+source and relevant dependencies are unchanged.
+
+Use [integration safety](integration-safety.md) when target updates, platform
+differences, or existing failures affect that evidence.
 
 Keep rejected work out of the target until repaired, strictly audited, and
 reviewed. Give concrete feedback with source, behavior, missing acceptance, or

@@ -29,6 +29,10 @@ Check whether tests:
 - Exercise the changed success path and important failure, boundary, and invalid-input paths.
 - Prove user-visible behavior, API contracts, persistence, events, rendered output, or other intended effects.
 - Cover changed files, databases, network calls, queues, commands, UI flows, and external boundaries.
+- When correctness depends on host scheduling, input order, layout preparation,
+  or resource lifetime, use a check that preserves that boundary through an
+  affected consumer. Choose the lowest-cost proving level; contract-neutral
+  edits do not automatically need new end-to-end coverage.
 - Add regression coverage for corrected defects.
 - Use assertions that fail when the changed behavior breaks.
 - Avoid treating a mock call, non-null object, or lack of an exception as proof of a richer contract.

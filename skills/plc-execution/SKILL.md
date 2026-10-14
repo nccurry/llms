@@ -55,6 +55,10 @@ Prefer a separate non-default integration branch/worktree for isolation. Use
 `main`, another default branch, or the source checkout only when the user chose
 it as the clean target. Do not alter or stash a dirty user checkout.
 
+Before final-target integration, use the applicable parts of
+[integration safety](references/integration-safety.md) for concurrent updates,
+combined-source verification, platform evidence, or existing failures.
+
 Locate `audit-codebase` and its required specialists before dispatch. For MR
 work, verify authenticated host tools can read reviews and CI. Missing required
 tools leave the dependent step incomplete; continue independent work.
@@ -106,6 +110,9 @@ The assigned writer makes repairs after reviewers finish. Refresh invalidated
 reviews/checks against stabilized changes; preserve unaffected evidence.
 Only `PASS` permits integration. `REWORK REQUIRED`, `INCOMPLETE`, or recorded
 in-scope follow-ups do not satisfy strict acceptance.
+A user's explicit bounded integration exception can permit only its named
+merge under [integration safety](references/integration-safety.md); retain the
+actual failed/incomplete verdict and unresolved acceptance.
 
 Read `git status --short` in the exact worktree at each handoff/integration.
 Source review, passing CI, and a child's report are distinct evidence; none
@@ -116,9 +123,13 @@ replaces parent inspection of the delivered diff and relevant surrounding code.
 Read [the parent review requirements](references/parent-review.md) before the
 first delivery. Verify checks against the actual child commit in its checkout
 before integration; tests on the old integration tree do not prove that change.
-Integrate one child at a time and run affected integration checks.
+Verify the child combined with the current target before its final-target merge.
+Reuse a checked child/integration tree when it already represents that source;
+prepare an isolated combined candidate when needed. Integrate one child at a
+time; afterward verify the delivered tree and required post-merge checks.
 
-After a work item or dependency group:
+Before accepting a work item or dependency group into its final target, using
+the prepared combined source:
 
 1. Run its required checks against the combined integration tree.
 2. Run the combined strict audit. For UI changes inspect the rendered behavior
@@ -178,4 +189,5 @@ Report selected work and prerequisites, integration route, child branches and
 commits, actual models when prescribed, MR/PRs, audit and check evidence, and
 completion-map states. Preserve every open requirement, decision, and missing
 check. Final target integration requires existing user authorization and all
-required reviews, tests, audits, and CI.
+required reviews, tests, audits, and CI, except as explicitly authorized by a
+bounded exception recorded under [integration safety](references/integration-safety.md).

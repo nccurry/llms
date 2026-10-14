@@ -14,6 +14,10 @@ child report, or old test run does not prove that the current code passes.
   material result. Keep the revision or other scope of the evidence clear.
 - Separate what you observed from what you infer. State an inference as an
   inference when direct proof is unavailable.
+- For material validation claims, identify the tested source and relevant
+  dependencies, platform/backend, and configuration. Check fresh outputs and
+  required execution; filters or nested runners may need case identities/counts,
+  skips, and child results checked beyond an outer exit code or passing total.
 - If a needed fact remains unknown, say exactly what is unknown and what check
   would settle it. Keep dependent work or acceptance open; continue safe work
   that does not depend on that fact.
