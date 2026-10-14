@@ -46,6 +46,11 @@ Flag tests that:
 - Assert constants, construction, snapshots, or non-null values without proving behavior.
 - Depend on sleeps, wall-clock time, random order, live networks, shared state, or execution order.
 - Click through an end-to-end flow without proving the critical result.
+- Report success when a filter selects no required cases, outputs are stale,
+  child failures are hidden, or a selected case was skipped or replaced.
+- Let the validation harness pass after suppressing the effect it claims to
+  prove. For new harnesses and repaired regressions, try a focused known-fault
+  control when practical; do not infer sensitivity from a green run alone.
 - Duplicate lower-level tests without adding confidence.
 - Lock in incidental implementation details.
 

@@ -62,9 +62,12 @@ review or validation is `INCOMPLETE`.
 
 The assigned writer fixes every supported actionable in-scope finding, including
 P3; reviewers do not edit. Require `PASS` before MR/PR creation or integration.
+Apply an explicit user-approved integration exception only within the limits
+recorded by the base skill; it does not turn a failed/incomplete gate into PASS.
 Outside-scope findings and material unresolved decisions go through the parent.
 Reject incorrect findings with evidence. Keep the base skill's independent
-parent diff review and combined audit after integration.
+parent diff review and combined audit on the prepared candidate before its
+final-target merge, followed by required post-merge checks.
 
 ## Finish
 

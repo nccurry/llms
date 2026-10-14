@@ -101,6 +101,8 @@ requirement is acceptance evidence, not an audit discovery.
   review. A standalone Ponytail verdict does not establish this aggregate gate.
 - Keep existing debt outside the selected change as a separate follow-up unless
   the change adds/worsens it or it makes the selected behavior unsafe.
+  When required acceptance relies on a delegated repair, record its owner and
+  tracking reference; do not claim a handoff without acknowledgement.
 
 ## Strict fixes and bounded verification
 
@@ -145,6 +147,9 @@ Choose one overall verdict:
 - `INCOMPLETE`: a required review, check, or acceptance step is unavailable or pending.
 
 Missing required evidence prevents `PASS` even when inspection found no defect.
+A user's bounded integration exception changes the permitted action, not the
+observed failed/incomplete check. State both separately and retain the exact
+scope; do not use the exception as proof that the originating behavior is correct.
 List fixed/open findings, outside-scope follow-ups, blind spots, checks run, and
 reviews refreshed with reasons. Include cleanup outcomes when applicable. Keep
 one concise report rather than concatenating each reviewer's output.

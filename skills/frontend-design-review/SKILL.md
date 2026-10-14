@@ -42,6 +42,13 @@ docs; do not assume a particular toolkit or browser-only implementation.
 Validate flex properties against the actual layout engine. Browser defaults
 and CSS spellings are not evidence for native component behavior.
 
+For visual regressions, use the capture catalog's reference paths and check
+which platform/backend and state each image proves. Compare their update history
+when a new default differs from old references. Review intended changes against
+the authorized design before regeneration; cross-platform similarity or matching
+before/after images alone does not establish acceptance. Keep unverified affected
+variants explicit rather than treating a reference refresh on one as universal.
+
 ## Routing and report
 
 Use `frontend-design` for new/redesigned UI, `figma-implement-design` for
