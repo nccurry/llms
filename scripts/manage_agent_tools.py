@@ -926,6 +926,7 @@ def gitnexus_hook_launch(host: str) -> dict[str, Any]:
         (ROOT / "scripts/run_gitnexus_hook.mjs").as_posix(),
         (TOOLS / "gitnexus-indexes").as_posix(),
         hook.as_posix(),
+        Path(tool_command("gitnexus")[1]).as_posix(),
     ]
     if host == "claude":
         return {"command": arguments[0], "args": arguments[1:]}
