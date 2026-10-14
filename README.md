@@ -114,6 +114,7 @@ A custom `CODEX_HOME` is rejected before setup; skills-only installation still s
 Configuration selects local transports for managed MCP entries and backs up their previous settings.
 Unrelated servers and preferences are preserved. GitNexus's native installer owns bundled skills and
 hook bodies; local launchers select pinned Node and separate storage for each project or worktree.
+Stale-index reminders invoke that pinned CLI explicitly instead of fetching `gitnexus@latest`.
 Doctor checks those launchers separately from live hook execution and client trust.
 OpenCode setup preserves existing `opencode.jsonc` or legacy `config.json` files. JSONC
 comments are retained by the locked upstream parser; before tool installation, its dry run
@@ -189,7 +190,9 @@ task check
 task ci
 ```
 
-`task test` runs piw's application tests without live Docker Sandboxes.
+`task test` runs piw's application tests without live Docker Sandboxes and checks the agent
+launchers. Run only the launcher checks with `task test:agent-launchers`.
+When the pinned GitNexus is installed, these checks also exercise its real hook.
 `task check` adds formatting, lint, typing, coverage, and actual skill validation.
 `task ci` also builds piw and smoke-tests the installed wheel. Project-specific commands remain
 available under `piw:` and `skills:`.

@@ -126,15 +126,21 @@ tasks:
       - '{{.PYTHON}} scripts/install_skills.py --target {{.TARGET}} --dry-run --output {{.OUTPUT}}'
 
   test:
-    desc: Run the piw application tests without live Docker Sandboxes.
+    desc: Run application and agent launcher tests without live Docker Sandboxes.
     cmds:
       - task: piw:test
+      - task: test:agent-launchers
+
+  test:agent-launchers:
+    desc: Check pinned GitNexus launchers and emitted refresh commands.
+    cmd: '{{.MISE}} exec -- node --test tests/gitnexus-launchers.test.mjs'
 
   check:
     desc: Run the full nonmutating local quality gate.
     cmds:
       - task: piw:check
       - task: skills:check
+      - task: test:agent-launchers
 
   build:
     desc: Build all distributable repository artifacts.
@@ -146,6 +152,7 @@ tasks:
     cmds:
       - task: piw:ci
       - task: skills:check
+      - task: test:agent-launchers
 
   skills:list:
     desc: List managed skills, dependencies, and resolved install targets.
