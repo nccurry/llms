@@ -73,5 +73,5 @@ final-target merge, followed by required post-merge checks.
 
 Include the base's completion evidence, actual child models/effort, parent
 review outcome, and remaining requirements, decisions, or missing checks.
-Suggest removal only of each delivered child's unused worktree under the
-base's preservation and authorization rules.
+The parent performs the base skill's cleanup throughout execution and reports
+verified removals and every retained checkout with its reason and owner.

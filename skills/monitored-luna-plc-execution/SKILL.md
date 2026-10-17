@@ -97,5 +97,6 @@ permission question. Keep all strict gates; do not add another automatic tier.
 
 Include the base's completion evidence, actual models/effort, any escalation
 and its evidence, parent review after repair, and unresolved work/decisions.
-Suggest removal only of each delivered child's unused worktree under the
-base's preservation and authorization rules.
+The parent performs the base skill's cleanup throughout execution, including
+replaced Luna checkouts, and reports verified removals and every retained
+checkout with its reason and owner.

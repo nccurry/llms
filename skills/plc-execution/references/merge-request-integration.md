@@ -27,3 +27,11 @@ review comment. A route authorizing review does not alone authorize final merge.
 
 When the host is Codex desktop, attach every created PR to the current task
 using attach_artifact. Use the equivalent host capability when available.
+
+After an authorized merge, inspect the host's actual merged state, source and
+integration commits, and target before running the base cleanup procedure.
+An open or closed-but-unmerged review does not prove delivery. Account for local
+commits beyond its merged source, including after squash or rebase integration.
+If the review will merge later, record cleanup as pending with the exact PR/MR
+and final target. Recheck when execution resumes; arrange a later monitor only
+when requested. Keep pending cleanup visible in the final report.

@@ -45,6 +45,8 @@ uninspected shell command.
 Choose and record the integration route, target branch, worktree, and base
 before dispatch. Follow the user's choice, then established repository/session
 conventions. Ask if a material integration choice remains unresolved.
+Distinguish temporary integration from the final delivery branch and record
+whether final delivery is local or remote before selecting its cleanup proof ref.
 
 - Direct integration: the parent merges child branches into the chosen target.
 - MR/PR integration: branches receive host review and CI. Read
@@ -146,10 +148,31 @@ aggregate verification, refreshing affected evidence. If work remains, report
 the exact repair, missing proof, or material decision rather than repeating an
 unchanged full audit or declaring completion.
 
-After confirming delivery and checks, suggest removing only that child's
-worktree when no process needs it. Check the exact path and preserve needed
-modified, untracked, or ignored files first. Never force removal, remove another
-worktree, or delete branches without cleanup authorization.
+## Cleanup during execution
+
+The parent owns cleanup, including after a child exits or is replaced. Invoking
+this workflow authorizes removal of temporary local branches and worktrees it
+creates once delivery and removal checks pass, unless the user asks to keep them.
+Apply existing authorization without another cleanup question. This permission
+does not extend to unrelated checkouts, remote branches, or final integration.
+
+Before creating worktrees, read [the cleanup procedure](references/worktree-cleanup.md)
+and locate [clean-stale-worktrees](../clean-stale-worktrees/SKILL.md). Track every
+temporary child, integration, and combined-verification checkout in the existing
+work list, with its owner, absolute path, branch/commit, final delivery target,
+and cleanup state. Preserve these facts across handoffs and compaction.
+
+After each verified delivery and its required checks, the parent investigates
+whether the exact source reached main or the user's selected final target.
+A merge into a temporary integration branch alone is insufficient. Follow the
+cleanup skill's full proof sequence, including squash, historical-content, and
+cherry-pick checks; lack of ancestry alone is not proof of missing delivery.
+Then remove eligible worktrees and local branches after all users and processes
+have released them. Children report release; the parent performs cleanup.
+
+Revisit retained work at phase close and before finishing. Each tracked checkout
+must be removed with verification or retained with a specific reason and next
+condition to check. Never force worktree removal or discard needed files.
 
 ## Resolve decisions without needless interruptions
 
@@ -191,3 +214,6 @@ completion-map states. Preserve every open requirement, decision, and missing
 check. Final target integration requires existing user authorization and all
 required reviews, tests, audits, and CI, except as explicitly authorized by a
 bounded exception recorded under [integration safety](references/integration-safety.md).
+Include cleanup proof, verified directory/registration and branch removal, and
+every retained checkout with its owner and reason. Cleanup still pending must
+remain visible even when implementation is complete.

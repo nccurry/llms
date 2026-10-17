@@ -67,6 +67,9 @@
     }
   ],
   "skill_dependencies": {
+    "plc-execution": [
+      "clean-stale-worktrees"
+    ],
     "audit-codebase": [
       "ponytail-review",
       "ponytail-audit",

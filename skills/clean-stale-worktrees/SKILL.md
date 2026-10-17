@@ -10,7 +10,9 @@ A request to edit this skill does not authorize repository cleanup.
 
 ## Rules that govern deletion
 
-- Start cleanup only when the user requests it. A preview or report stops before deletion.
+- Start cleanup when the user requests it or an explicitly invoked execution
+  workflow authorizes cleanup of its own temporary local work. Honor user keep
+  instructions. A preview, report, or skill edit stops before deletion.
 - Preserve primary and current worktrees, current and protected branches, dirty,
   locked, detached, bare, and open-MR/PR worktrees. Preserve branches on a keep list.
 - An unreadable status or unavailable open-review lookup blocks deletion. Unknown
@@ -21,6 +23,9 @@ A request to edit this skill does not authorize repository cleanup.
   verified merged-source checks automatically. Continue until every branch
   change is accounted for or a concrete unmatched change is identified. Similar
   names, partial matches, and patch IDs alone are insufficient evidence for deletion.
+- Investigate actual delivery; do not stop at failed ancestry or label a squash
+  merge unmerged because commit IDs differ. Account for the exact current tip,
+  including changes made after the reviewed or merged source.
 - If required history, objects, permissions, or review access are unavailable,
   keep the work and state the missing evidence. Report **delivery not yet proven**,
   not “unmerged.” Failure to prove delivery does not prove it never happened.
@@ -40,6 +45,19 @@ Use `--main <branch>` and `--remote <remote>` when needed to select the intended
 main ref. Inspect `baseRef` before accepting candidates. Use repeatable
 `--keep <branch>` arguments for work the user wants preserved. The script fetches
 only when `--fetch` is supplied; it never pulls or switches branches.
+
+For execution cleanup, use repeatable `--branch <name>` and/or
+`--worktree <absolute-path>` arguments to select only the workflow's candidates.
+They form a union; selecting a worktree also checks its branch. Unselected work
+does not become a cleanup candidate and its delivery is not scanned. `--keep`
+protects deletion but does not narrow scanning. Unknown selections stop preflight.
+
+Main remains the default delivery destination. When the user explicitly chose a
+different final destination, use `--target-ref refs/heads/<branch>` for a local
+target or `--target-ref refs/remotes/<remote>/<branch>` with matching `--remote`
+for a remote target. This is an alternative to `--main`; inspect `baseRef` and
+`mainHash`, which describe the selected target. A temporary staging merge alone
+does not prove delivery to main. Keep the final destination explicit in the report.
 
 The script records branch and main hashes, review lookup results, delivery checks,
 worktree protections, and removal readiness. It checks delivery in this order:
@@ -69,6 +87,8 @@ Only entries in `cleanupCandidates` have passed both applicable sets of checks.
 
 Before removing any candidate:
 
+- Confirm all agents and processes have released it and preserve needed modified,
+  untracked, or ignored files. A clean Git status does not account for ignored files.
 - Inspect `removalReadiness`: it includes ignored directories, directory access
   checks, ownership, and blocking paths. Read-only ignored Bazel/build caches must
   be identified before removal begins. Read-only files alone do not prevent unlinking.
