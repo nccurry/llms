@@ -14,6 +14,8 @@ Every assignment includes:
 - Absolute paths to plain-english, design-for-change, and verify-before-claiming,
   with instructions to read/apply all three before work.
 - Any prescribed model/effort and the parent's decision/escalation rules.
+- The final cleanup target and the parent's cleanup ownership. Identify any
+  files or running processes that must survive handoff.
 
 Tell the child to read local instructions, source, PLC, goals, and prerequisites
 before editing and report which skill paths it loaded. It must use only its own
@@ -37,6 +39,8 @@ results, audit scope/verdict/evidence, findings fixed, and open decisions.
 Only PASS satisfies strict audit acceptance.
 
 A child may commit its branch but cannot merge/rebase shared branches. Push
-or open an MR only as authorized by the assigned integration route. Remove
-its own worktree only after parent confirmation of delivery, verification,
-and preservation of needed files; never force cleanup.
+or open an MR only as authorized by the assigned integration route. Before
+release, report its final commit, needed modified/untracked/ignored files, and
+running processes. Stop its own processes and release the checkout when the
+parent confirms they are no longer needed. The parent verifies delivery and
+removes the worktree and branch; the child does not delete its own checkout.

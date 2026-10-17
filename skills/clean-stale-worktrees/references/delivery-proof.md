@@ -13,6 +13,19 @@ remotes and no origin, select `--remote`. With a nonstandard default, inspect th
 selected ref and supply `--main` if needed. Do not silently fall back to local
 main when the selected remote main is missing.
 
+For an execution workflow's explicitly chosen final destination, `--target-ref`
+selects the exact full local or remote-tracking branch ref without remote-first
+substitution. A remote ref must use the selected `--remote`. A local ref proves
+local delivery only. The report retains the field names `baseRef` and `mainHash`
+for compatibility; both identify this selected target. Do not switch from final
+main to temporary integration merely because that branch contains the source.
+
+Repeatable `--branch` and `--worktree` options narrow which branches receive
+delivery checks and which worktrees may be candidates. Their selections form a
+union. All registrations are still read so a branch used elsewhere cannot be
+offered for deletion after removing only one selected checkout. Protections and
+the complete proof sequence apply unchanged. A keep list is not a scan selector.
+
 Each branch result records `branchHash`, `mainHash`, `forkPoint`, and `attempts`.
 A changed branch or main hash invalidates that report for deletion. Missing or
 shallow history may prevent proof; fetch the needed history within the authorized

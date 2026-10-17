@@ -20,6 +20,10 @@ Verify the combined source before its final-target merge; afterward confirm the
 delivered tree and run required post-merge checks. Reuse valid evidence when the
 source and relevant dependencies are unchanged.
 
+After verified delivery and required checks, perform the base skill's cleanup
+procedure for released temporary checkouts. The parent retains this duty when
+the implementation child has exited; a delivery report does not prove cleanup.
+
 Use [integration safety](integration-safety.md) when target updates, platform
 differences, or existing failures affect that evidence.
 

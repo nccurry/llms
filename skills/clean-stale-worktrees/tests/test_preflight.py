@@ -1,9 +1,9 @@
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 SCRIPTS = Path(__file__).resolve().parents[1] / 'scripts'
@@ -368,7 +368,7 @@ class RepositoryTests(unittest.TestCase):
         self.assertIsNone(entry['isDirty'])
 
     def test_unknown_open_review_status_blocks_proven_delivery(self):
-        worktree = self.worktree()
+        self.worktree()
         reviews = {'complete': False, 'open': [], 'merged': [], 'errors': ['unavailable']}
         with patch('stale_worktree_preflight.discover_reviews', return_value=reviews):
             report = build_report(self.root)
@@ -403,12 +403,12 @@ class RepositoryTests(unittest.TestCase):
     def test_cli_reports_candidates_and_failed_removal_verification(self):
         worktree = self.worktree()
         command = [sys.executable, str(SCRIPTS / 'stale_worktree_preflight.py'), '--path', self.root]
-        result = subprocess.run(command, text=True, capture_output=True)
+        result = subprocess.run(command, text=True, capture_output=True, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
         import json
         report = json.loads(result.stdout)
         self.assertEqual(report['cleanupCandidates']['deleteBranchesAfterWorktreeRemoval'], ['feature'])
-        check = subprocess.run(command + ['--verify-removed', worktree], text=True, capture_output=True)
+        check = subprocess.run(command + ['--verify-removed', worktree], text=True, capture_output=True, check=False)
         self.assertEqual(check.returncode, 2)
         self.assertFalse(json.loads(check.stdout)['removed'])
 
@@ -429,6 +429,95 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(report['mainHash'], squash)
         branch = next(b for b in report['branches'] if b['name'] == 'feature')
         self.assertTrue(branch['mergeCheck']['confirmed'])
+
+    def test_selected_branch_limits_delivery_checks_and_worktrees(self):
+        worktree = self.worktree()
+        unrelated = str(Path(self.directory.name) / 'unrelated')
+        self.g('worktree', 'add', '-b', 'unrelated', unrelated, 'main')
+        checked = []
+        original_check = DeliveryChecks.check
+
+        def record_check(checks, branch):
+            checked.append(branch)
+            return original_check(checks, branch)
+
+        with patch.object(DeliveryChecks, 'check', record_check):
+            report = build_report(self.root, selected_branches=['feature'])
+        self.assertEqual(checked, ['feature'])
+        self.assertEqual([b['name'] for b in report['branches']], ['feature'])
+        self.assertEqual([w['path'] for w in report['worktrees']], [worktree])
+        self.assertEqual(report['cleanupCandidates']['deleteBranchesAfterWorktreeRemoval'], ['feature'])
+        self.assertTrue(Path(unrelated).is_dir())
+
+    def test_selected_worktree_does_not_offer_branch_checked_out_elsewhere(self):
+        worktree = self.worktree('linked with spaces')
+        other = str(Path(self.directory.name) / 'other')
+        self.g('worktree', 'add', '--force', other, 'feature')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        self.assertEqual([w['path'] for w in report['worktrees']], [worktree])
+        self.assertEqual([b['name'] for b in report['branches']], ['feature'])
+        self.assertEqual(len(report['cleanupCandidates']['removeWorktrees']), 1)
+        self.assertFalse(report['cleanupCandidates']['deleteBranchesNow'])
+        self.assertFalse(report['cleanupCandidates']['deleteBranchesAfterWorktreeRemoval'])
+        self.assertTrue(Path(other).is_dir())
+
+    def test_unknown_selection_stops_before_delivery_checks(self):
+        self.worktree()
+        with patch.object(DeliveryChecks, 'check') as check:
+            with self.assertRaisesRegex(RuntimeError, 'selected branch does not exist'):
+                build_report(self.root, selected_branches=['missing'])
+            with self.assertRaisesRegex(RuntimeError, 'selected worktree is not registered'):
+                build_report(self.root, selected_worktrees=[str(Path(self.directory.name) / 'missing')])
+            check.assert_not_called()
+
+    def test_local_target_ref_works_without_a_remote_counterpart(self):
+        self.worktree()
+        self.g('branch', 'integration', 'main')
+        self.g('remote', 'add', 'origin', self.root)
+        self.g('update-ref', 'refs/remotes/origin/main', self.fork)
+        reviews = {'complete': True, 'open': [], 'merged': [], 'errors': []}
+        with patch('stale_worktree_preflight.discover_reviews', return_value=reviews):
+            default = build_report(self.root, selected_branches=['feature'])
+            report = build_report(self.root, target_ref='refs/heads/integration',
+                                  selected_branches=['feature'])
+        self.assertFalse(default['branches'][0]['mergeCheck']['confirmed'])
+        self.assertEqual(report['baseRef'], 'refs/heads/integration')
+        self.assertEqual(report['mainHash'], self.g('rev-parse', 'integration'))
+        self.assertTrue(report['branches'][0]['mergeCheck']['confirmed'])
+
+    def test_temporary_integration_does_not_prove_delivery_to_main(self):
+        self.branch()
+        self.write('extra', 'delivered to integration only\n')
+        self.commit('source')
+        self.g('checkout', '-b', 'integration', 'main')
+        self.g('merge', '--squash', 'feature')
+        self.commit('integration squash')
+        self.g('checkout', 'main')
+        default = build_report(self.root, selected_branches=['feature'])
+        self.assertFalse(default['branches'][0]['mergeCheck']['confirmed'])
+        explicit = build_report(self.root, target_ref='refs/heads/integration',
+                                selected_branches=['feature'])
+        self.assertTrue(explicit['branches'][0]['mergeCheck']['confirmed'])
+
+    def test_invalid_or_conflicting_target_ref_is_rejected(self):
+        for target in ('main', 'HEAD', 'refs/tags/main', 'refs/heads/missing'):
+            with self.subTest(target=target), self.assertRaises(RuntimeError):
+                build_report(self.root, target_ref=target)
+        with self.assertRaisesRegex(RuntimeError, 'choose either'):
+            build_report(self.root, requested_main='main', target_ref='refs/heads/main')
+
+    def test_cli_accepts_exact_selection_and_target_ref(self):
+        worktree = self.worktree()
+        command = [sys.executable, str(SCRIPTS / 'stale_worktree_preflight.py'),
+                   '--path', self.root, '--target-ref', 'refs/heads/main',
+                   '--branch', 'feature', '--worktree', worktree]
+        result = subprocess.run(command, text=True, capture_output=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        import json
+        report = json.loads(result.stdout)
+        self.assertEqual([b['name'] for b in report['branches']], ['feature'])
+        self.assertEqual([w['path'] for w in report['worktrees']], [worktree])
+        self.assertTrue(report['branches'][0]['mergeCheck']['confirmed'])
 
     def test_preflight_does_not_touch_real_index_or_files(self):
         self.worktree()

@@ -45,8 +45,20 @@ def worktree_status(path):
         return None, str(exc)
 
 
-def choose_refs(root, requested, remote):
+def choose_refs(root, requested, remote, target_ref=None):
     refs = set(git(root, 'for-each-ref', '--format=%(refname)').decode().splitlines())
+    if target_ref:
+        if requested:
+            raise RuntimeError('choose either --main or --target-ref')
+        prefixes = ['refs/heads/'] + ([f'refs/remotes/{remote}/'] if remote else [])
+        prefix = next((value for value in prefixes if target_ref.startswith(value)), None)
+        if not prefix or target_ref not in refs:
+            raise RuntimeError('target ref must be an existing full local branch ref or selected remote branch ref')
+        symbolic = subprocess.run(['git', '-C', root, 'symbolic-ref', '--quiet', target_ref],
+                                  capture_output=True, check=False)
+        if symbolic.returncode != 1:
+            raise RuntimeError('target ref must name a branch directly, not a symbolic ref')
+        return target_ref[len(prefix):], target_ref
     if requested:
         main = requested
     else:
@@ -55,7 +67,7 @@ def choose_refs(root, requested, remote):
                      if f'refs/heads/{name}' in refs or f'refs/remotes/{remote}/{name}' in refs), None)
         if not main and remote:
             result = subprocess.run(['git', '-C', root, 'symbolic-ref', '--quiet',
-                                     f'refs/remotes/{remote}/HEAD'], capture_output=True, text=True)
+                                     f'refs/remotes/{remote}/HEAD'], capture_output=True, text=True, check=False)
             prefix = f'refs/remotes/{remote}/'
             if result.returncode == 0 and result.stdout.strip().startswith(prefix):
                 main = result.stdout.strip()[len(prefix):]
@@ -72,7 +84,8 @@ def choose_refs(root, requested, remote):
     return main, local
 
 
-def build_report(path, requested_main=None, requested_remote=None, keep=(), fetch=False):
+def build_report(path, requested_main=None, requested_remote=None, keep=(), fetch=False,
+                 *, target_ref=None, selected_branches=(), selected_worktrees=()):
     root = os.fsdecode(git(path, 'rev-parse', '--show-toplevel').rstrip(b'\n'))
     current_branch = git(root, 'branch', '--show-current').decode().strip() or None
     remotes = git(root, 'remote').decode().splitlines()
@@ -83,18 +96,35 @@ def build_report(path, requested_main=None, requested_remote=None, keep=(), fetc
         raise RuntimeError('multiple remotes without origin; select --remote')
     if fetch and remote:
         git(root, 'fetch', '--prune', remote)
-    main_branch, base_ref = choose_refs(root, requested_main, remote)
+    main_branch, base_ref = choose_refs(root, requested_main, remote, target_ref)
     main_hash = git(root, 'rev-parse', '--verify', base_ref + '^{commit}').decode().strip()
     worktrees = parse_worktrees(git(root, 'worktree', 'list', '--porcelain', '-z'))
     if not worktrees:
         raise RuntimeError('no worktrees found')
     primary = worktrees[0]['path']
+    local_branches = git(root, 'for-each-ref', '--format=%(refname:short)', 'refs/heads').decode().splitlines()
+    explicit_branches = set(selected_branches)
+    for branch in explicit_branches:
+        if branch not in local_branches:
+            raise RuntimeError('selected branch does not exist: ' + branch)
+    selected_paths = set()
+    branches_to_check = set(explicit_branches)
+    for worktree_path in selected_worktrees:
+        entry = next((w for w in worktrees if same_path(worktree_path, w['path'])), None)
+        if entry is None:
+            raise RuntimeError('selected worktree is not registered: ' + os.path.abspath(worktree_path))
+        selected_paths.add(os.path.normcase(os.path.abspath(entry['path'])))
+        if entry['branch']:
+            branches_to_check.add(entry['branch'])
+    scoped = bool(selected_branches or selected_worktrees)
     reviews = discover_reviews(root, remote, main_branch)
     protected = set(filter(None, [main_branch, 'main', 'master', current_branch, *keep]))
     open_branches = {review['branch'] for review in reviews['open']}
     checks = DeliveryChecks(root, main_hash, reviews)
     branches = []
-    for branch in git(root, 'for-each-ref', '--format=%(refname:short)', 'refs/heads').decode().splitlines():
+    for branch in local_branches:
+        if scoped and branch not in branches_to_check:
+            continue
         delivery = checks.check(branch)
         protections = []
         if branch in protected:
@@ -111,11 +141,14 @@ def build_report(path, requested_main=None, requested_remote=None, keep=(), fetc
                          if delivery['confirmed'] and not protections else None})
     by_branch = {branch['name']: branch for branch in branches}
     classified = []
-    checked_out = set()
+    # Read all registrations even for a scoped report: an unselected checkout
+    # still prevents deleting the branch that it uses.
+    checked_out = {w['branch'] for w in worktrees if w['branch']}
     for worktree in worktrees:
         branch = worktree['branch']
-        if branch:
-            checked_out.add(branch)
+        if (scoped and branch not in explicit_branches
+                and os.path.normcase(os.path.abspath(worktree['path'])) not in selected_paths):
+            continue
         status, status_error = worktree_status(worktree['path']) if not worktree['bare'] else (None, 'bare worktree')
         reasons = []
         for condition, reason in ((same_path(worktree['path'], primary), 'primary worktree'),
@@ -144,13 +177,18 @@ def build_report(path, requested_main=None, requested_remote=None, keep=(), fetc
                                removeCandidate=bool(info and not reasons)))
     delete_now = [b['name'] for b in branches if not b['blockedReasons'] and b['name'] not in checked_out]
     remove = [w for w in classified if w['removeCandidate']]
-    delete_after = [w['branch'] for w in remove]
+    removed_paths = {os.path.normcase(os.path.abspath(w['path'])) for w in remove}
+    delete_after = sorted({w['branch'] for w in remove
+                           if all(os.path.normcase(os.path.abspath(other['path'])) in removed_paths
+                                  for other in worktrees if other['branch'] == w['branch'])})
     for branch in branches:
         branch['deleteNowCandidate'] = branch['name'] in delete_now
         branch['deleteAfterWorktreeRemovalCandidate'] = branch['name'] in delete_after
     return {'repoRoot': root, 'currentBranch': current_branch, 'currentWorktreePath': root,
             'primaryWorktreePath': primary, 'mainBranch': main_branch, 'baseRef': base_ref,
             'mainHash': main_hash, 'remote': remote, 'fetchRan': bool(fetch and remote),
+            'selection': {'scoped': scoped, 'branches': sorted(explicit_branches),
+                          'worktrees': sorted(selected_paths)},
             'protectedBranches': sorted(protected), 'reviewLookup': reviews,
             'worktrees': classified, 'branches': branches,
             'cleanupCandidates': {'removeWorktrees': remove, 'deleteBranchesNow': delete_now,
@@ -164,8 +202,12 @@ def build_report(path, requested_main=None, requested_remote=None, keep=(), fetc
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--path', default='.')
-    parser.add_argument('--main', help='intended main branch')
+    target = parser.add_mutually_exclusive_group()
+    target.add_argument('--main', help='intended main branch')
+    target.add_argument('--target-ref', help='exact full local or selected remote branch ref')
     parser.add_argument('--remote', help='remote holding the intended main branch')
+    parser.add_argument('--branch', action='append', default=[], help='local branch to examine (repeatable)')
+    parser.add_argument('--worktree', action='append', default=[], help='registered worktree to examine (repeatable)')
     parser.add_argument('--keep', action='append', default=[], help='local branch to preserve (repeatable)')
     parser.add_argument('--fetch', action='store_true', help='fetch selected remote before recording hashes')
     parser.add_argument('--verify-removed', metavar='PATH', help='check directory and registration after Git removal')
@@ -176,7 +218,9 @@ def main():
             report = verify_removed(root, os.path.abspath(args.verify_removed))
             code = 0 if report['removed'] else 2
         else:
-            report = build_report(args.path, args.main, args.remote, args.keep, args.fetch)
+            report = build_report(args.path, args.main, args.remote, args.keep, args.fetch,
+                                  target_ref=args.target_ref, selected_branches=args.branch,
+                                  selected_worktrees=args.worktree)
             code = 0
     except (RuntimeError, OSError) as exc:
         report, code = {'canProceed': False, 'problems': [str(exc)]}, 1
