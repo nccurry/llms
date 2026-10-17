@@ -326,8 +326,9 @@ class RepositoryTests(unittest.TestCase):
         report = build_report(self.root)
         entry = next(w for w in report['worktrees'] if w['path'] == worktree)
         self.assertFalse(entry['removeCandidate'])
-        self.assertIn('cache/', entry['removalReadiness']['ignoredDirectories'])
-        self.assertEqual(entry['removalReadiness']['blockers'][0]['path'], str(cache))
+        readiness = removal_preflight(worktree)
+        self.assertIn('cache/', readiness['ignoredDirectories'])
+        self.assertEqual(readiness['blockers'][0]['path'], str(cache))
         self.assertTrue(cache.exists())
         self.assertTrue(self.g('show-ref', '--verify', 'refs/heads/feature'))
 
@@ -346,7 +347,7 @@ class RepositoryTests(unittest.TestCase):
         (cache / 'external').symlink_to(outside, target_is_directory=True)
         self.assertTrue(removal_preflight(worktree)['ready'])
 
-    def test_dirty_locked_and_open_review_protected(self):
+    def test_locked_worktree_stays_protected(self):
         worktree = self.worktree()
         self.write('unused', 'current work')
         Path(worktree, 'untracked').write_text('keep')
@@ -356,8 +357,8 @@ class RepositoryTests(unittest.TestCase):
             report = build_report(self.root)
         entry = next(w for w in report['worktrees'] if w['path'] == worktree)
         self.assertFalse(entry['removeCandidate'])
-        for reason in ('dirty worktree', 'locked worktree', 'open MR/PR'):
-            self.assertIn(reason, entry['blockedReasons'])
+        self.assertIn('locked worktree', entry['blockedReasons'])
+        self.assertTrue(next(b for b in report['branches'] if b['name'] == 'feature')['hasOpenReview'])
 
     def test_unreadable_status_preserved(self):
         worktree = self.worktree()
@@ -367,17 +368,17 @@ class RepositoryTests(unittest.TestCase):
         self.assertFalse(entry['removeCandidate'])
         self.assertIsNone(entry['isDirty'])
 
-    def test_unknown_open_review_status_blocks_proven_delivery(self):
+    def test_unknown_open_review_status_does_not_veto_complete_git_proof(self):
         self.worktree()
         reviews = {'complete': False, 'open': [], 'merged': [], 'errors': ['unavailable']}
         with patch('stale_worktree_preflight.discover_reviews', return_value=reviews):
             report = build_report(self.root)
-        self.assertFalse(report['cleanupCandidates']['removeWorktrees'])
+        self.assertTrue(report['cleanupCandidates']['removeWorktrees'])
         branch = next(b for b in report['branches'] if b['name'] == 'feature')
         self.assertTrue(branch['mergeCheck']['confirmed'])
-        self.assertIsNone(branch['deleteCommand'])
+        self.assertIsNotNone(branch['deleteCommand'])
 
-    def test_detached_and_keep_list_protected(self):
+    def test_detached_main_is_eligible_and_keep_list_is_protected(self):
         worktree = self.worktree()
         report = build_report(self.root, keep=['feature'])
         self.assertFalse(report['cleanupCandidates']['removeWorktrees'])
@@ -385,8 +386,175 @@ class RepositoryTests(unittest.TestCase):
         self.g('worktree', 'add', '--detach', worktree, 'main')
         report = build_report(self.root)
         entry = next(w for w in report['worktrees'] if w['path'] == worktree)
+        self.assertTrue(entry['removeCandidate'], entry)
+        self.assertEqual(entry['mergeCheck']['method'], 'commitHistory')
+        self.assertNotIn(None, report['cleanupCandidates']['deleteBranchesAfterWorktreeRemoval'])
+
+    def test_detached_squash_is_eligible_but_unique_commit_is_preserved(self):
+        worktree = self.worktree()
+        self.g('worktree', 'remove', worktree)
+        self.g('worktree', 'add', '--detach', worktree, 'feature')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        self.assertTrue(report['worktrees'][0]['removeCandidate'], report)
+        Path(worktree, 'unique').write_bytes(b'not in main\n')
+        git(worktree, 'add', 'unique')
+        git(worktree, 'commit', '-m', 'unique detached work')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        self.assertFalse(report['worktrees'][0]['removeCandidate'])
+        self.assertFalse(report['worktrees'][0]['mergeCheck']['confirmed'])
+
+    def test_dirty_tracked_content_in_main_can_be_removed(self):
+        worktree = self.worktree()
+        self.write('extra', 'new main content\n')
+        self.commit('main update')
+        Path(worktree, 'extra').write_bytes(b'new main content\n')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        entry = report['worktrees'][0]
+        self.assertTrue(entry['removeCandidate'], entry)
+        self.assertTrue(entry['requiresForce'])
+        self.assertTrue(entry['localContentCheck']['confirmed'])
+        git(self.root, 'worktree', 'remove', '--force', worktree)
+        self.assertTrue(verify_removed(self.root, worktree)['removed'])
+
+    def test_dirty_unique_content_is_preserved(self):
+        worktree = self.worktree()
+        Path(worktree, 'extra').write_bytes(b'not in main\n')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        entry = report['worktrees'][0]
         self.assertFalse(entry['removeCandidate'])
-        self.assertIn('detached or branchless worktree', entry['blockedReasons'])
+        self.assertEqual(entry['localContentCheck']['unmatched'][0]['path'], 'extra')
+        self.assertEqual(Path(worktree, 'extra').read_bytes(), b'not in main\n')
+
+    def test_unique_staged_version_is_not_hidden_by_delivered_working_file(self):
+        worktree = self.worktree()
+        Path(worktree, 'extra').write_bytes(b'unique staged work\n')
+        git(worktree, 'add', 'extra')
+        Path(worktree, 'extra').write_bytes(b'delivered\n')
+        before = git(worktree, 'show', ':extra')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        entry = report['worktrees'][0]
+        self.assertFalse(entry['removeCandidate'])
+        self.assertEqual(entry['localContentCheck']['unmatched'][0]['layer'], 'index')
+        self.assertEqual(git(worktree, 'show', ':extra'), before)
+
+    def test_staged_and_unstaged_versions_already_in_main_are_eligible(self):
+        worktree = self.worktree()
+        self.write('extra', 'stage version\n')
+        self.commit('stage version delivered')
+        self.write('extra', 'disk version\n')
+        self.commit('disk version delivered')
+        Path(worktree, 'extra').write_bytes(b'stage version\n')
+        git(worktree, 'add', 'extra')
+        Path(worktree, 'extra').write_bytes(b'disk version\n')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        self.assertTrue(report['worktrees'][0]['removeCandidate'], report)
+        self.assertEqual({row['layer'] for row in report['worktrees'][0]['localContentCheck']['changes']},
+                         {'index', 'worktree'})
+
+    def test_local_deletion_requires_delivery_after_the_committed_source(self):
+        worktree = self.worktree()
+        Path(worktree, 'extra').unlink()
+        report = build_report(self.root, selected_worktrees=[worktree])
+        self.assertFalse(report['worktrees'][0]['removeCandidate'])
+        self.g('rm', 'extra')
+        self.commit('deletion delivered')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        self.assertTrue(report['worktrees'][0]['removeCandidate'], report)
+
+    def test_untracked_and_ignored_content_in_main_are_eligible(self):
+        worktree = self.worktree()
+        for name in ('untracked', 'cache/ignored'):
+            self.write(name, 'already in main\n')
+            self.g('add', '-f', name)
+            self.g('commit', '-m', 'deliver ' + name)
+            path = Path(worktree, name)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b'already in main\n')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        self.assertTrue(report['worktrees'][0]['removeCandidate'], report)
+
+    def test_untracked_and_ignored_content_absent_from_main_are_preserved(self):
+        worktree = self.worktree()
+        Path(worktree, 'scratch.tmp').write_bytes(b'looks disposable but is not in main\n')
+        Path(worktree, 'cache').mkdir()
+        Path(worktree, 'cache', 'output').write_bytes(b'ignored and not in main\n')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        entry = report['worktrees'][0]
+        self.assertFalse(entry['removeCandidate'])
+        self.assertEqual({row['path'] for row in entry['localContentCheck']['unmatched']},
+                         {'scratch.tmp', 'cache/output'})
+
+    def test_local_fingerprint_detects_file_and_index_changes(self):
+        worktree = self.worktree()
+        original = build_report(self.root, selected_worktrees=[worktree])['worktrees'][0]['localContentCheck']
+        Path(worktree, 'extra').write_bytes(b'new unique work\n')
+        changed = build_report(self.root, selected_worktrees=[worktree])['worktrees'][0]['localContentCheck']
+        self.assertNotEqual(original['fingerprint'], changed['fingerprint'])
+        self.assertFalse(changed['confirmed'])
+        git(worktree, 'add', 'extra')
+        staged = build_report(self.root, selected_worktrees=[worktree])['worktrees'][0]['localContentCheck']
+        self.assertNotEqual(changed['fingerprint'], staged['fingerprint'])
+
+    def test_assume_unchanged_does_not_hide_unique_disk_content(self):
+        worktree = self.worktree()
+        git(worktree, 'update-index', '--assume-unchanged', 'extra')
+        Path(worktree, 'extra').write_bytes(b'hidden unique work\n')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        self.assertFalse(report['worktrees'][0]['removeCandidate'])
+        self.assertEqual(report['worktrees'][0]['localContentCheck']['unmatched'][0]['path'], 'extra')
+
+    def test_recreated_change_before_fork_is_not_a_new_delivery(self):
+        self.write('file', 'old occurrence\n')
+        self.commit('earlier occurrence')
+        self.write('file', 'new baseline\n')
+        self.commit('earlier occurrence reverted')
+        self.branch()
+        self.write('file', 'old occurrence\n')
+        self.commit('new undelivered occurrence')
+        self.g('checkout', 'main')
+        self.assertFalse(self.check()['confirmed'])
+
+    def test_content_match_uses_earliest_delivery_for_local_history(self):
+        worktree = self.worktree()
+        self.write('file', 'historical local state\n')
+        self.commit('local state delivered')
+        self.write('file', 'main moved on\n')
+        self.commit('later main state')
+        Path(worktree, 'file').write_bytes(b'historical local state\n')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        entry = report['worktrees'][0]
+        self.assertEqual(entry['mergeCheck']['method'], 'contentMatch')
+        self.assertTrue(entry['removeCandidate'], entry)
+        repeat = build_report(self.root, selected_worktrees=[worktree])['worktrees'][0]
+        self.assertEqual(entry['localContentCheck']['fingerprint'], repeat['localContentCheck']['fingerprint'])
+
+    def test_local_history_accepts_independent_deliveries_on_merged_sides(self):
+        worktree = self.worktree()
+        self.g('checkout', '-b', 'side', self.fork)
+        self.write('extra', 'delivered\n')
+        self.write('file', 'side state already in main history\n')
+        self.commit('independent side delivery')
+        self.write('file', 'old\n' + ''.join(f'line {i}\n' for i in range(12)))
+        self.commit('side state moved on')
+        self.g('checkout', 'main')
+        self.g('merge', '--no-ff', 'side', '-m', 'merge side')
+        Path(worktree, 'file').write_bytes(b'side state already in main history\n')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        self.assertTrue(report['worktrees'][0]['removeCandidate'], report)
+
+    def test_filemode_false_does_not_hide_symlink_type_change(self):
+        self.g('config', 'core.filemode', 'false')
+        self.g('config', 'core.symlinks', 'false')
+        self.write('link', 'target')
+        oid = git(self.root, 'hash-object', '-w', '--stdin', data=b'target').decode().strip()
+        self.g('update-index', '--add', '--cacheinfo', '120000', oid, 'link')
+        self.g('commit', '-m', 'symlink delivered')
+        worktree = self.worktree()
+        self.g('config', 'core.symlinks', 'true')
+        report = build_report(self.root, selected_worktrees=[worktree])
+        entry = report['worktrees'][0]
+        self.assertFalse(entry['removeCandidate'])
+        self.assertEqual(entry['localContentCheck']['unmatched'][0]['entry'][0], '100644')
 
     def test_verify_both_directory_and_registration(self):
         worktree = self.worktree('linked with spaces')

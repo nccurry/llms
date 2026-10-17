@@ -1,24 +1,30 @@
 ---
 name: clean-stale-worktrees
-description: Safely remove completed local Git branches and linked worktrees after proving delivery to main through history, historical content, verified squash sources, or exact cherry-picked changes. Use for requests to clean stale branches, remove merged worktrees, or preview completed local work. Preserve active, changed, and unresolved work.
+description: Remove local branches and worktrees, including detached or dirty checkouts, after proving their committed and local content reached main. Use for stale-work cleanup or previews. Preserve work absent from main and unresolved evidence.
 ---
 
 # Clean Stale Worktrees
 
 Remove only local work whose delivery is proven and whose removal checks pass.
 A request to edit this skill does not authorize repository cleanup.
+Dirty status or detached HEAD alone does not justify retention. Anything absent
+from main stays; do not discard files because they look like garbage.
 
 ## Rules that govern deletion
 
 - Start cleanup when the user requests it or an explicitly invoked execution
   workflow authorizes cleanup of its own temporary local work. Honor user keep
   instructions. A preview, report, or skill edit stops before deletion.
-- Preserve primary and current worktrees, current and protected branches, dirty,
-  locked, detached, bare, and open-MR/PR worktrees. Preserve branches on a keep list.
-- An unreadable status or unavailable open-review lookup blocks deletion. Unknown
-  is never clean, closed, or delivered.
+- Preserve primary and current worktrees, current and protected branches, locked
+  and bare worktrees, active users/processes, and explicit keep instructions.
+  Release an auxiliary checkout and run cleanup outside it before reconsidering it.
+- Unreadable status or incomplete content proof blocks deletion. Review metadata
+  supplies evidence when needed; an open review or unavailable lookup does not
+  invalidate a complete independent Git proof. Check actual users/processes separately.
 - Never stash, reset, switch branches, overwrite work, remove remote refs, unlock
-  worktrees, or add `--force` to make cleanup possible.
+  worktrees. Use a single `git worktree remove --force` only for an eligible dirty
+  candidate with fresh complete local-content proof. Never use force to bypass
+  missing evidence, locks, nested repositories, or access failures.
 - A failed content check against current main must trigger historical-main and
   verified merged-source checks automatically. Continue until every branch
   change is accounted for or a concrete unmatched change is identified. Similar
@@ -44,7 +50,8 @@ python3 <skill-dir>/scripts/stale_worktree_preflight.py --path . --fetch
 Use `--main <branch>` and `--remote <remote>` when needed to select the intended
 main ref. Inspect `baseRef` before accepting candidates. Use repeatable
 `--keep <branch>` arguments for work the user wants preserved. The script fetches
-only when `--fetch` is supplied; it never pulls or switches branches.
+only when `--fetch` is supplied; it never pulls or switches branches. With no
+selectors, inspect every local branch and registered worktree in the repository.
 
 For execution cleanup, use repeatable `--branch <name>` and/or
 `--worktree <absolute-path>` arguments to select only the workflow's candidates.
@@ -76,6 +83,16 @@ Proof methods are `commitHistory`, `contentMatch`, `historicalMain`, `mergedSour
 `exactChanges`, and `noFileChanges`. `deliveryNotProven` never permits deletion.
 No net file change is a separate result; it does not mean every commit was empty.
 
+Detached worktrees use the same proof checks against their exact HEAD commit.
+For every eligible checkout, `localContentCheck` separately checks the index,
+working files, and untracked/ignored files. Each changed state must match main
+or a verified main snapshot after the source's delivery. A staged version hidden
+by a later unstaged edit still needs proof. Check complete bytes, file types,
+and applicable Git modes; a filename, ignore rule, or age is not evidence.
+`unmatched` names the exact paths and layers that must remain. Ordinary unchanged
+files are covered by committed-source proof. The script does not stage local
+files, commit them, or write their contents into Git objects.
+
 Read the reasons and evidence, not just the method name. Failed checks must not
 be turned into a successful result by hand. If the script is missing or fails,
 keep affected work. Resolve missing evidence and rerun the preflight.
@@ -87,8 +104,9 @@ Only entries in `cleanupCandidates` have passed both applicable sets of checks.
 
 Before removing any candidate:
 
-- Confirm all agents and processes have released it and preserve needed modified,
-  untracked, or ignored files. A clean Git status does not account for ignored files.
+- Confirm all agents and processes have released it. Require both committed-source
+  and `localContentCheck.confirmed` proof, including untracked and ignored files.
+  Preserve unique content; being ignored or apparently temporary does not waive proof.
 - Inspect `removalReadiness`: it includes ignored directories, directory access
   checks, ownership, and blocking paths. Read-only ignored Bazel/build caches must
   be identified before removal begins. Read-only files alone do not prevent unlinking.
@@ -97,10 +115,11 @@ Before removing any candidate:
   removal: ACLs, immutable flags, mounts, and concurrent changes can still block it.
 - If a directory is blocked, keep the worktree and branch and report its path.
   Do not silently change permissions, use elevated deletion, or delete it manually.
-- Immediately before each removal, recheck its branch hash and main hash against
-  the report, its clean status including untracked files/submodules, its lock and
-  review status, its registration, and directory access. If a hash or protection
-  changed, rerun preflight. Do not reuse earlier proof for a changed branch.
+- Immediately before each removal, rerun the selected preflight. Require the same
+  source/main hashes and `localContentCheck.fingerprint`, renewed confirmation,
+  registration, lock/release state, and directory access. The fingerprint covers
+  HEAD, the real index, and raw working-file hashes, including ignored files.
+  Any changed source, index, file, or protection invalidates the earlier proof.
 
 ## Remove and verify
 
@@ -111,6 +130,12 @@ For each confirmed candidate, run:
 git worktree remove <worktree-path>
 python3 <skill-dir>/scripts/stale_worktree_preflight.py --path <safe-worktree> --verify-removed <worktree-path>
 ```
+
+If the freshly confirmed candidate has `requiresForce: true`, use
+`git worktree remove --force <worktree-path>` instead. Dirty-but-delivered content
+is eligible; unknown content is not. For Codex-managed checkouts, use the native
+archive capability when available and respect its restrictions after the same
+delivery and local-content checks.
 
 Verification must report `removed: true`: **both the directory and its Git
 registration must be absent**. Check after a failed removal command too. If either

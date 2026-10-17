@@ -69,7 +69,7 @@ def discover_reviews(root, remote, main_branch):
                 same_project = row.get('source_project_id') == row.get('target_project_id')
                 review_url = row['web_url']
             if state in ('open', 'opened', 'locked') and same_project:
-                # Open work remains protected even when its MR targets another branch.
+                # Include every target so the parent can coordinate active work.
                 report['open'].append({'branch': branch, 'sourceHash': source, 'url': review_url})
             if state == 'merged' and target == main_branch:
                 report['merged'].append({'sourceHash': source, 'squashHash': squash,
