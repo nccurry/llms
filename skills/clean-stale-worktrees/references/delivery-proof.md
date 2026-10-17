@@ -43,17 +43,17 @@ point blobs and modes. A reverse-apply exit status alone is insufficient,
 especially for deletion-only patches. This stronger check may reject content
 that main has changed further; the next steps must then run automatically.
 
-Historical search uses all commits reachable from the recorded main hash,
-including merged side history, without an arbitrary date or commit limit. Record
+Historical search uses commits reachable from the recorded main hash at or after
+the source fork, including merged side history, without an arbitrary date or commit limit. Record
 the matching snapshot and independently check its ancestry in main. Later main
 edits or reverts do not erase historical delivery. A canceled branch patch is
 `noFileChanges`, not evidence that its individual commits were empty.
 
 ## Verified review sources
 
-Read every page of review metadata for the selected repository. Check open
-reviews even when a branch has a successful ancestry or content result. An open
-review protects its source branch even if it targets a branch other than main.
+Read every page of available review metadata for the selected repository. Record
+open reviews across targets so the parent can coordinate active users. An open
+review is not evidence of unique local content and does not veto complete proof.
 Only merged reviews targeting the selected main can provide source evidence.
 Names and titles select candidates at most; they never prove delivery.
 
@@ -77,11 +77,12 @@ accepted only if its parent count and reproduced tree satisfy the squash proof;
 a normal merge commit cannot be mistaken for a squash commit.
 
 Unsupported hosts, unavailable CLI/authentication, incomplete metadata, or API
-failures block deletion because open-review status is unknown. Use the available
-host connector to retrieve authoritative evidence, then extend the provider in
-`review_sources.py` and rerun. Do not mark lookup complete manually or use a saved
-review description as proof. A local repository with no remote has no hosted
-review lookup to perform.
+failures leave review-based proof unavailable. Continue independent history,
+content, and exact-change checks; retain work if those cannot establish delivery.
+Use an available host connector for authoritative review evidence when required,
+then extend the provider in `review_sources.py` and rerun. Do not mark lookup
+complete manually or use a saved review description as proof. A local repository
+with no remote has no hosted review lookup to perform.
 
 ## Exact cherry-picked changes
 
@@ -107,6 +108,34 @@ This includes resolution edits. It deliberately may require extra evidence for
 complex merges rather than dismissing them as empty or counting only ordinary
 commits. Report those unmatched patches for further proof. The result records
 source or main hashes for accounted changes and exact patches for unmatched ones.
+
+## Detached commits and local content
+
+`check_commit` applies the same committed-delivery proof to an immutable HEAD,
+without inventing a branch for detached work. Exclude historical snapshots and
+merged-source deliveries before the fork: a newly recreated change is not proven
+delivered merely because main once contained and then reverted an earlier occurrence.
+
+`local_changes.py` checks real index entries separately from disk files. It reads
+tracked, untracked, and ignored paths, including tracked files marked assume-unchanged.
+Changed states must exactly match the same path and mode in current main or in a
+main snapshot at/after the proven committed delivery. A local deletion requires
+absence after that boundary, not absence before the file was first delivered.
+This preserves a unique staged version even if disk contents have been restored.
+
+The inspector hashes local contents without writing objects. It allows Git's
+built-in text conversion when no external clean filter is configured, retains
+unproved filtered content, and reads symlink targets without following them.
+Nested repositories, submodules, special files, unreadable data, and unresolved
+index stages need separate proof and remain protected. Ignored files are checked
+as content, not classified as disposable.
+
+The report includes changed paths/layers, matching main snapshots, unmatched
+states, index hash, and a raw-content fingerprint. Repeat preflight immediately
+before removal and compare fingerprints as well as commit hashes. An index or
+HEAD change during inspection invalidates that inspection. Missing review APIs
+do not veto independently complete content/history proof; they still prevent any
+proof that actually depends on unavailable review sources.
 
 Exhausting a partial search, encountering an error, or finding similar lines is
 not delivery proof. A concrete unmatched patch means it has no match in the

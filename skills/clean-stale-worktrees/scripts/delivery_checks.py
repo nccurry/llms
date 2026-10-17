@@ -8,7 +8,7 @@ import tempfile
 
 def git(root, *args, data=None, env=None):
     result = subprocess.run(['git', '-C', root, '--literal-pathspecs', *args], input=data,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+                            capture_output=True, env=env, check=False)
     if result.returncode:
         raise RuntimeError(result.stderr.decode(errors='replace').strip() or
                            f'git {args[0]} failed ({result.returncode})')
@@ -17,7 +17,7 @@ def git(root, *args, data=None, env=None):
 
 def ancestor(root, left, right):
     result = subprocess.run(['git', '-C', root, 'merge-base', '--is-ancestor', left, right],
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                            capture_output=True, check=False)
     if result.returncode not in (0, 1):
         raise RuntimeError(result.stderr.decode(errors='replace'))
     return result.returncode == 0
@@ -37,7 +37,7 @@ def reverse_matches(root, change, snapshot, before, after):
         result = subprocess.run(
             ['git', '-C', root, '-c', 'apply.ignoreWhitespace=no', 'apply', '--cached',
              '--reverse', '--check', '--unidiff-zero', '--whitespace=nowarn'],
-            input=change, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+            input=change, capture_output=True, env=env, check=False)
         # Apply failure means no match; read-tree failures above are errors.
         if result.returncode != 0:
             return False
@@ -149,6 +149,11 @@ class DeliveryChecks:
 
     def check(self, branch):
         tip = git(self.root, 'rev-parse', '--verify', 'refs/heads/' + branch).decode().strip()
+        return self.check_commit(tip)
+
+    def check_commit(self, tip):
+        """Check an immutable source commit, including a detached worktree HEAD."""
+        tip = git(self.root, 'rev-parse', '--verify', tip + '^{commit}').decode().strip()
         attempts = []
         result = {'confirmed': False, 'method': 'deliveryNotProven', 'branchHash': tip,
                   'mainHash': self.main, 'attempts': attempts, 'forkPoint': None}
@@ -167,14 +172,17 @@ class DeliveryChecks:
             attempts.append({'check': 'currentMain', 'matched': matched, 'snapshot': self.main})
             if matched:
                 return dict(result, confirmed=True, method='contentMatch', reason='complete net patch matches current main')
+            snapshots_checked = 0
             for snapshot in self.snapshots:
-                if snapshot == self.main:
+                if snapshot == self.main or not ancestor(self.root, fork, snapshot):
                     continue
+                snapshots_checked += 1
                 if reverse_matches(self.root, change, snapshot, fork, tip) and ancestor(self.root, snapshot, self.main):
                     attempts.append({'check': 'historicalMain', 'matched': True, 'snapshot': snapshot})
                     return dict(result, confirmed=True, method='historicalMain', reason='complete net patch matches an ancestor of current main')
-            attempts.append({'check': 'historicalMain', 'matched': False, 'snapshotsChecked': len(self.snapshots) - 1})
-            sources = self.merged_sources()
+            attempts.append({'check': 'historicalMain', 'matched': False, 'snapshotsChecked': snapshots_checked})
+            sources = [source for source in self.merged_sources()
+                       if ancestor(self.root, fork, source['squashHash'])]
             attempts.append({'check': 'mergedSources', 'verified': sources, 'errors': self.source_errors,
                              'lookupComplete': self.reviews.get('complete', False)})
             for source in sources:

@@ -47,7 +47,8 @@ the checkout as **delivery not yet proven**; continue safe independent work.
 After required delivery checks pass, confirm no agent, test, server, review, or
 later dependency needs the checkout. An idle child can resume; obtain its release
 and stop using that assignment before removal. Preserve needed modified,
-untracked, and ignored files. Preserve current, primary, shared, locked, and
+untracked, and ignored files absent from main. Dirty and detached checkouts are
+eligible when committed and local-content proof both pass. Preserve current, primary, shared, locked, and
 protected worktrees under the cleanup skill's rules. Run removal from outside
 the target after resolving and checking its absolute path.
 
@@ -55,6 +56,8 @@ For ordinary Git worktrees, use the cleanup skill's removal and verification
 steps. Verify both directory and registration absence before deleting a branch;
 recheck its hash and that no other checkout uses it. Keep a branch after partial
 removal. `git worktree prune` cannot replace removal of a live checkout.
+Rerun preflight and compare its local-content fingerprint immediately before
+removal. Use its `requiresForce` result only with renewed complete proof.
 
 For Codex-managed worktrees, inspect `list_artifacts` and use `archive_worktree`
 when available for that exact task attachment. Require the same delivery proof

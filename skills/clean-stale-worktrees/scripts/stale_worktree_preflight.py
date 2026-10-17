@@ -7,6 +7,7 @@ import subprocess
 import sys
 
 from delivery_checks import DeliveryChecks, git
+from local_changes import LocalChanges
 from removal_checks import removal_preflight, verify_removed
 from review_sources import discover_reviews
 
@@ -121,6 +122,7 @@ def build_report(path, requested_main=None, requested_remote=None, keep=(), fetc
     protected = set(filter(None, [main_branch, 'main', 'master', current_branch, *keep]))
     open_branches = {review['branch'] for review in reviews['open']}
     checks = DeliveryChecks(root, main_hash, reviews)
+    local_changes = LocalChanges(checks)
     branches = []
     for branch in local_branches:
         if scoped and branch not in branches_to_check:
@@ -129,14 +131,11 @@ def build_report(path, requested_main=None, requested_remote=None, keep=(), fetc
         protections = []
         if branch in protected:
             protections.append('protected or current branch')
-        if branch in open_branches:
-            protections.append('open MR/PR')
-        if not reviews['complete']:
-            protections.append('open MR/PR status could not be verified')
         if not delivery['confirmed']:
             protections.append(delivery['reason'])
         branches.append({'name': branch, 'mergeCheck': delivery, 'mergedIntoBase': delivery['confirmed'],
                          'head': delivery['branchHash'], 'blockedReasons': protections,
+                         'hasOpenReview': branch in open_branches,
                          'deleteCommand': ('git branch -d' if delivery['method'] == 'commitHistory' else 'git branch -D')
                          if delivery['confirmed'] and not protections else None})
     by_branch = {branch['name']: branch for branch in branches}
@@ -154,31 +153,39 @@ def build_report(path, requested_main=None, requested_remote=None, keep=(), fetc
         for condition, reason in ((same_path(worktree['path'], primary), 'primary worktree'),
                                   (same_path(worktree['path'], root), 'current worktree'),
                                   (worktree['bare'], 'bare worktree'),
-                                  (worktree['detached'] or not branch, 'detached or branchless worktree'),
                                   (worktree['locked'], 'locked worktree'),
                                   (worktree['prunable'], 'missing or prunable worktree'),
-                                  (status_error is not None, 'worktree status unreadable'),
-                                  (bool(status), 'dirty worktree')):
+                                  (status_error is not None, 'worktree status unreadable')):
             if condition:
                 reasons.append(reason)
         info = by_branch.get(branch)
+        delivery = info['mergeCheck'] if info else None
         if info:
             reasons.extend(info['blockedReasons'])
             if info['head'] != worktree['head']:
                 reasons.append('branch and worktree heads differ')
         elif branch:
             reasons.append('branch is not local')
+        elif not reasons:
+            delivery = checks.check_commit(worktree['head'])
+            if not delivery['confirmed']:
+                reasons.append(delivery['reason'])
+        content = local_changes.check(worktree['path'], delivery) if delivery and not reasons else None
+        if content and not content['confirmed']:
+            reasons.append(content['reason'])
         readiness = removal_preflight(worktree['path']) if not reasons else None
         if readiness and not readiness['ready']:
             reasons.append('removal preflight found blocking paths')
         classified.append(dict(worktree, statusLines=status, statusError=status_error,
                                isDirty=bool(status) if status is not None else None,
+                               mergeCheck=delivery, localContentCheck=content,
+                               requiresForce=bool(status),
                                removalReadiness=readiness, blockedReasons=reasons,
-                               removeCandidate=bool(info and not reasons)))
+                               removeCandidate=bool(delivery and content and not reasons)))
     delete_now = [b['name'] for b in branches if not b['blockedReasons'] and b['name'] not in checked_out]
     remove = [w for w in classified if w['removeCandidate']]
     removed_paths = {os.path.normcase(os.path.abspath(w['path'])) for w in remove}
-    delete_after = sorted({w['branch'] for w in remove
+    delete_after = sorted({w['branch'] for w in remove if w['branch']
                            if all(os.path.normcase(os.path.abspath(other['path'])) in removed_paths
                                   for other in worktrees if other['branch'] == w['branch'])})
     for branch in branches:
