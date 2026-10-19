@@ -102,6 +102,15 @@
       "design-for-change",
       "verify-before-claiming",
       "audit-codebase"
+    ],
+    "wrap-this-up": [
+      "plain-english",
+      "verify-before-claiming",
+      "design-for-change",
+      "plc-execution",
+      "plc-planning",
+      "docs-sync",
+      "clean-stale-worktrees"
     ]
   }
 }
