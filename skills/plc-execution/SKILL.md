@@ -1,7 +1,7 @@
 ---
 name: plc-execution
 disable-model-invocation: true
-description: "Execute selected PLC work when called as $plc-execution or by a monitored PLC execution skill. Supports isolated children, strict audits, and direct or MR integration."
+description: "Execute selected PLC work when called as $plc-execution or by a managed PLC execution skill. Supports isolated children, strict audits, and direct or MR integration."
 ---
 
 # PLC Execution
@@ -9,7 +9,8 @@ description: "Execute selected PLC work when called as $plc-execution or by a mo
 ## Invocation and selected work
 
 Use only when the user calls `$plc-execution` or requests
-`monitored-luna-plc-execution` or `monitored-sol-plc-execution`.
+`monitored-luna-plc-execution`, `monitored-sol-plc-execution`,
+`opus-managed-sonnet-plc-execution`, or `opus-managed-opus-plc-execution`.
 
 Execute the named PLC, phases, sub-phases, related phases, or concrete block.
 A user-defined block is the scope even if it crosses phase boundaries. Phase
@@ -52,8 +53,9 @@ delivered code.
 
 ## Prepare the work and integration
 
-Read root/scoped `AGENTS.md`, selected PLC files, source, and relevant product
-and design documentation. Use named goals in the owning project documents to
+Read root/scoped `AGENTS.md` and `CLAUDE.md` files that exist, selected PLC files,
+source, and relevant product and design documentation. Use named goals in the
+owning project documents to
 interpret selected requirements; do not guess project facts or silently add
 deliverables. Raise material conflicts under the scope-change rule above.
 

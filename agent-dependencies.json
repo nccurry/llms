@@ -75,6 +75,20 @@
       "ponytail-audit",
       "application-security-review"
     ],
+    "opus-managed-opus-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "opus-managed-sonnet-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
     "monitored-sol-plc-execution": [
       "plc-execution",
       "plain-english",
