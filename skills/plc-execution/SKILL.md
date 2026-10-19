@@ -25,16 +25,42 @@ paths. Give every child those paths and explicit load instructions; inherited
 context is not proof that it read them. Report missing dependencies before
 assigning affected work.
 
+## Scope changes and planning documents
+
+Record the selected requirement IDs and exit criteria in the existing work list
+before execution. Discoveries do not add requirements or phases by themselves.
+Significant expansion includes new deliverables, phases for additional work,
+unapproved contract or architecture changes, or a materially larger total effort,
+including small additions that accumulate. Check existing authorization first.
+If it does not cover the expansion, explain the proposed work, why it is needed,
+its effect on delivery, and alternatives; obtain user approval before adopting
+or implementing it. Continue independent authorized work while waiting. Routine
+implementation choices and repairs within approved scope remain authorized.
+
+Keep planning documents coherent for the next agent. Update affected sections
+in place, preserve stable requirement IDs and decision rationale, and reconcile
+superseded or contradictory instructions across the packet. Requirements and
+design describe approved behavior and adopted decisions. Keep current status,
+remaining work, and concise validation evidence in the existing work list or
+status/evidence sections. Record each result once and link to it elsewhere;
+do not restate the skill's general workflow in the packet. Keep raw logs,
+repeated handoffs, abandoned attempts, and session narration out of requirements and
+design. A new reader must be able to identify approved scope, current design,
+and remaining work without reconstructing the conversation. Label pending
+proposals as unapproved; do not silently weaken or defer requirements to match
+delivered code.
+
 ## Prepare the work and integration
 
 Read root/scoped `AGENTS.md`, selected PLC files, source, and relevant product
-and design documentation. Discover named goals in the owning project documents
-and use them as acceptance criteria; do not guess project facts.
+and design documentation. Use named goals in the owning project documents to
+interpret selected requirements; do not guess project facts or silently add
+deliverables. Raise material conflicts under the scope-change rule above.
 
 Make one work list containing each selected block, prerequisites, owner, files,
-behavior, design goals, tests, audits, and readiness. Run a block only after its
-prerequisites pass. Discovery may precede a prerequisite when it cannot alter
-that prerequisite.
+behavior, design goals, tests, audits, exit criteria, and readiness. Run a block
+only after its prerequisites pass. Discovery may precede a prerequisite when it
+cannot alter that prerequisite.
 
 Map each selected requirement and named design goal to its existing PLC ID,
 owner, proving check/review, and state: pending, verified, deferred, or blocked.
@@ -195,7 +221,8 @@ the remaining choice materially affects:
 
 Continue independent work while waiting. Explain the concrete consequence and
 ask a focused question; do not ask again about an already settled choice.
-Record an answer in the PLC when it changes requirements, design, or acceptance.
+Record an answer in the affected PLC sections when it changes requirements,
+design, or acceptance, following the document-maintenance rule above.
 
 Discovery may trace code, run checks, and make a small reversible experiment in
 its own checkout. Separate facts, options, and experiments in its report. Do
@@ -203,6 +230,15 @@ not integrate an experiment that commits the user to a material unanswered
 product, contract, data, security, or architecture choice.
 
 ## Finish
+
+Close the selected work when its approved requirements and required acceptance
+checks pass, authorized delivery is verified, and cleanup is completed or each
+retained checkout is accounted for under the cleanup rules. Leave unselected
+phases open. Record optional discoveries separately as outside-scope follow-ups;
+they do not extend this run or reopen completed work without user authorization.
+New evidence that an existing requirement fails does reopen its acceptance.
+If a genuine acceptance blocker needs significant extra scope, report the
+blocker and request a decision; keep that requirement open while waiting.
 
 Write assignments, notes, and reports in plain English using existing product
 names. Show representative behavior/command/config examples when they help the
