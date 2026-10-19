@@ -1,0 +1,4 @@
+interface:
+  display_name: "Monitored Sonnet PLC Execution"
+  short_description: "Run PLC work with Sonnet children and Opus review"
+  default_prompt: "Use $monitored-sonnet-plc-execution for this PLC work with an Opus parent, Sonnet children, and escalation to Opus only for serious delivery failures."

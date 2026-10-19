@@ -1,10 +1,10 @@
 ---
-name: opus-managed-opus-plc-execution
-description: "Execute selected PLC work with an Opus parent and Opus children, strict audits, and parent review. Use when the user requests Opus-managed Opus execution. Requires Claude model selection and subagents."
+name: monitored-opus-plc-execution
+description: "Execute selected PLC work with an Opus parent and Opus children, strict audits, and parent review. Use when the user requests monitored Opus PLC execution or Opus-managed Opus execution. Requires Claude model selection and subagents."
 model: opus
 ---
 
-# Opus-Managed Opus PLC Execution
+# Monitored Opus PLC Execution
 
 Read and follow both [PLC execution](../plc-execution/SKILL.md) and the
 [Opus management rules](../plc-execution/references/opus-management.md).
