@@ -5,7 +5,9 @@ Read when assigning implementation or discovery work under PLC execution.
 Every assignment includes:
 
 - Absolute checkout, branch, immutable base, PLC files, and selected block.
-- Prerequisites, named requirements/design goals, and acceptance checks.
+- Prerequisites, named requirements/design goals, acceptance checks, and exit
+  criteria. Discoveries do not expand these without the parent's scope review
+  and any required user approval.
 - Owned files, APIs, and behavior. State allowed exceptions explicitly; the
   default does not permit fixes outside the assignment.
 - Integration route and target. For MR work, identify who opens the MR.
@@ -31,8 +33,14 @@ issue, including P3, and reruns affected checks. An unresolved material choice
 goes to the parent; independent work continues.
 
 Update maintained project documentation when behavior changes, and record
-completion evidence in the existing PLC notes when that is part of the
-assignment. Do not claim whole-phase completion for a smaller block.
+completion evidence only in assigned PLC sections. Update current guidance in
+place, preserve IDs and rationale, and reconcile conflicting text. Keep status
+and evidence concise in the existing work list or status/evidence sections;
+link results instead of repeating them or restating the skill's general workflow.
+Keep session narration out of requirements and design.
+Report proposed scope additions to the parent without adopting them. Stop at
+the assigned exit criteria and required handoff; leave optional discoveries as
+outside-scope follow-ups. Do not claim whole-phase completion for a smaller block.
 
 Deliver a clean commit with changed files, tested revision, exact commands and
 results, audit scope/verdict/evidence, findings fixed, and open decisions.

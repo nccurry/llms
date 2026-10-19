@@ -47,6 +47,16 @@ evidence.
    - Give each required behavior a stable ID, acceptance criteria, and a
      concrete validation method.
    - Record scope, non-scope, risks, assumptions, and open questions.
+   - When maintaining an approved packet, update affected sections in place.
+     Preserve requirement IDs and decision rationale, reconcile superseded text,
+     and keep status and evidence concise in the existing work list or
+     status/evidence sections. Record each result once and link to it elsewhere;
+     do not restate the skill's general workflow in the packet. Keep requirements
+     and design focused on approved behavior and decisions, without raw logs or
+     session narration. A new agent must be able to find approved scope, current
+     design, and remaining work without the conversation. Distinguish proposed
+     changes from approved requirements; do not silently weaken or defer
+     acceptance to match the implementation.
    - When a change affects a CLI, API, configuration, UI, or other public
      surface, summarize the action, expected result, and compatibility in the
      SRD. Add short expected-experience examples for each changed surface.
@@ -63,6 +73,16 @@ evidence.
 5. Plan delivery and review.
    - Divide the work into useful phases with dependencies, validation, and
      exit criteria.
+   - State the execution boundary in the generated plan: discoveries do not add
+     requirements or phases automatically. Significant expansion beyond existing
+     authorization needs user approval before adoption or implementation,
+     including new deliverables, contract/architecture changes, or substantially
+     greater cumulative work. Routine repairs within approved scope can proceed.
+   - Define a finish: close selected work once its requirements and required
+     checks pass, authorized delivery is verified, and cleanup is completed or
+     explicitly accounted for. Optional outside-scope follow-ups do not extend
+     execution or reopen completed work. Evidence that an existing requirement
+     fails keeps acceptance open. Do not mark unselected phases complete.
    - For behavior that varies by platform/backend, map affected variants to
      proving checks and acceptance owners. Record deferrals and the prerequisite
      that revisits them; one passing variant does not verify the others.
