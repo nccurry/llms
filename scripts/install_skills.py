@@ -44,6 +44,8 @@ MANAGED_SKILLS = [
     "frontend-design-review",
     "monitored-luna-plc-execution",
     "monitored-sol-plc-execution",
+    "opus-managed-opus-plc-execution",
+    "opus-managed-sonnet-plc-execution",
     "performance-audit",
     "plain-english",
     "plain-language-audit",
@@ -283,10 +285,12 @@ def validate_skill(
         errors.extend(frontmatter_errors)
 
     unexpected = sorted(
-        set(frontmatter) - {"name", "description", "disable-model-invocation"}
+        set(frontmatter) - {"name", "description", "disable-model-invocation", "model"}
     )
     if unexpected:
         errors.append(f"unexpected frontmatter keys: {', '.join(unexpected)}")
+    if "model" in frontmatter and not frontmatter["model"].strip():
+        errors.append("frontmatter model must be a nonempty model alias or ID")
 
     actual_name = frontmatter.get("name", "")
     if actual_name != name:
