@@ -9,8 +9,8 @@ description: "Execute selected PLC work when called as $plc-execution or by a ma
 ## Invocation and selected work
 
 Use only when the user calls `$plc-execution` or requests
-`monitored-luna-plc-execution`, `monitored-sol-plc-execution`,
-`opus-managed-sonnet-plc-execution`, or `opus-managed-opus-plc-execution`.
+`monitored-luna-plc-execution`, `monitored-opus-plc-execution`,
+`monitored-sol-plc-execution`, or `monitored-sonnet-plc-execution`.
 
 Execute the named PLC, phases, sub-phases, related phases, or concrete block.
 A user-defined block is the scope even if it crosses phase boundaries. Phase

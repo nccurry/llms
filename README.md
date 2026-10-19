@@ -240,8 +240,8 @@ review rules:
 
 | Skill | Parent | Implementation children | Serious delivery failure |
 | --- | --- | --- | --- |
-| [opus-managed-sonnet-plc-execution](skills/opus-managed-sonnet-plc-execution/SKILL.md) | Opus | Sonnet | Switch repairs and new children to Opus for the remaining selected work. |
-| [opus-managed-opus-plc-execution](skills/opus-managed-opus-plc-execution/SKILL.md) | Opus | Opus | Repair with Opus under the same review standard. |
+| [monitored-sonnet-plc-execution](skills/monitored-sonnet-plc-execution/SKILL.md) | Opus | Sonnet | Switch repairs and new children to Opus for the remaining selected work. |
+| [monitored-opus-plc-execution](skills/monitored-opus-plc-execution/SKILL.md) | Opus | Opus | Repair with Opus under the same review standard. |
 
 Both require all actionable in-scope audit findings to be fixed and the parent
 to review the delivered diff before integration. The parent coordinates
@@ -249,8 +249,8 @@ independent audit reviewers. They preserve Claude's configured effort unless
 the user chooses another setting. Family aliases avoid pinning the workflow to
 one release; explicit user version choices take precedence.
 
-Invoke them in Claude Code as `/opus-managed-sonnet-plc-execution` or
-`/opus-managed-opus-plc-execution` with the selected PLC work. Their `model: opus`
+Invoke them in Claude Code as `/monitored-sonnet-plc-execution` or
+`/monitored-opus-plc-execution` with the selected PLC work. Their `model: opus`
 frontmatter requests Opus for the current turn. Use `/model opus` or start with
 `claude --model opus` to keep the session on Opus across follow-up turns. Other
 hosts must support the requested Claude models and child selection to execute

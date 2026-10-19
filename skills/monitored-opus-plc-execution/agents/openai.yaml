@@ -1,0 +1,4 @@
+interface:
+  display_name: "Monitored Opus PLC Execution"
+  short_description: "Run PLC work with Opus children and parent review"
+  default_prompt: "Use $monitored-opus-plc-execution for this PLC work with an Opus parent and Opus children, strict audits, and parent review."
