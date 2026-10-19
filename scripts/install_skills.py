@@ -61,6 +61,7 @@ MANAGED_SKILLS = [
     "verify-before-claiming",
     "visual-code-audit",
     "work-visual-summary",
+    "wrap-this-up",
 ]
 
 NAME_RE = re.compile(r"^[a-z0-9-]{1,64}$")
