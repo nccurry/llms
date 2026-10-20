@@ -8,86 +8,120 @@ architecture, build commands, and local constraints stay in their project reposi
 - [`agent-dependencies.json`](agent-dependencies.json) pins external skills and agent tools.
 - [`agent-runtime.txt`](agent-runtime.txt) pins the Python libraries used by setup commands.
 
-## Bootstrap and Task
+## Set up a computer
 
-The setup follows the same layering as the Pinlight repositories:
+### 1. Install the prerequisites
 
-| Layer | Responsibility |
+| Platform | Install |
 |---|---|
-| `bootstrap.sh` / `bootstrap.ps1` | Download checksum-verified, pinned local mise; prepare pinned Task; forward Task arguments |
-| `mise.toml` / `mise.lock` | Pin native prerequisites and their platform downloads |
-| `Taskfile.yml` | Provide installation, verification, development, and update commands |
-| `scripts/` | Install skills and tools; merge host configuration; validate and recover changes |
+| All | [Git](https://git-scm.com/downloads) |
+| Windows | PowerShell 7: `winget install --id Microsoft.PowerShell -e` |
+| Linux/macOS | `curl` or `wget`, and `sha256sum` or `shasum` (most systems already have these) |
 
-Python is owned by uv. The Python version comes from [`piw/.python-version`](piw/.python-version),
-not a second mise Python pin. Bootstrap needs no installed mise, Task, Python, or shell activation.
-On Linux/macOS it needs curl or wget and sha256sum or shasum. On Windows it uses the built-in
-PowerShell host. Tool installation also requires Git.
+You don't need mise, Task, Python, Node, or uv. Bootstrap downloads pinned copies into this
+checkout.
 
-Prepare the development environment on Linux/macOS:
+On Windows, the setup scripts use the Windows PowerShell 5.1 that comes with Windows. PowerShell
+7 (`pwsh`) is for agent apps such as Claude Code, which run commands through it. Install it with
+winget, not with a global mise. A mise `pwsh` shim fails with `No version is set for shim: pwsh`
+when no global mise config selects a version, and every app that starts `pwsh` then breaks.
 
-```bash
-./bootstrap.sh
-```
-
-On Windows:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\bootstrap.ps1
-```
-
-With no arguments, bootstrap runs `deps:install`: prepare the pinned native tools and synchronize
-the piw development environment. It does not configure agents or require running Docker Sandboxes.
-Arguments are forwarded to Task, including task variables and options:
+### 2. Clone this repository
 
 ```bash
-./bootstrap.sh tools:install
-./bootstrap.sh skills:install TARGET=codex
-./bootstrap.sh install:dry-run TARGET=all
+git clone https://github.com/nccurry/llms.git
+cd llms
+```
+
+Keep the checkout in a stable place. Agent configuration points to it, so if you move it,
+run `agents:configure` again.
+
+### 3. Install everything
+
+Linux/macOS:
+
+```bash
 ./bootstrap.sh install TARGET=all
 ```
 
+Windows:
+
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\bootstrap.ps1 tools:install
 powershell -NoProfile -ExecutionPolicy Bypass -File .\bootstrap.ps1 install TARGET=all
 ```
 
-All mise state, native tools, and agent tool caches are kept under the ignored `.tools/` directory.
-Bootstrap records the caller's directory in `LLMS_CALLER_CWD` before entering this checkout.
-Host launchers must retain their calling project and worktree.
+This installs the pinned tools, installs the skills, adds the tools to each agent's
+configuration, and runs `doctor` to check the result. `TARGET=all` covers Codex, Claude, Pi,
+and OpenCode. Use `TARGET=codex`, `claude`, `pi`, or `opencode` for one agent only.
 
-Use Task after setup. An existing Task executable can read this Taskfile; its commands select
-this checkout's mise environment. Alternatively, add `.tools/bin` to your PATH for the generated
-Task forwarding command, or continue using bootstrap with Task arguments. Bootstrap does not
-change your shell profile or persistent PATH.
+To see what would change first, run `install:dry-run TARGET=all` the same way. It needs one
+plain `bootstrap` run beforehand to download the setup tools.
+
+### 4. Check it works
+
+`install` ends by running `doctor`. Read its report for anything missing. `doctor` checks
+installed files and configuration only. Restart your agent apps and try a real query in a
+project before relying on a tool.
+
+### Update later
 
 ```bash
-task tools:install
-task skills:install TARGET=all
-task agents:configure TARGET=all
-task doctor
-task --list
+git pull
+./bootstrap.sh install TARGET=all
 ```
 
-The default target is `all`: Codex, Claude, Pi, and OpenCode. Set `TARGET=codex`, `claude`, `pi`, or
-`opencode` to select a host. `OUTPUT=json` requests machine-readable script reports.
+On Windows, run `git pull`, then the same `bootstrap.ps1 install TARGET=all` command as step 3.
 
-| Task | Behavior |
+Use `skills:install TARGET=all` instead of `install` to update only the skills. Installs are
+safe to repeat: unchanged skills are skipped, and changed ones are backed up first.
+
+### Troubleshooting
+
+| Problem | Fix |
 |---|---|
-| `deps:install`, alias `setup` | Prepare native prerequisites and piw's development environment |
-| `tools:install` | Install pinned Serena, ast-grep, GitNexus, and local cq |
-| `tools:run TOOL=... -- ...` | Run a local tool with its arguments in the caller's project or worktree |
-| `skills:install TARGET=...` | Install managed skills and required external dependencies |
-| `agents:configure TARGET=...` | Merge supported host integrations while preserving existing settings |
-| `install TARGET=...` | Run preparation, tools, skills, configuration, and verification in order |
-| `install:dry-run TARGET=...` | Preview actual tool, skill, and configuration changes |
-| `doctor TARGET=...` | Report native/package versions and host configuration; distinguish configuration from live connections |
-| `deps:versions` | Report selected native and agent tool versions |
-| `deps:check` | Report available updates without changing pins |
+| `mise ERROR No version is set for shim: pwsh` | A global mise owns `pwsh` without a version. Run `mise uninstall powershell --all`, then install PowerShell 7 with winget. |
+| Agent tools point to an old folder | Run `agents:configure TARGET=all` from the current checkout. |
+| A skill install failed | Rerun with `OUTPUT=json`. The report lists backup paths and the failed check. |
 
-`install:dry-run`, skill listing, and validation do not run dependency installation. Prepare the
-runtime once with bootstrap before using them. Bootstrap itself may download mise and Task when
-missing; it is not a preview command.
+## How setup works
+
+| Part | What it does |
+|---|---|
+| `bootstrap.sh` / `bootstrap.ps1` | Downloads a checksum-verified, pinned mise and Task into `.tools/`, then passes its arguments to Task |
+| `mise.toml` / `mise.lock` | Pin Task, uv, and Node, with their download checksums |
+| `Taskfile.yml` | Defines the install, check, development, and update commands |
+| `scripts/` | Install skills and tools, and merge agent configuration |
+
+Everything is kept in the ignored `.tools/` folder. Bootstrap does not change your shell
+profile, your PATH, or any global mise setup. uv manages Python; the version comes from
+[`piw/.python-version`](piw/.python-version).
+
+With no arguments, bootstrap runs `deps:install`. That prepares the pinned tools and the piw
+development environment only. It does not install skills or configure agents.
+
+After the first bootstrap, you can call Task in three ways:
+
+- Keep using bootstrap with Task arguments, for example `./bootstrap.sh doctor`.
+- Add `.tools/bin` to your PATH and run `task doctor`.
+- Use a Task you already have installed. It reads this Taskfile and uses this checkout's tools.
+
+Bootstrap records the folder you called it from in `LLMS_CALLER_CWD`, so `tools:run` works on
+that project when you call this checkout's bootstrap from somewhere else.
+
+`OUTPUT=json` makes the scripts print machine-readable reports.
+
+| Task | What it does |
+|---|---|
+| `install TARGET=...` | Runs `deps:install`, `tools:install`, `skills:install`, `agents:configure`, and `doctor` in order |
+| `install:dry-run TARGET=...` | Shows the tool, skill, and configuration changes without making them |
+| `deps:install`, alias `setup` | Installs pinned Task, uv, and Node, and prepares piw's development environment |
+| `tools:install` | Installs the pinned Serena, ast-grep, GitNexus, and local cq |
+| `tools:run TOOL=... -- ...` | Runs a local tool with its arguments in the caller's project or worktree |
+| `skills:install TARGET=...` | Installs the managed skills and the external skills they need |
+| `agents:configure TARGET=...` | Adds the tools to each agent's configuration and keeps existing settings |
+| `doctor TARGET=...` | Reports tool versions and agent configuration (not live connections) |
+| `deps:versions` | Reports the selected tool versions |
+| `deps:check` | Reports available updates without changing pins |
 
 ## Agent tools
 
