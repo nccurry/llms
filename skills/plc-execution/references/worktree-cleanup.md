@@ -31,8 +31,10 @@ Select only task-owned candidates with repeatable `--branch` and `--worktree`
 arguments. The default target follows the cleanup skill's main-ref selection:
 
 ```text
-python <cleanup-skill>/scripts/stale_worktree_preflight.py --path <safe-checkout> --fetch --branch <child-branch>
+uv run --script <cleanup-skill>/scripts/stale_worktree_preflight.py --path <safe-checkout> --fetch --branch <child-branch>
 ```
+
+If uv is missing, follow the cleanup skill's uv install steps before preflight.
 
 For an explicitly chosen local final destination, use
 `--target-ref refs/heads/<target>`; for an explicit remote destination, use

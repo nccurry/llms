@@ -146,7 +146,7 @@ checked evidence; it does not establish that it never reached another source.
 Run the bundled behavior tests from any directory:
 
 ```sh
-python3 -m unittest discover -s <skill-dir>/tests -v
+uv run --no-project --python ">=3.10" python -m unittest discover -s <skill-dir>/tests -v
 ```
 
 Tests use disposable repositories and mocked review metadata/CLI responses.
