@@ -38,14 +38,28 @@ from main stays; do not discard files because they look like garbage.
 
 ## Preflight and delivery proof
 
-Resolve script paths relative to this skill directory. Requires Python 3 and Git;
-review lookup uses existing `gh` or `glab` authentication. No Python packages are
-needed. Read [delivery-check details](references/delivery-proof.md) when evaluating
-content or review evidence, a failed check, or an unsupported host.
+Resolve script paths relative to this skill directory. Requires
+[uv](https://docs.astral.sh/uv/) and Git; uv supplies a suitable Python, and no
+Python packages are needed. Review lookup uses existing `gh` or `glab`
+authentication. Read [delivery-check details](references/delivery-proof.md) when
+evaluating content or review evidence, a failed check, or an unsupported host.
 
 ```sh
-python3 <skill-dir>/scripts/stale_worktree_preflight.py --path . --fetch
+uv run --script <skill-dir>/scripts/stale_worktree_preflight.py --path . --fetch
 ```
+
+Always launch the script with `uv run --script`, not `python` or `python3`, so
+the same command works on every platform. If `uv --version` fails, ask the user
+before installing it, then use the first command that fits the platform:
+
+- Windows: `winget install --id astral-sh.uv -e`
+- macOS: `brew install uv`
+- Linux or any other platform: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+Open a new shell or add the installer's bin directory (usually `~/.local/bin`)
+to `PATH`, then confirm with `uv --version`. If the user declines or installation
+fails, keep all work and report that preflight could not run because uv is
+missing. Never run the script's checks by hand as a substitute.
 
 Use `--main <branch>` and `--remote <remote>` when needed to select the intended
 main ref. Inspect `baseRef` before accepting candidates. Use repeatable
@@ -128,7 +142,7 @@ For each confirmed candidate, run:
 
 ```sh
 git worktree remove <worktree-path>
-python3 <skill-dir>/scripts/stale_worktree_preflight.py --path <safe-worktree> --verify-removed <worktree-path>
+uv run --script <skill-dir>/scripts/stale_worktree_preflight.py --path <safe-worktree> --verify-removed <worktree-path>
 ```
 
 If the freshly confirmed candidate has `requiresForce: true`, use
