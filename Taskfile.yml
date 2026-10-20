@@ -172,13 +172,6 @@ tasks:
     desc: Fetch and verify pinned external skills without installing live copies.
     cmd: '{{.PYTHON}} scripts/install_skills.py --command fetch --output {{.OUTPUT}}'
 
-  skills:test:
-    desc: Run the existing Git cleanup safety checks when changing that script.
-    env:
-      PYTHONDONTWRITEBYTECODE: '1'
-    cmds:
-      - '{{.PYTHON}} -m unittest discover -s skills/clean-stale-worktrees/tests -p "test_*.py"'
-
   skills:dry-run:
     desc: Show what skill installation would change for TARGET (default all).
     cmd: '{{.PYTHON}} scripts/install_skills.py --target {{.TARGET}} --dry-run --output {{.OUTPUT}}'

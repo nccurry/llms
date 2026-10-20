@@ -251,7 +251,6 @@ and host configuration state; live client connections and skill use require sepa
 task skills:list
 task skills:fetch
 task skills:validate
-task skills:test
 task skills:dry-run TARGET=codex
 task skills:install TARGET=codex
 ```
@@ -266,8 +265,8 @@ external dependencies before changing a skill target.
 
 Use [skill behavior checks](tests/skill-evals.md) to evaluate selection and workflow changes.
 Structural validation proves packaging constraints; it does not establish agent performance.
-Setup scripts are checked by running them. `skills:test` retains the existing optional
-Git cleanup safety checks for changes to that script; it is outside the normal setup gate.
+Setup scripts are checked by running them. Worktree cleanup uses the agent's
+assessment and standard Git commands; it has no custom preflight script.
 
 The Claude PLC variants reuse `plc-execution` and share their audit and parent
 review rules:

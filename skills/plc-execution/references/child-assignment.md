@@ -17,7 +17,8 @@ Every assignment includes:
   with instructions to read/apply all three before work.
 - Any prescribed model/effort and the parent's decision/escalation rules.
 - The final cleanup target and the parent's cleanup ownership. Identify any
-  files or running processes that must survive handoff.
+  unfinished source or running processes that must survive handoff, with their
+  owner and the condition that ends retention.
 
 Tell the child to read local instructions, source, PLC, goals, and prerequisites
 before editing and report which skill paths it loaded. It must use only its own
@@ -38,6 +39,9 @@ place, preserve IDs and rationale, and reconcile conflicting text. Keep status
 and evidence concise in the existing work list or status/evidence sections;
 link results instead of repeating them or restating the skill's general workflow.
 Keep session narration out of requirements and design.
+Commit useful implementation notes in the assigned packet before handoff.
+Delete temporary notes when no longer useful. Report raw receipts separately;
+they may be discarded after merge or checkout closure without an archive.
 Report proposed scope additions to the parent without adopting them. Stop at
 the assigned exit criteria and required handoff; leave optional discoveries as
 outside-scope follow-ups. Do not claim whole-phase completion for a smaller block.
@@ -52,3 +56,5 @@ release, report its final commit, needed modified/untracked/ignored files, and
 running processes. Stop its own processes and release the checkout when the
 parent confirms they are no longer needed. The parent verifies delivery and
 removes the worktree and branch; the child does not delete its own checkout.
+Do not require preservation of every checkout, executable, or receipt when
+handing off to a successor. A fresh checkout does not renew an expired hold.

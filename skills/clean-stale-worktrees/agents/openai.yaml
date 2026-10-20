@@ -1,4 +1,4 @@
 interface:
   display_name: "Clean Stale Worktrees"
-  short_description: "Remove merged local git work"
-  default_prompt: "Use $clean-stale-worktrees to remove local branches and linked worktrees that are already merged into main."
+  short_description: "Assess and clean stale local work"
+  default_prompt: "Use $clean-stale-worktrees to reconcile campaigns, preserve unfinished source, and remove stale local branches and worktrees."

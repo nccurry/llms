@@ -68,6 +68,9 @@ Update the records actually used: planning overview, requirements, design,
 implementation steps, completion map, findings, and relevant status/index pages.
 Preserve repository formats, IDs, decisions, and meaningful history. Update
 maintained product documentation where behavior changed.
+Move useful implementation notes into those records and commit them with the
+work. Delete temporary notes when no longer useful; do not leave the only
+current notes as dirty files in an old checkout.
 
 - Distinguish implemented, verified, delivered, and cleanup pending using existing
   fields or brief notes. Record actual outcomes, not intended merges or removals.
@@ -114,13 +117,15 @@ For cleanup-only requests, continue to cleanup within the existing authorization
 4. **Verify delivery and acceptance.** Inspect the actual final target and required
    post-merge checks, including remote identity for remote delivery. A temporary
    branch merge or unmerged PR/MR leaves final delivery pending. A post-merge
-   failure leaves acceptance open even though delivery happened; preserve
-   recovery resources and record that state.
+   failure leaves acceptance open even though delivery happened; record it and
+   keep only resources needed for the active repair, with an owner and release
+   condition. Raw receipts do not require indefinite retention after merge.
 
 5. **Finish the records.** Record observed outcomes under repository lifecycle
    rules. Deliver final tracked documentation edits through the same route,
-   refreshing affected checks. Preserve needed evidence outside temporary
-   checkouts; the only updated plan must not disappear during cleanup.
+   refreshing affected checks. Keep the packet in a surviving committed
+   location. After merge or checkout closure, discard task receipts, raw logs,
+   binaries, caches, and disposable notes without an archive or recovery bundle.
 
 ## Clean up task-owned local work
 
@@ -128,19 +133,25 @@ Revisit every task-owned temporary resource, including abandoned/replaced
 children. Remove eligible resources now. Follow `clean-stale-worktrees` and,
 when applicable, `plc-execution`'s cleanup procedure:
 
-- Select only task-owned candidates. Use the full proof sequence against the
-  actual final target, including non-ancestry delivery and post-merge edits.
-  Remote delivery needs the verified remote ref. Require committed and local
-  content proof; preserve unique staged, unstaged, untracked, and ignored content.
+- Select only task-owned candidates. Assess delivery against the actual final
+  target, including non-ancestry delivery and post-merge edits.
+  Remote delivery needs the verified remote ref. Assess source and local
+  changes with Git and host review tools directly. Reconcile each campaign's
+  current integration, superseded snapshots, and unique unfinished work.
+  Preserve unfinished source and useful notes; discard expired task artifacts
+  under the cleanup skill's policy.
 - Require release by agents/processes and honor primary/current/shared, locked,
-  protected, and explicit retention rules. Keep recovery or pending-delivery
-  resources. Resolve/check absolute paths and perform removal from outside them.
-- Refresh proof immediately before removal. Use the cleanup skill's commands;
+  protected, and current user retention rules. Reconcile old blanket handoff
+  holds with the user's current policy. Keep only resources with an active
+  source/recovery dependency. Resolve/check absolute paths and perform removal
+  from outside them.
+- Recheck source, target, local changes, and ownership immediately before removal.
+  Use the cleanup skill's Git removal and verification steps;
   for Codex-managed checkouts use the native archive tool for the exact task
   attachment after the same proof checks. Respect archive restrictions.
 - After either removal or archive, verify directory and Git registration absence.
   Recheck any remaining local branch's hash, protections, and checkout use before
-  its proof-specific deletion. Verify ref removal separately: archiving a
+  deletion. Verify ref removal separately: archiving a
   checkout need not remove its branch.
 - Retain the branch after partial worktree removal. Follow the owning skill's
   failure rules; do not manually delete remnants or prune registration to hide
