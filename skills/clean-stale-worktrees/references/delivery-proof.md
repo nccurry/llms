@@ -1,155 +1,82 @@
-# Delivery proof details
+# Delivery checks
 
-The preflight makes no deletions. Its temporary indexes do not touch the real
-index or worktree. Fetches may update remote-tracking refs or obtain missing
-review objects; `merge-tree` may write Git objects. Review APIs use read-only GET
-requests through existing CLI authentication. Never print credentials.
+Use the checks that resolve the candidate's actual uncertainty. These are
+investigation methods, not a required script or a fixed search sequence. Keep
+the final target, source revision, and current user policy explicit.
 
-## Fix the comparison scope
+## Fix the comparison
 
-Use the fetched, intended remote main branch and record its hash. Prefer a real
-main/master ref over a cached remote HEAD, which can be stale. With multiple
-remotes and no origin, select `--remote`. With a nonstandard default, inspect the
-selected ref and supply `--main` if needed. Do not silently fall back to local
-main when the selected remote main is missing.
+Fetch the intended remote and resolve its actual main/master or user-selected
+target ref. A cached remote HEAD or stale local main may name the wrong target.
+Record the source tip and target commit so later changes are visible.
 
-For an execution workflow's explicitly chosen final destination, `--target-ref`
-selects the exact full local or remote-tracking branch ref without remote-first
-substitution. A remote ref must use the selected `--remote`. A local ref proves
-local delivery only. The report retains the field names `baseRef` and `mainHash`
-for compatibility; both identify this selected target. Do not switch from final
-main to temporary integration merely because that branch contains the source.
+Compare the branch's own changes from its established fork point. A diff of an
+old checkout against current main also includes later main work that was never
+part of that branch. Unique commit counts do not measure unfinished features.
 
-Repeatable `--branch` and `--worktree` options narrow which branches receive
-delivery checks and which worktrees may be candidates. Their selections form a
-union. All registrations are still read so a branch used elsewhere cannot be
-offered for deletion after removing only one selected checkout. Protections and
-the complete proof sequence apply unchanged. A keep list is not a scan selector.
+For a large campaign, find its current integration and successor MRs first.
+Shared tree IDs help locate repeated committed snapshots; local index, disk,
+untracked, and ignored states still need inspection in every checkout.
 
-Each branch result records `branchHash`, `mainHash`, `forkPoint`, and `attempts`.
-A changed branch or main hash invalidates that report for deletion. Missing or
-shallow history may prevent proof; fetch the needed history within the authorized
-repository scope, then rerun. Do not weaken the checks.
+## History, squash merges, and later rewrites
 
-## Complete net content
+Ancestry in the final target is straightforward delivery evidence. If ancestry
+fails, inspect the actual MR and source/integration commits, main history, and
+the affected source. A squash or rebase changes commit IDs without necessarily
+leaving work undelivered. Later edits can also defeat a current-byte comparison.
 
-Use a single established merge base and the entire binary-capable patch from
-that base to the local tip. Disable external diff programs, text conversion,
-rename heuristics, color, and whitespace normalization.
+Check the complete relevant change, including binaries, modes, deletions, and
+merge resolutions. Historical main snapshots and verified merged source trees
+can establish delivery before a later edit. Stable patch IDs and matching
+fragments help find candidates but are not complete proof. Distinguish an old
+delivered occurrence from a new change made after it was reverted.
 
-Load the target snapshot into a temporary index and reverse the whole patch.
-Then require all touched files in the reconstructed index to equal their fork
-point blobs and modes. A reverse-apply exit status alone is insufficient,
-especially for deletion-only patches. This stronger check may reject content
-that main has changed further; the next steps must then run automatically.
+Use available authenticated GitHub/GitLab tools for exact MR state, revisions,
+target, and merge results when needed. A title, source branch name, or MR link
+does not prove the local tip was included. Check commits added after the merged
+source separately. Continue with independent Git evidence if review lookup is
+unavailable; state missing facts rather than inventing an MR result.
 
-Historical search uses commits reachable from the recorded main hash at or after
-the source fork, including merged side history, without an arbitrary date or commit limit. Record
-the matching snapshot and independently check its ancestry in main. Later main
-edits or reverts do not erase historical delivery. A canceled branch patch is
-`noFileChanges`, not evidence that its individual commits were empty.
+When useful for a squash, inspect the integration parent and source with
+`git merge-tree --write-tree <integration-parent> <source>` and compare its
+conflict-free tree with the actual squash tree. This is one available check,
+not a reason to reconstruct every historical draft before making a decision.
 
-## Verified review sources
+A successor may implement the same accepted requirement through different
+source. Inspect that implementation, its tests and adopted PLC decisions, then
+identify any still-useful delta in the old branch. Old ledger wording, failed
+prototypes, and temporary diagnostics do not all need to reach main. Record
+why a change is superseded or abandoned; preserve source whose disposition
+remains uncertain. A closed-but-unmerged MR alone does not settle that question.
 
-Read every page of available review metadata for the selected repository. Record
-open reviews across targets so the parent can coordinate active users. An open
-review is not evidence of unique local content and does not veto complete proof.
-Only merged reviews targeting the selected main can provide source evidence.
-Names and titles select candidates at most; they never prove delivery.
+## Local states and notes
 
-For each merged candidate:
+Review `git diff --cached` and `git diff` separately. Inspect untracked files,
+ignored locations, and unresolved index stages as well. Do not treat a clean
+ordinary status as proof that a checkout contains no local work. Read symlink
+targets without following them; inspect embedded repositories separately.
 
-1. Obtain the published source hash, squash hash, and review URL.
-2. Obtain the exact commit objects, fetching only from the selected remote if
-   necessary. Missing objects are an evidence gap, not a negative delivery finding.
-3. Require the squash hash to be an ancestor of recorded main and to have one parent.
-4. Run `git merge-tree --write-tree <squash-parent> <source-hash>`. Require a
-   successful, conflict-free result and exact tree hash equality with the squash
-   commit's tree. A conflict or mismatch preserves the candidate's unresolved work.
-5. Prove the local tip is an ancestor of that source, or prove its complete net
-   patch against that verified source with the same reconstructed-file check.
-6. If the local branch extends beyond the verified source, account for covered
-   commits by source ancestry, then check every remaining unique change.
+Decide what each difference means. Useful notes belong in the committed PLC
+packet. Raw receipts and generated artifacts may be discarded after merge or
+checkout closure without matching them to main, preserving their exact test
+executables, or building an archive. An ignored source edit or capture helper
+does not become disposable just because it sits beside test output.
 
-The script supports github.com through `gh api` and GitLab-named hosts through
-`glab api`, including paginated results. GitHub's published integration hash is
-accepted only if its parent count and reproduced tree satisfy the squash proof;
-a normal merge commit cannot be mistaken for a squash commit.
+An obsolete planning snapshot may be reconciled with the current packet rather
+than merged back. Verify that unfinished requirements and useful decisions
+remain recorded before discarding it. Closing a checkout does not authorize
+silently abandoning unique source or publishing missing notes.
 
-Unsupported hosts, unavailable CLI/authentication, incomplete metadata, or API
-failures leave review-based proof unavailable. Continue independent history,
-content, and exact-change checks; retain work if those cannot establish delivery.
-Use an available host connector for authoritative review evidence when required,
-then extend the provider in `review_sources.py` and rerun. Do not mark lookup
-complete manually or use a saved review description as proof. A local repository
-with no remote has no hosted review lookup to perform.
+## Removal checks
 
-## Exact cherry-picked changes
+Confirm agents and processes have released the exact checkout. Check write and
+search access to directories, ownership, nested repositories, and symlinks;
+read-only build directories can block removal even when source is delivered.
+Read-only files alone do not prevent unlinking. Do not change permissions or
+use elevated deletion merely to force a cleanup result.
 
-The script indexes main's first-parent historical changes once per run. A merge's
-first-parent diff covers imported changes and resolutions without also counting
-the same side-branch delivery twice. Stable patch IDs
-narrow the candidates, but they ignore whitespace and cannot authorize deletion.
-The proof compares canonical patch bytes: paths, added and removed lines in
-order, whitespace, newline markers, and applicable mode/binary metadata. Only
-hunk positions and text blob index headers are excluded; binary blob identities
-are retained. Renames are checked as deletion plus creation.
-
-Match each hunk separately so split cherry-picks and commits containing extra
-files can be accounted for. Keep creation, deletion, binary, and mode-change
-patches whole. Count occurrences: one delivered change cannot cover multiple
-repeated local changes. Only deliveries after the fork count. Commits after a
-verified source require matching delivery after its squash commit. Empty commits
-add no file-change obligation.
-
-Enumerate unique commits after the fork, excluding commits reachable from main.
-For a merge, require its complete first-parent diff as well as unique side commits.
-This includes resolution edits. It deliberately may require extra evidence for
-complex merges rather than dismissing them as empty or counting only ordinary
-commits. Report those unmatched patches for further proof. The result records
-source or main hashes for accounted changes and exact patches for unmatched ones.
-
-## Detached commits and local content
-
-`check_commit` applies the same committed-delivery proof to an immutable HEAD,
-without inventing a branch for detached work. Exclude historical snapshots and
-merged-source deliveries before the fork: a newly recreated change is not proven
-delivered merely because main once contained and then reverted an earlier occurrence.
-
-`local_changes.py` checks real index entries separately from disk files. It reads
-tracked, untracked, and ignored paths, including tracked files marked assume-unchanged.
-Changed states must exactly match the same path and mode in current main or in a
-main snapshot at/after the proven committed delivery. A local deletion requires
-absence after that boundary, not absence before the file was first delivered.
-This preserves a unique staged version even if disk contents have been restored.
-
-The inspector hashes local contents without writing objects. It allows Git's
-built-in text conversion when no external clean filter is configured, retains
-unproved filtered content, and reads symlink targets without following them.
-Nested repositories, submodules, special files, unreadable data, and unresolved
-index stages need separate proof and remain protected. Ignored files are checked
-as content, not classified as disposable.
-
-The report includes changed paths/layers, matching main snapshots, unmatched
-states, index hash, and a raw-content fingerprint. Repeat preflight immediately
-before removal and compare fingerprints as well as commit hashes. An index or
-HEAD change during inspection invalidates that inspection. Missing review APIs
-do not veto independently complete content/history proof; they still prevent any
-proof that actually depends on unavailable review sources.
-
-Exhausting a partial search, encountering an error, or finding similar lines is
-not delivery proof. A concrete unmatched patch means it has no match in the
-checked evidence; it does not establish that it never reached another source.
-
-## Validation
-
-Run the bundled behavior tests from any directory:
-
-```sh
-uv run --no-project --python ">=3.10" python -m unittest discover -s <skill-dir>/tests -v
-```
-
-Tests use disposable repositories and mocked review metadata/CLI responses.
-They do not delete or change the user's repositories or contact hosted services.
-Live provider authentication and host-specific API behavior still need verification
-when the skill performs cleanup in that repository.
+Recheck source, target, local states, registration, locks, and ownership just
+before acting. Concurrent changes invalidate an earlier decision. Remove from
+outside the checkout, then inspect the filesystem and `git worktree list`
+independently. Delete a branch only after checking its current commit and use
+by all remaining checkouts; verify the ref is absent afterward.

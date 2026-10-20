@@ -57,6 +57,12 @@ evidence.
      design, and remaining work without the conversation. Distinguish proposed
      changes from approved requirements; do not silently weaken or defer
      acceptance to match the implementation.
+   - Put useful implementation notes, adopted decisions, remaining work, and
+     concise validation outcomes in the packet's existing sections. Commit
+     updates with the work. Delete temporary notes when no longer useful.
+     Raw receipts, logs, binaries, and caches need no archive after an MR merges
+     or a checkout closes. Do not make live worktrees or ignored output the only
+     location for information a successor needs.
    - When a change affects a CLI, API, configuration, UI, or other public
      surface, summarize the action, expected result, and compatibility in the
      SRD. Add short expected-experience examples for each changed surface.
@@ -83,6 +89,9 @@ evidence.
      explicitly accounted for. Optional outside-scope follow-ups do not extend
      execution or reopen completed work. Evidence that an existing requirement
      fails keeps acceptance open. Do not mark unselected phases complete.
+     For a retained checkout, name its owner, unfinished work or active
+     dependency, and release condition. Avoid blanket preservation instructions
+     that carry every draft and receipt into the next session.
    - For behavior that varies by platform/backend, map affected variants to
      proving checks and acceptance owners. Record deferrals and the prerequisite
      that revisits them; one passing variant does not verify the others.

@@ -51,6 +51,12 @@ and remaining work without reconstructing the conversation. Label pending
 proposals as unapproved; do not silently weaken or defer requirements to match
 delivered code.
 
+Useful implementation notes belong in the existing packet and must be committed
+with the work. Delete temporary notes when no longer useful. Keep raw receipts
+only while needed for current acceptance or recovery; after merge or checkout
+closure they may be discarded without an archive. Never use an ignored output
+directory as the only home for implementation decisions or remaining work.
+
 ## Prepare the work and integration
 
 Read root/scoped `AGENTS.md` and `CLAUDE.md` files that exist, selected PLC files,
@@ -186,21 +192,34 @@ does not extend to unrelated checkouts, remote branches, or final integration.
 
 Before creating worktrees, read [the cleanup procedure](references/worktree-cleanup.md)
 and locate [clean-stale-worktrees](../clean-stale-worktrees/SKILL.md). Track every
-temporary child, integration, and combined-verification checkout in the existing
-work list, with its owner, absolute path, branch/commit, final delivery target,
-and cleanup state. Preserve these facts across handoffs and compaction.
+temporary planning, child, repair, replacement, integration, review, and
+verification checkout in the existing work list, with its owner, absolute path,
+branch/commit, final delivery target, and cleanup state. Preserve these facts
+across handoffs and compaction.
 
 After each verified delivery and its required checks, the parent investigates
 whether the exact source reached main or the user's selected final target.
 A merge into a temporary integration branch alone is insufficient. Follow the
-cleanup skill's full proof sequence, including squash, historical-content, and
-cherry-pick checks; lack of ancestry alone is not proof of missing delivery.
+cleanup skill's agent-led assessment of source, local changes, and ownership;
+account for squash merges, successors, and rewritten implementations rather
+than treating failed ancestry or unmatched fragments as unfinished features.
 Then remove eligible worktrees and local branches after all users and processes
 have released them. Children report release; the parent performs cleanup.
+Discard expired task artifacts under the cleanup skill's policy; raw receipts
+and caches need not reach main or be archived before removal.
 
 Revisit retained work at phase close and before finishing. Each tracked checkout
 must be removed with verification or retained with a specific reason and next
-condition to check. Never force worktree removal or discard needed files.
+condition to check. A successor using a fresh worktree must account for its
+predecessors. Reconcile by campaign: identify its current integration, unique
+unfinished requirements, duplicate snapshots, and superseded experiments.
+Identical committed trees can still have different local edits. A handoff must
+not say to preserve every checkout and receipt indefinitely: name the unfinished
+source or active dependency, its owner, and
+the condition that ends retention. Follow the user's current retention policy
+when reconciling older handoff notes; an agent's blanket hold does not create a
+permanent user keep instruction. Use force only as permitted by the cleanup
+skill after fresh checks, and preserve unfinished source.
 
 ## Resolve decisions without needless interruptions
 

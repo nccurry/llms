@@ -30,6 +30,9 @@ using attach_artifact. Use the equivalent host capability when available.
 
 After an authorized merge, inspect the host's actual merged state, source and
 integration commits, and target before running the base cleanup procedure.
+Commit useful implementation notes in the PLC packet before the final handoff.
+After merge, task receipts and temporary output may be discarded without an
+archive; their presence does not justify keeping predecessor checkouts.
 An open or closed-but-unmerged review does not prove delivery. Account for local
 commits beyond its merged source, including after squash or rebase integration.
 If the review will merge later, record cleanup as pending with the exact PR/MR
