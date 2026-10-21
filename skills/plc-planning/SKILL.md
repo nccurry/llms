@@ -61,8 +61,10 @@ evidence.
      concise validation outcomes in the packet's existing sections. Commit
      updates with the work. Delete temporary notes when no longer useful.
      Raw receipts, logs, binaries, and caches need no archive after an MR merges
-     or a checkout closes. Do not make live worktrees or ignored output the only
-     location for information a successor needs.
+     or a checkout closes. Keeping unfinished source does not require keeping
+     unused build output; name the active need for any retained output.
+     Do not make live worktrees or ignored output the only location for
+     information a successor needs.
    - When a change affects a CLI, API, configuration, UI, or other public
      surface, summarize the action, expected result, and compatibility in the
      SRD. Add short expected-experience examples for each changed surface.
