@@ -4,6 +4,7 @@ This repository owns reusable agent processes and personal agent setup. Project 
 architecture, build commands, and local constraints stay in their project repositories.
 
 - [`skills`](skills/) contains managed Agent Skills and their installer.
+- [`templates`](templates/README.md) has starting `AGENTS.md`, `CLAUDE.md`, and `llms.txt` files for new repositories.
 - [`piw`](piw/README.md) runs persistent or disposable Pi sessions in Docker Sandboxes.
 - [`agent-dependencies.json`](agent-dependencies.json) pins external skills and agent tools.
 - [`agent-runtime.txt`](agent-runtime.txt) pins the Python libraries used by setup commands.
