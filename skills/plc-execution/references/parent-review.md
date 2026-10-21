@@ -34,8 +34,10 @@ rule in the explicitly invoked monitored skill.
 
 The parent coordinates one read-only reviewer per required audit specialist
 in bounded waves. Implementation children request this review and make repairs;
-they do not launch recursive reviewers. Preserve provenance and rerun only
-invalidated reviews/checks during convergence.
+they do not launch recursive reviewers. Preserve provenance and valid evidence.
+Inspect routine repair diffs and run affected checks. Repeat specialist reviews
+only for serious findings or substantial changes under `audit-codebase`'s
+three-pass limit, carrying the count across handoffs and integration.
 
 If a finding or missing check remains after repair/final verification, report
 the exact open work. Resolve routine repairs; ask the user only about material
