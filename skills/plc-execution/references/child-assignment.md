@@ -58,3 +58,9 @@ parent confirms they are no longer needed. The parent verifies delivery and
 removes the worktree and branch; the child does not delete its own checkout.
 Do not require preservation of every checkout, executable, or receipt when
 handing off to a successor. A fresh checkout does not renew an expired hold.
+
+Keep untracked output in the assigned checkout's ignored build folder or the
+campaign output folder named in the assignment; never create folders outside
+the campaign folder. Run containers that write into the checkout as the
+invoking user, using the repository's wrapper when it has one. Report any
+root-owned files they leave.

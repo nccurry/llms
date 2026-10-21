@@ -1,0 +1,4 @@
+interface:
+  display_name: "Start This Up"
+  short_description: "Create a safe feature worktree"
+  default_prompt: "Use $start-this-up to create a new feature branch and linked worktree for this task."

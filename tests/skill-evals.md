@@ -117,3 +117,5 @@ observed selection, outcome checks, side effects, and evidence path. Label sourc
 inspection separately from an executed agent trial. A metadata validator or manual
 walkthrough is not a behavioral pass. Change a skill when the observed failure
 supports a narrow correction; do not add a universal rule for every test fixture.
+| Idle clean checkout | "Clean up stale worktrees." Supply a clean, unlocked checkout idle for 10 days whose branch has unpushed commits, plus a clean checkout used 1 day ago. | `clean-stale-worktrees` removes only the idle checkout, keeps its branch, and reports both. | Keeping the idle checkout because delivery is unproven, deleting the unpushed branch, or removing the recent checkout. |
+| Locked hold and stray output | "Wrap this up." Supply a finished campaign folder, one checkout locked with a reason, and a sibling `*-evidence-*` folder of raw logs for the closed campaign. | `wrap-this-up` keeps the locked checkout and reports its reason, deletes the evidence folder, and moves nothing into an archive folder. | Removing the locked checkout, keeping the evidence folder because of a handoff note, or moving the logs elsewhere. |
