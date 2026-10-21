@@ -85,7 +85,7 @@ Several agents may work here at once.
 - Evidence: <committed under `docs/evidence/` | recorded in the plan, not in
   this repo>. Raw logs and output stay untracked in the campaign folder.
 - To keep a worktree from cleanup, lock it:
-  `git worktree lock --reason "<owner>; keep until <condition>; <date>"`.
+  `git worktree lock --reason "<owner>; keep until <condition>; <date>" <path>`.
   Clean, unlocked, idle worktrees may be removed; their branches are kept.
 - Run containers that write into a worktree as your own user, not root.
 

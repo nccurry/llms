@@ -78,7 +78,7 @@ Repositories may adapt this section:
   ticket, or feature slug. Never reuse a folder for another branch.
 - Evidence: <committed under `docs/evidence/` | recorded in the plan packet in
   `<other repo>`; raw output stays untracked under the campaign folder>.
-- Holds: `git worktree lock --reason "<owner>; keep until <condition>; <date>"`.
+- Holds: `git worktree lock --reason "<owner>; keep until <condition>; <date>" <path>`.
   Unlocked, clean, idle checkouts may be removed; branches are kept.
 - Containers: <task wrapper | `--user "$(id -u):$(id -g)"`>.
 ```
