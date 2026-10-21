@@ -132,34 +132,20 @@ For cleanup-only requests, continue to cleanup within the existing authorization
 Revisit every task-owned temporary resource, including abandoned/replaced
 children and unused output in retained checkouts. A source or delivery blocker
 does not require keeping build directories, staging copies, or caches that are
-no longer needed. Remove eligible resources now. Follow `clean-stale-worktrees`
-and, when applicable, `plc-execution`'s cleanup procedure:
+no longer needed. Remove eligible resources now, following
+`clean-stale-worktrees` for every proof, removal, and verification step and,
+when applicable, `plc-execution`'s cleanup procedure:
 
-- Select only task-owned candidates. For checkout or branch removal, assess
-  delivery against the actual final target, including non-ancestry delivery
-  and post-merge edits.
-  Remote delivery needs the verified remote ref. Assess source and local
-  changes with Git and host review tools directly. Reconcile each campaign's
-  current integration, superseded snapshots, and unique unfinished work.
-  Preserve unfinished source and useful notes; discard expired task artifacts
-  under the cleanup skill's policy.
-- Before removing a checkout, require release by agents/processes and honor
-  primary/current/shared, locked,
-  protected, and current user retention rules. Reconcile old blanket handoff
-  holds with the user's current policy. Keep only resources with an active
-  source/recovery dependency. Resolve/check absolute paths and perform removal
-  from outside them.
-- Recheck source, target, local changes, and ownership before checkout removal.
-  Use the cleanup skill's Git removal and verification steps;
-  for Codex-managed checkouts use the native archive tool for the exact task
-  attachment after the same proof checks. Respect archive restrictions.
-- After checkout removal or archive, verify directory and Git registration absence.
-  Recheck any remaining local branch's hash, protections, and checkout use before
-  deletion. Verify ref removal separately: archiving a
-  checkout need not remove its branch.
-- Retain the branch after partial worktree removal. Follow the owning skill's
-  failure rules; do not manually delete remnants or prune registration to hide
-  failed removal.
+- Work through the task's campaign folder (see `start-this-up`'s worktree
+  layout reference) and any task-owned checkouts outside it. Select only
+  task-owned candidates.
+- Remove clean, unlocked, idle checkouts and keep their branches. Delete a
+  branch or discard local changes only with the proof the cleanup skill
+  requires against the actual final target.
+- Honor worktree locks and current user keep instructions. Reconcile old
+  blanket handoff holds with the user's current policy.
+- When the campaign is closed, delete its untracked output folder and remove
+  the empty campaign folder.
 
 Update the existing cleanup record: each resource is verified removed, or
 retained with its owner, concrete reason, and next condition to check. Keep final

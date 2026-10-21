@@ -107,8 +107,10 @@ contracts. Do not parallelize writers that share an API, schema, data format, or
 unresolved design choice.
 
 The parent creates and checks each child worktree; spawning may reuse the
-caller folder. Use a distinct branch and sibling folder outside other worktrees.
-Record the immutable base and read status in that exact checkout:
+caller folder. Use a distinct branch and a new folder under the PLC's campaign
+folder per [worktree layout](../start-this-up/references/worktree-layout.md);
+never reuse a folder for another branch. Record the immutable base and read
+status in that exact checkout:
 
 ```text
 git worktree add -b <child-branch> <absolute-child-path> <integration-commit>
@@ -197,37 +199,17 @@ Apply existing authorization without another cleanup question. This permission
 does not extend to unrelated checkouts, remote branches, or final integration.
 
 Before creating worktrees, read [the cleanup procedure](references/worktree-cleanup.md)
-and locate [clean-stale-worktrees](../clean-stale-worktrees/SKILL.md). Track every
-temporary planning, child, repair, replacement, integration, review, and
-verification checkout in the existing work list, with its owner, absolute path,
-branch/commit, final delivery target, and cleanup state. Preserve these facts
-across handoffs and compaction.
+and [worktree layout](../start-this-up/references/worktree-layout.md). Keep every
+checkout, review copy, and untracked output for this PLC under its campaign
+folder, and track each checkout in the existing work list with its owner, path,
+branch/commit, and cleanup state across handoffs and compaction.
 
-After each verified delivery and its required checks, the parent investigates
-whether the exact source reached main or the user's selected final target.
-A merge into a temporary integration branch alone is insufficient. Follow the
-cleanup skill's agent-led assessment of source, local changes, and ownership;
-account for squash merges, successors, and rewritten implementations rather
-than treating failed ancestry or unmatched fragments as unfinished features.
-Then remove eligible worktrees and local branches after all users and processes
-have released them. Children report release; the parent performs cleanup.
-Discard expired task artifacts under the cleanup skill's policy; raw receipts
-and caches need not reach main or be archived before removal. Revisit unused
-output in retained checkouts too; source verification or delivery still being
-open does not require keeping their builds, staging copies, and caches.
-
-Revisit retained work at phase close and before finishing. Each tracked checkout
-must be removed with verification or retained with a specific reason and next
-condition to check. A successor using a fresh worktree must account for its
-predecessors. Reconcile by campaign: identify its current integration, unique
-unfinished requirements, duplicate snapshots, and superseded experiments.
-Identical committed trees can still have different local edits. A handoff must
-not say to preserve every checkout and receipt indefinitely: name the unfinished
-source or active dependency, its owner, and
-the condition that ends retention. Follow the user's current retention policy
-when reconciling older handoff notes; an agent's blanket hold does not create a
-permanent user keep instruction. Use force only as permitted by the cleanup
-skill after fresh checks, and preserve unfinished source.
+The parent cleans up after each verified delivery, at phase close, and before
+finishing, following the cleanup procedure. Remove review and verification
+copies in the step that created them. Express a hold only as a worktree lock
+whose reason names the owner and release condition; never leave a blanket
+instruction to preserve every checkout and receipt. Clean idle checkouts may be
+removed with their branches kept, so cleanup does not wait for delivery proof.
 
 ## Resolve decisions without needless interruptions
 

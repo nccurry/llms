@@ -19,7 +19,16 @@ remote target before judging delivery; record its exact ref and commit. Main
 is the default unless the user chose another final destination. Local delivery
 and a merge into temporary integration do not establish remote main delivery.
 
-Use commands such as:
+Start with the read-only report. It lists facts for every registered checkout
+and makes no decisions:
+
+```sh
+uv run --script <skill-dir>/scripts/worktree_report.py --path . --fetch
+```
+
+Add `--reviews` to look up each branch's MR/PR with existing `glab` or `gh`
+authentication, and `--format table` for a readable summary. If `uv --version`
+fails, ask before installing it, or gather the same facts with commands such as:
 
 ```sh
 git worktree list --porcelain
@@ -36,8 +45,21 @@ ignored locations that may contain source or useful notes. A restored disk file
 can hide a different staged version. Handle unresolved merge stages explicitly.
 Respect primary/current/shared checkouts, protected branches, active writers and
 processes, locks, and user keep instructions. Release a task-owned checkout and
-run removal from outside it. Investigate a lock's owner and purpose; do not
-bypass an unresolved lock or access failure.
+run removal from outside it. A worktree lock is a hold: honor it and report its
+reason; never bypass it or an access failure. A hold stated only in a plan or
+handoff does not protect a clean checkout, because removing that checkout keeps
+its branch. Checkout layout, holds, and output locations follow
+[worktree layout](../start-this-up/references/worktree-layout.md).
+
+## Remove idle clean checkouts, keep their branches
+
+A checkout with no staged, unstaged, or untracked changes holds nothing that
+its branch does not. Remove it without proving delivery when it is unlocked,
+not primary or current, used by no running process, and idle: no commit or
+checkout in it for 7 days, unless the user or repository sets another period.
+A week leaves room for normal review waits. Keep its local branch. Ignored output
+follows the artifact policy below. Delivery proof is needed only to delete a
+branch or to discard local changes.
 
 ## Reconcile campaigns before individual checkouts
 
@@ -58,7 +80,8 @@ feature. Conversely, an associated or closed-but-unmerged MR does not prove
 delivery. Read [delivery checks](references/delivery-proof.md) when ancestry or
 current bytes do not settle the question.
 
-Account for meaningful remaining source changes: delivered to the final target,
+For branch deletion or discarding local changes, account for meaningful
+remaining source changes: delivered to the final target,
 retained in a verified successor, superseded by adopted behavior, explicitly
 abandoned under the user's instructions, or unresolved. Check post-merge local
 commits too. Show concrete reasons for a supersession decision; names, commit
@@ -89,11 +112,16 @@ bundle. Closing means its work is delivered, transferred, or explicitly
 abandoned, not merely inactive. An ignore rule or filename alone is not enough:
 inspect what would be lost, especially scripts, configuration, and local edits.
 Expired artifacts do not need byte matches in main or reconstruction proof.
+Delete them; do not move them into a retained, preserved, or archive folder.
+Folders outside Git that only hold expired output or evidence for a closed
+campaign can be deleted the same way. If root-owned files cannot be removed,
+say so in the report.
 
 Apply the user's current policy to old handoffs. An agent's instruction to
 preserve every checkout and receipt is not a permanent user keep request.
 Retain a checkout only for a concrete source or active recovery dependency,
-with an owner and release condition. If particular output is still needed,
+with an owner and release condition recorded as its worktree lock reason. If
+particular output is still needed,
 name it and its use; keeping a checkout does not keep all its output.
 Creating a fresh successor does not renew predecessor holds.
 

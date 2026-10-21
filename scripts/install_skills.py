@@ -57,6 +57,7 @@ MANAGED_SKILLS = [
     "repo-navigation",
     "resolve-review-comments",
     "resume-after-crash",
+    "start-this-up",
     "test-quality-audit",
     "verify-before-claiming",
     "visual-code-audit",
@@ -771,9 +772,11 @@ def install_skill(
     destination_digest = digest_path(destination)
     backup_path: Path | None = None
 
-    if destination_digest == source_digest:
+    # A legacy symlinked install matches its source by digest; replace it with a
+    # managed copy so every target holds the same kind of install.
+    if destination_digest == source_digest and not destination.is_symlink():
         action = "would_skip" if dry_run else "skipped"
-    elif destination.exists():
+    elif destination.exists() or destination.is_symlink():
         backup_path = next_available_path(
             backup_root(destination.parent) / timestamp / target_name / destination.name
         )
@@ -807,7 +810,7 @@ def install_skill(
         if digest_path(stage_path) != source_digest:
             raise RuntimeError(f"staged skill digest mismatch for {source_skill.name}")
 
-        if destination.exists():
+        if destination.exists() or destination.is_symlink():
             if backup_path is None:
                 raise RuntimeError(f"backup path is missing for {destination}")
             backup_path.parent.mkdir(parents=True, exist_ok=True)

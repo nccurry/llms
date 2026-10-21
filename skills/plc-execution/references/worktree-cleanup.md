@@ -9,9 +9,13 @@ Use the existing work list to record each temporary checkout's absolute path,
 branch and source commit, owner, purpose, final target ref/hash, and cleanup state.
 Include planning, child, integration, repair, replaced-child, review, and
 verification checkouts. Record the source of any user keep instruction.
+Create them under the PLC's campaign folder per
+[worktree layout](../../start-this-up/references/worktree-layout.md).
 Useful implementation notes and concise validation outcomes belong in the
-committed PLC packet. Receipts, raw logs, binaries, caches, and disposable notes
-may be discarded after merge or checkout closure; no archive is required.
+committed PLC packet, which may live in another repository. Other evidence goes
+where the repository's AGENTS.md says; untracked output stays under the campaign
+folder. Receipts, raw logs, binaries, caches, and disposable notes may be
+deleted after merge or checkout closure; no archive is required.
 
 Use main, or the repository's equivalent final branch, unless the user chose
 another final destination. A temporary integration branch is not that destination
@@ -77,9 +81,11 @@ blocked archive through manual deletion. Detached work whose source disposition
 remains unresolved stays retained.
 
 After each delivery, at phase close, and before finishing, revisit pending entries.
-Record verified removals or the specific reason, owner, and condition for retaining
-each checkout. Include current integration checkouts that cannot yet be removed.
-The parent performs eligible cleanup now rather than only suggesting it.
-Reconcile predecessor checkouts when preparing a successor. Do not leave a
-blanket instruction to preserve every draft and receipt. A remaining hold needs
-an owner, a concrete source/recovery dependency, and a release condition.
+Remove clean, unlocked, idle checkouts and keep their branches; this needs no
+delivery proof. Record verified removals or the specific reason, owner, and
+condition for retaining each checkout. Include current integration checkouts that
+cannot yet be removed. The parent performs eligible cleanup now rather than only
+suggesting it. Reconcile predecessor checkouts when preparing a successor. Do
+not leave a blanket instruction to preserve every draft and receipt. A remaining
+hold is a worktree lock whose reason names the owner, what it protects, and
+when it ends; unlock it at that point.

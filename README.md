@@ -251,6 +251,7 @@ and host configuration state; live client connections and skill use require sepa
 task skills:list
 task skills:fetch
 task skills:validate
+task skills:test
 task skills:dry-run TARGET=codex
 task skills:install TARGET=codex
 ```
