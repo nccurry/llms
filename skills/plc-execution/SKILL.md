@@ -132,8 +132,9 @@ After a meaningful block, the implementation child pauses edits and requests
 review from the parent with its exact base, revision/diff, and evidence. The
 parent follows `audit-codebase`: one read-only reviewer per required specialist,
 at most three concurrently, with no recursive delegation. Give implementation
-children time to yield slots. Review the combined diff after meaningful
-integration or at a work-item boundary even when handoff audits passed.
+children time to yield slots. Inspect the combined diff after meaningful
+integration or at a work-item boundary; reuse valid handoff audit evidence and
+apply `audit-codebase`'s repeat-audit limits before dispatching reviewers again.
 
 Assess every listed domain and run required specialists. Add rendered UI review
 or dependency review when relevant; include the security gate when applicable.
@@ -142,8 +143,9 @@ block; group related small corrections and record the reason.
 
 Fix every supported actionable in-scope finding, including P3. The parent owns
 the ledger, deduplication, evidence checks, fix ownership, and expensive tests.
-The assigned writer makes repairs after reviewers finish. Refresh invalidated
-reviews/checks against stabilized changes; preserve unaffected evidence.
+The assigned writer makes repairs after reviewers finish. Inspect repair diffs
+and run affected checks against stabilized changes; repeat specialist review
+only under `audit-codebase`'s limits and preserve unaffected evidence.
 Only `PASS` permits integration. `REWORK REQUIRED`, `INCOMPLETE`, or recorded
 in-scope follow-ups do not satisfy strict acceptance.
 A user's explicit bounded integration exception can permit only its named
@@ -168,8 +170,9 @@ Before accepting a work item or dependency group into its final target, using
 the prepared combined source:
 
 1. Run its required checks against the combined integration tree.
-2. Run the combined strict audit. For UI changes inspect the rendered behavior
-   against the design goals.
+2. Establish the combined strict audit verdict using valid existing evidence,
+   running initial or justified repeat reviews under `audit-codebase`'s limits.
+   For UI changes inspect the rendered behavior against the design goals.
 3. Assign any needed repair to a child based on the latest integration commit;
    review and verify it before accepting it.
 4. Reconcile the completion map with current source and the user request.
@@ -177,10 +180,12 @@ the prepared combined source:
 5. Update PLC results only after their checks pass. Mark a whole phase complete
    only when all its requirements passed, even if the selected block was smaller.
 
-Use `audit-codebase`'s bounded convergence: one initial pass and at most one final
-aggregate verification, refreshing affected evidence. If work remains, report
-the exact repair, missing proof, or material decision rather than repeating an
-unchanged full audit or declaring completion.
+Use `audit-codebase`'s limit of three consecutive audit passes total, including
+the initial pass. Re-audit only for verified serious findings or substantial
+changes that invalidate prior review; routine fixes need diff inspection and
+affected checks. Carry the count across child handoffs and integration rather
+than starting it over. At the limit, continue authorized repairs and checks;
+report remaining findings or missing review evidence without claiming `PASS`.
 
 ## Cleanup during execution
 

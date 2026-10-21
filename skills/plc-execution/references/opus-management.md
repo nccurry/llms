@@ -91,9 +91,11 @@ Apply conditional security, UI, and dependency gates when required. The parent
 checks evidence and records justified inapplicability. Missing review or
 validation is `INCOMPLETE`.
 
-Fix every actionable finding in scope, including nonblocking findings. Rerun
-affected audits and tests. Require `PASS` before either agent opens an MR/PR or
-the parent integrates the delivery. `PASS WITH FOLLOW-UPS` does not meet this
+Fix every actionable finding in scope, including nonblocking findings. Verify
+repairs with diff inspection and affected tests; repeat audits only for serious
+findings or substantial changes under `audit-codebase`'s three-pass limit.
+Require `PASS` before either agent opens an MR/PR or the parent integrates the
+delivery. `PASS WITH FOLLOW-UPS` does not meet this
 standard. If a finding needs work outside the assignment or an unresolved
 decision, report it through the parent. Explain rejected findings with evidence.
 Apply an explicit user-approved integration exception only within the base's

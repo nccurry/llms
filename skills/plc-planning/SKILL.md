@@ -103,10 +103,15 @@ evidence.
      revision, in waves of at most three; the parent verifies evidence,
      combines findings, and owns fixes/checks. Missing required evidence
      remains incomplete. Do not require this skill to interpret the plan.
-   - Keep the audit bounded: one initial aggregate pass and at most one final
-     aggregate verification, refreshing affected reviews/checks and preserving
-     valid evidence. Separate outside-scope debt from required repairs; do not
-     create unrelated cleanup or repeat unchanged full audits.
+   - Keep the audit bounded: at most three consecutive passes total, including
+     the initial pass, across handoffs and integration. Re-audit only for a
+     verified serious finding or substantial change that invalidates prior
+     review; repeat only affected specialists unless several domains require
+     the full suite. Verify routine repairs with diff inspection and affected
+     checks, preserving valid evidence. At the limit, stop audit delegation,
+     continue authorized repairs/checks, and report unresolved findings or
+     missing evidence without claiming `PASS`. Separate outside-scope debt
+     from required repairs; do not create unrelated cleanup.
 
 6. Validate before handoff.
    - Check that every major requirement maps to design and tests.

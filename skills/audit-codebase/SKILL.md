@@ -20,6 +20,44 @@ Pause writers during each review wave. All specialists review that same source,
 base, scope, and applicable instructions; a report on a different revision is
 not evidence for this gate.
 
+## Repeat-audit limits
+
+Run at most **three audit passes back to back for the same work**: the initial
+pass and up to two re-audits. This is a ceiling, not a target; normally stop
+after the initial pass and focused verification of any repairs. A pass can
+cover the full suite or selected specialists. Reviewer waves within one planned
+pass count together; repeated specialist reviews count as re-audits.
+
+Track the pass number, reviewed revision, and reason in the parent ledger and
+preserve them across handoffs and compaction. Repairs, new commits, integration,
+phase labels, skill reinvocation, or replacement reviewers do not reset the
+count. Do not split repeated reviews into nominally separate audits to evade it.
+
+Before each re-audit, identify concrete evidence that justifies it:
+
+- A verified serious finding, such as a security exposure, data loss, a crash,
+  or failure of core required behavior, whose repair needs renewed specialist
+  review. These are typically P0/P1 issues; a severity label alone is not proof.
+- A substantial change to architecture, public contracts, persistence,
+  concurrency, trust boundaries, or another critical behavior that invalidates
+  earlier review evidence.
+
+Without one of these triggers, verify repairs through direct diff inspection
+and relevant tests, lint, or builds, then update the existing ledger. Routine
+naming, formatting, documentation, small local bug fixes, and test corrections
+do not justify another audit. Neither do numerous minor findings, a phase
+boundary, or a desire for another clean report.
+
+Use the narrowest justified re-audit: rerun only specialists whose evidence was
+invalidated. Repeat the full suite only when the serious finding or substantial
+change invalidates review across several domains. Preserve unaffected evidence.
+
+After pass three, stop audit delegation even if serious findings remain. Continue
+authorized repairs and focused checks, and report any unresolved findings or
+missing review evidence with the actual verdict. Do not claim `PASS` merely
+because the limit was reached. A further audit sequence requires genuinely new
+user-selected work or an explicit user request to restart it.
+
 ## Specialist selection
 
 Assess every domain below. Required coverage comes from the scope, affected
@@ -117,24 +155,20 @@ the safeguards in `file-hygiene-audit`; an ordinary fix request does not grant
 it. Use host trash/recycle bin, never permanent deletion, and report every
 candidate's outcome.
 
-After grouped fixes, rerun affected specialists and relevant checks against the
-new stabilized revision. Keep valid unaffected evidence. Reserve aggregate
-review for a meaningful block or phase boundary, not every tiny correction.
-Perform one initial aggregate pass and at most one final aggregate verification:
+After grouped fixes, inspect the repair diff and run relevant checks against the
+new stabilized revision. Update the existing findings with that verification;
+re-audit only under the repeat-audit limits above. If no fixes followed the
+initial pass, use it as final evidence.
 
-- Rerun the full suite only when fixes materially change architecture, public
-  contracts, persistence, concurrency, navigation/lifecycle, or several domains.
-- Otherwise refresh invalidated reviews/checks and form the final ledger verdict.
-- If no fixes followed the initial pass, use it as final evidence.
-- Inspect an authorized integration-base update and refresh only evidence it
-  invalidates. Do not switch branches merely to inspect source.
-- Documentation that only records evidence does not invalidate unrelated code
-  or runtime checks.
+Inspect an authorized integration-base update and refresh only evidence it
+invalidates, subject to the same re-audit rules. Do not switch branches merely
+to inspect source. Documentation that only records evidence does not invalidate
+unrelated code or runtime checks.
 
-If findings or required checks remain after final verification, report their
-exact state and resolve the remaining repair or decision. Do not launch another
-aggregate cycle without new work or evidence. Ask before changing contracts,
-stored data, unrelated subsystems, or behavior beyond the authorized task.
+If findings or required checks remain, report their exact state and resolve the
+remaining repair or decision without restarting the audit loop. Ask before
+changing contracts, stored data, unrelated subsystems, or behavior beyond the
+authorized task.
 
 ## Report
 
@@ -152,4 +186,6 @@ observed failed/incomplete check. State both separately and retain the exact
 scope; do not use the exception as proof that the originating behavior is correct.
 List fixed/open findings, outside-scope follow-ups, blind spots, checks run, and
 reviews refreshed with reasons. Include cleanup outcomes when applicable. Keep
-one concise report rather than concatenating each reviewer's output.
+one concise report rather than concatenating each reviewer's output. State the
+audit pass count and each re-audit's serious finding or substantial change; if
+the limit prevented required review, name that missing evidence explicitly.
