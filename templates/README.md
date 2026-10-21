@@ -23,6 +23,8 @@ as real instructions; drop `.template` when you copy them.
   Windows.
 - `llms.txt` lists where things are. It does not repeat rules or track status.
 - A folder's `AGENTS.md` adds rules for that folder. The closest one wins.
+- Keep `<repo-name>` in the worktree path as written. The same file then stays
+  correct in mirrors and forks with other names.
 
 ## Writing good instructions
 
