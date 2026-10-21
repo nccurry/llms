@@ -1,0 +1,25 @@
+# <Project name>
+
+> <One sentence: what the project is and who it is for.>
+
+This file is a map of the repository for language models. `AGENTS.md` holds
+the rules for working here. Keep this file a short index, not a second
+rulebook or a status log.
+
+## Start here
+
+- [README](README.md): what the project does and how to use it
+- [AGENTS.md](AGENTS.md): rules and commands for agents
+
+## Architecture
+
+- [<Area>](<path>): <what it owns>
+- [<Area>](<path>): <what it owns>
+
+## Reference
+
+- [<Topic>](<path>): <when to read it>
+
+## Optional
+
+- [<Background doc>](<path>): <history or design notes agents can skip>
