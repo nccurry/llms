@@ -57,9 +57,11 @@ ordinary status as proof that a checkout contains no local work. Read symlink
 targets without following them; inspect embedded repositories separately.
 
 Decide what each difference means. Useful notes belong in the committed PLC
-packet. Raw receipts and generated artifacts may be discarded after merge or
-checkout closure without matching them to main, preserving their exact test
-executables, or building an archive. An ignored source edit or capture helper
+packet. Apply the artifact policy separately to output and source: unresolved
+source does not require keeping unused build output. Raw receipts and generated
+artifacts may be discarded after merge or checkout closure without matching
+them to main, preserving their exact test executables, or building an archive.
+An ignored source edit or capture helper
 does not become disposable just because it sits beside test output.
 
 An obsolete planning snapshot may be reconciled with the current packet rather

@@ -185,8 +185,9 @@ unchanged full audit or declaring completion.
 ## Cleanup during execution
 
 The parent owns cleanup, including after a child exits or is replaced. Invoking
-this workflow authorizes removal of temporary local branches and worktrees it
-creates once delivery and removal checks pass, unless the user asks to keep them.
+this workflow authorizes removal of task-owned output no longer needed for
+active work and temporary local branches and worktrees it creates once their
+delivery and removal checks pass, unless the user asks to keep them.
 Apply existing authorization without another cleanup question. This permission
 does not extend to unrelated checkouts, remote branches, or final integration.
 
@@ -206,7 +207,9 @@ than treating failed ancestry or unmatched fragments as unfinished features.
 Then remove eligible worktrees and local branches after all users and processes
 have released them. Children report release; the parent performs cleanup.
 Discard expired task artifacts under the cleanup skill's policy; raw receipts
-and caches need not reach main or be archived before removal.
+and caches need not reach main or be archived before removal. Revisit unused
+output in retained checkouts too; source verification or delivery still being
+open does not require keeping their builds, staging copies, and caches.
 
 Revisit retained work at phase close and before finishing. Each tracked checkout
 must be removed with verification or retained with a specific reason and next

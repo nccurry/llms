@@ -1,6 +1,6 @@
 # Cleanup of execution worktrees
 
-Read before creating temporary worktrees and apply after each verified delivery.
+Read before creating temporary worktrees and apply during execution and closeout.
 The parent owns this work; children release checkouts and supply evidence.
 
 ## Record ownership and the destination
@@ -35,6 +35,15 @@ snapshots and superseded prototypes are not separate unfinished features.
 Inspect each checkout's local edits even when committed trees are identical.
 If delivery or source disposition remains uncertain, name the missing fact and
 continue independent work.
+
+## Clean output in retained checkouts
+
+Use the cleanup skill's artifact policy to remove task-owned output that is no
+longer needed, even while its source or delivery remains unresolved. A failed
+source check alone does not justify retaining a build cache. Check for unique
+source, useful notes, and active users before removing selected output. Keep
+only output needed for a named active check or recovery step, with its owner
+and release condition; verify source changes remain intact.
 
 ## Remove, verify, and revisit
 

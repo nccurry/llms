@@ -130,26 +130,30 @@ For cleanup-only requests, continue to cleanup within the existing authorization
 ## Clean up task-owned local work
 
 Revisit every task-owned temporary resource, including abandoned/replaced
-children. Remove eligible resources now. Follow `clean-stale-worktrees` and,
-when applicable, `plc-execution`'s cleanup procedure:
+children and unused output in retained checkouts. A source or delivery blocker
+does not require keeping build directories, staging copies, or caches that are
+no longer needed. Remove eligible resources now. Follow `clean-stale-worktrees`
+and, when applicable, `plc-execution`'s cleanup procedure:
 
-- Select only task-owned candidates. Assess delivery against the actual final
-  target, including non-ancestry delivery and post-merge edits.
+- Select only task-owned candidates. For checkout or branch removal, assess
+  delivery against the actual final target, including non-ancestry delivery
+  and post-merge edits.
   Remote delivery needs the verified remote ref. Assess source and local
   changes with Git and host review tools directly. Reconcile each campaign's
   current integration, superseded snapshots, and unique unfinished work.
   Preserve unfinished source and useful notes; discard expired task artifacts
   under the cleanup skill's policy.
-- Require release by agents/processes and honor primary/current/shared, locked,
+- Before removing a checkout, require release by agents/processes and honor
+  primary/current/shared, locked,
   protected, and current user retention rules. Reconcile old blanket handoff
   holds with the user's current policy. Keep only resources with an active
   source/recovery dependency. Resolve/check absolute paths and perform removal
   from outside them.
-- Recheck source, target, local changes, and ownership immediately before removal.
+- Recheck source, target, local changes, and ownership before checkout removal.
   Use the cleanup skill's Git removal and verification steps;
   for Codex-managed checkouts use the native archive tool for the exact task
   attachment after the same proof checks. Respect archive restrictions.
-- After either removal or archive, verify directory and Git registration absence.
+- After checkout removal or archive, verify directory and Git registration absence.
   Recheck any remaining local branch's hash, protections, and checkout use before
   deletion. Verify ref removal separately: archiving a
   checkout need not remove its branch.

@@ -74,6 +74,15 @@ Do not leave the only useful notes as dirty files in temporary checkouts. Delete
 temporary notes when no longer useful. Cleanup permission alone does not
 authorize a new push or merge to deliver missing notes.
 
+Decide output retention separately from source retention. In an owned checkout,
+remove builds, staging copies, release caches, and experiment output when no
+longer needed for active work, even before merge or checkout closure. A failed
+source check does not require keeping its build output. Inspect these locations
+for unique source and useful notes first; a directory called a cache or an
+experiment archive may contain either. Do not remove output in use or shared
+caches outside the task's scope. Verify the selected output is gone and source
+changes remain intact.
+
 After an MR merges or a checkout closes, task receipts, raw logs, binaries,
 caches, and disposable notes may be deleted without an archive or recovery
 bundle. Closing means its work is delivered, transferred, or explicitly
@@ -84,8 +93,9 @@ Expired artifacts do not need byte matches in main or reconstruction proof.
 Apply the user's current policy to old handoffs. An agent's instruction to
 preserve every checkout and receipt is not a permanent user keep request.
 Retain a checkout only for a concrete source or active recovery dependency,
-with an owner and release condition. Creating a fresh successor does not
-renew predecessor holds.
+with an owner and release condition. If particular output is still needed,
+name it and its use; keeping a checkout does not keep all its output.
+Creating a fresh successor does not renew predecessor holds.
 
 ## Remove and verify
 
