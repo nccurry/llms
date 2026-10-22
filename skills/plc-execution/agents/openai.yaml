@@ -1,7 +1,7 @@
 interface:
   display_name: "PLC Execution"
   short_description: "Run selected PLC work with isolated agents"
-  default_prompt: "Use $plc-execution to run this PLC work with isolated agents and direct merges."
+  default_prompt: "Use $plc-execution to complete the selected PLC work with isolated agents, preserving the agreed scope and delivery route."
 
 policy:
   allow_implicit_invocation: false
