@@ -29,7 +29,9 @@ assigning affected work.
 ## Scope changes and planning documents
 
 Record the selected requirement IDs and exit criteria in the existing work list
-before execution. Discoveries do not add requirements or phases by themselves.
+before execution, with one concrete delivery endpoint. Before adding work,
+consider reuse, deletion, or a narrower deliverable that meets the approved
+outcome. Discoveries do not add requirements or phases by themselves.
 Significant expansion includes new deliverables, phases for additional work,
 unapproved contract or architecture changes, or a materially larger total effort,
 including small additions that accumulate. Check existing authorization first.
@@ -49,7 +51,11 @@ repeated handoffs, abandoned attempts, and session narration out of requirements
 design. A new reader must be able to identify approved scope, current design,
 and remaining work without reconstructing the conversation. Label pending
 proposals as unapproved; do not silently weaken or defer requirements to match
-delivered code.
+delivered code. Replace the owning plan's current-work section (README in the
+default packet) with selected work, current state, next action, blocker/owner,
+and a resume check. Preserve repository-specific locations. Do not append
+successive checkpoints; move useful history outside the active reading path
+without retaining superseded instructions as current directions.
 
 Useful implementation notes belong in the existing packet and must be committed
 with the work. Delete temporary notes when no longer useful. Keep raw receipts
@@ -68,13 +74,34 @@ deliverables. Raise material conflicts under the scope-change rule above.
 Make one work list containing each selected block, prerequisites, owner, files,
 behavior, design goals, tests, audits, exit criteria, and readiness. Run a block
 only after its prerequisites pass. Discovery may precede a prerequisite when it
-cannot alter that prerequisite.
+cannot alter that prerequisite. Verify the needed capability in source or
+runtime evidence; a sibling packet's approval alone is insufficient. For shared
+work, assign one owner to each integrated acceptance obligation and let children
+prove their contributions. Name the authoritative contract and the accepted
+decision or revision consumers follow; do not require a whole sibling PLC when
+only one delivered capability is needed. For difficult hardware, performance,
+or platform qualification, prove the checking method early on a representative
+case and a known failure.
 
 Map each selected requirement and named design goal to its existing PLC ID,
 owner, proving check/review, and state: pending, verified, deferred, or blocked.
 Keep this completion map in the existing work list or phase notes; do not create
-a second durable plan. Record audit scope, base, and verdict as evidence, not an
-uninspected shell command.
+a second durable plan. Track implementation, verification, delivery, and required
+records separately. Record each result once with requirement/check ID, tested
+source (including relevant uncommitted changes), date, relevant dependencies,
+platform/backend and configuration, exact method, expected and actual results,
+and material limits. Link to existing methods and evidence stores where sufficient.
+Record audit scope, base, and verdict as evidence, not an uninspected shell command.
+
+Run focused checks during implementation and broader checks at meaningful
+integration/delivery boundaries. Before repeating a check or review, identify
+which evidence changed behavior, dependencies, environment, or a discovered
+defect invalidates and why. A changed commit hash alone does not invalidate
+unaffected evidence. Required CI and post-merge checks still apply. Keep dependent
+acceptance open on failure while continuing independent authorized work. When
+only a required evidence record is missing, reconcile valid results into it;
+repeat execution only for missing, insufficient, or invalidated evidence.
+Required reviews, checks, and records cannot be waived by this rule.
 
 Choose and record the integration route, target branch, worktree, and base
 before dispatch. Follow the user's choice, then established repository/session

@@ -7,13 +7,19 @@ State the chosen design and its main tradeoff.
 ## Context And Boundaries
 
 Name the affected components. State what each owns and what remains outside its
-responsibility.
+responsibility. Link to the public contracts in `SRD.md` or their existing source.
 
-## Alternatives
+## Decisions And Alternatives
 
-| Option | Decision | Reason |
+| Decision or option | Status | Reason |
 | --- | --- | --- |
-| <option> | <chosen or rejected> | <reason> |
+| <decision or alternative> | <proposed, accepted, rejected, or deferred> | <tradeoff and authority when approval is needed> |
+
+## Fixed Constraints And Implementation Choices
+
+Name the public contracts, safety rules, and ownership boundaries that must
+hold. Leave routine internal choices open unless a concrete constraint requires
+them. Distinguish a suggested implementation from a required design decision.
 
 ## Building Blocks
 
@@ -24,13 +30,8 @@ responsibility.
 ## Runtime And Data Flow
 
 Describe the main path from input to result. Include failure, retry, restart,
-or recovery paths when they change behavior.
-
-## Interfaces And Data
-
-Define changed APIs, commands, schemas, records, files, configuration, and
-invalid-input behavior. Explain how the design supports the public summary and
-expected-experience examples in `SRD.md`. Do not repeat those examples here.
+or recovery paths when they change behavior. Explain internal data and state
+ownership without repeating public contract definitions or experience examples.
 
 ## Quality And Safety
 
@@ -40,10 +41,14 @@ when they apply.
 
 ## Test Design
 
-Map unit, integration, end-to-end, visual, or manual checks to the design.
+Explain which unit, integration, end-to-end, visual, or manual checks prove the
+design. Use existing test facilities where they suffice. Put commands, expected
+results, and actual evidence in `IMPLEMENTATION_PLAN.md`.
 
 ## Deferred Work
 
-| Item | Reason | Follow-up trigger |
+| Item | Reason | Follow-up owner or trigger |
 | --- | --- | --- |
-| <item or none> | <reason> | <when to revisit> |
+| <item or none> | <reason> | <owner or when to revisit> |
+
+Required acceptance cannot be moved here merely to declare completion.

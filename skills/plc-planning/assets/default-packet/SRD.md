@@ -10,18 +10,23 @@ State the user, developer, or business problem and the required outcome.
 - Out of scope: <list>
 - Constraints: <compatibility, security, platform, or dependency limits>
 
-## Current System
+## Current System And Prerequisites
 
-Name the current code, behavior, interfaces, data, and tests affected by this
-work.
+Record the source revision inspected and link to relevant code, tests, and
+existing contracts. Distinguish observed behavior from proposed changes.
+For each prerequisite, name the required capability, its owner, how to check
+that it is available, and the requirements it blocks. A planned or approved
+sibling document alone does not prove its implementation is available.
+For a moving upstream target, record the revision and date checked; do not
+silently turn that snapshot into a fixed product target.
 
 ## Requirements
 
-Use one observable behavior or constraint per requirement.
+Use one observable behavior or constraint per requirement. Keep IDs stable.
 
 | ID | Priority | Requirement | Acceptance criteria |
 | --- | --- | --- | --- |
-| REQ-001 | Must | <observable behavior or constraint> | <objective evidence> |
+| REQ-001 | Must | <observable behavior or constraint> | <objective result> |
 
 ## User Experience And Public Surface
 
@@ -64,37 +69,32 @@ $ <command>
 2. <visible result>
 3. <error or empty-state behavior, when relevant>
 
-## Interfaces And Data
+## Public Contracts
 
-Define the exact changed APIs, commands, configuration, schemas, files, and
-state transitions behind the public summary. State invalid-input behavior.
+Define changed APIs, commands, configuration, schemas, files, and observable
+state transitions, including invalid-input behavior. Link to an existing
+schema or contract when it already defines these details; do not maintain a
+second definition. Internal implementation choices belong in `SADD.md`.
 
 ## Quality Attributes
 
 | Attribute | Scenario | Pass/fail measure |
 | --- | --- | --- |
-| <performance, reliability, security, usability, or maintainability> | <when it matters> | <measure> |
-
-## Phased Delivery
-
-| Phase | Goal | Requirements | Exit criterion |
-| --- | --- | --- | --- |
-| 1 | <smallest useful result> | REQ-001 | <validation result> |
+| <performance, reliability, security, usability, or maintainability> | <workload and conditions> | <measure> |
 
 ## Traceability
 
-| Requirement | Design section | Validation method | Evidence |
+Keep delivery phases and actual results in `IMPLEMENTATION_PLAN.md`.
+
+| Requirement | Design section | Validation method | Evidence reference |
 | --- | --- | --- | --- |
-| REQ-001 | <SADD section> | <test, command, review, or inspection> | <link or result> |
+| REQ-001 | <SADD section> | <test, command, review, or inspection> | <link to plan evidence entry> |
 
 ## Risks, Assumptions, And Open Questions
 
-| Item | Type | Impact | Owner | Resolution plan |
-| --- | --- | --- | --- | --- |
-| <item> | <risk, assumption, or question> | <impact> | <owner> | <plan> |
+Keep unresolved questions here. Record adopted decisions in `SADD.md` and
+remove superseded instructions from current sections.
 
-## Validation And Definition Of Done
-
-- [ ] Each Must requirement has objective evidence.
-- [ ] The implemented design matches `SADD.md` or the difference is recorded.
-- [ ] Remaining risks and follow-up work are recorded.
+| Item | Type | Affected requirements or phases | Blocks work? | Owner | Resolution or permitted assumption |
+| --- | --- | --- | --- | --- | --- |
+| <item or none> | <risk, assumption, or question> | <IDs> | <yes: name blocked work, or no> | <owner> | <check, decision needed, or safe temporary assumption and its limits> |

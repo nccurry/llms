@@ -1,69 +1,110 @@
 # <Feature> Implementation Plan
 
-## Strategy
+## Selected Delivery
 
-Explain the delivery order, the smallest useful result, and why the order
-reduces risk.
+Name the authorized requirements and the concrete endpoint for this delivery.
+Explain the order and the smallest useful result. Future feature cohorts do
+not extend this delivery automatically.
 
-Discoveries do not automatically add requirements or phases. Obtain user
-approval before adopting or implementing significant expansion beyond existing
-authorization, including new deliverables, contract/architecture changes, or a
-substantial increase in cumulative work. Continue independent authorized work
-while waiting; routine repairs within approved scope can proceed.
+Before expanding the work, check whether narrowing the deliverable, reusing an
+existing owner, or deleting a competing path achieves the approved outcome.
+Discoveries do not add scope. Significant expansion beyond existing authority
+needs user approval; routine choices and repairs within scope can proceed.
+Keep pending proposals separate from accepted work.
 
-Update affected planning sections in place. Preserve requirement IDs and
-decision rationale, and reconcile superseded text. Keep current status and
-evidence concise in their existing sections; record each result once and link
-to it elsewhere. Keep general agent workflow, raw logs, and session narration out
-of requirements and design; distinguish unapproved proposals from accepted work.
+## Phase Status
 
-## Phase Summary
+Track implementation, verification, delivery, and required records separately.
+Use `Not required` where appropriate. A merged change does not imply acceptance;
+a missing record does not imply that implementation or testing must be repeated.
 
-| Phase | Goal | Requirements | Code areas | Validation | Exit criterion | Status |
+| Phase | Requirements | Prerequisites | Implementation | Verification | Delivery | Evidence record |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | <smallest useful result> | REQ-001 | <areas> | <checks> | <result> | Planned |
+| [1: <name>](#phase-1-name) | REQ-001 | <exact capability or phase, or none> | Planned | Not run | Pending | Missing |
 
 ## Phase Details
 
-### Phase 1: <Name>
+### Phase 1: Name
 
-- Change: <files, behavior, and interfaces>
-- Requirements: <REQ IDs>
+- Change: <behavior, interfaces, and relevant code areas>
 - Out of scope: <explicit deferrals>
-- Validation: <tests, commands, reviews, or inspections>
-- Exit criterion: <objective result>
+- Prerequisite check: <how to prove the needed capability is available>
+- Validation: <exact commands or procedures, relevant environment, expected results>
+- Exit criterion: <objective result for the requirements and delivery>
 - Rollback or fallback: <how to unwind a failed change>
 
-## Cross-Phase Risks
+For difficult hardware, performance, or platform acceptance, prove the checking
+method early: run a small representative case, detect a known failure, and
+confirm the result is interpretable before relying on that method for delivery.
+Do not add a separate qualification phase for ordinary checks that already work.
 
-| Risk | Affected phases | Mitigation | Owner |
-| --- | --- | --- | --- |
-| <risk> | <phases> | <mitigation> | <owner> |
+## Shared Acceptance Ownership
 
-## Plan Readiness
+Use this section only when work crosses packets or repositories. Assign each
+shared obligation one acceptance owner. Children prove their contributions;
+the parent owns the integrated outcome. Require the exact needed capability,
+not completion of every phase in a sibling packet. Name the authoritative
+contract and accepted decision or revision each consumer follows.
 
-- [ ] Every Must requirement appears in at least one phase.
-- [ ] Dependencies between phases are explicit.
-- [ ] Every phase has validation and an exit criterion.
+| Obligation | Acceptance owner | Contributors | Required capability or contract | Proving check |
+| --- | --- | --- | --- | --- |
+| <integrated outcome> | <one packet or role> | <children or repositories> | <exact prerequisite and contract reference> | <check owned here or linked> |
+
+## Verification Evidence
+
+Record each result once here, or link to the repository's existing evidence
+store. Other packet files reference these entries. Keep raw logs outside the
+plan. Record skipped or unavailable checks as incomplete when they are required.
+
+### CHECK-001: <check name>
+
+- Requirements: <REQ IDs>
+- Source: <tested revision; identify any uncommitted changes tested>
+- Conditions: <date, relevant dependency revisions, platform/backend, configuration>
+- Method: <exact command or procedure, or link to the unchanged phase method>
+- Expected: <pass/fail result>
+- Actual: <result, material limits, and evidence link when needed; or not run>
+
+## Review And Recheck Rules
+
+Name required review domains and acceptance standards for this work. Keep model
+choices, worker counts, and reviewer scheduling in the execution workflow.
+
+Run focused checks during implementation and broader checks at meaningful
+integration or delivery boundaries. Repeat a check or review when changed
+behavior, dependencies, environment, or a discovered defect invalidates its
+evidence. Name the affected evidence and reason. A new commit hash alone does
+not invalidate unchanged evidence; repository-required CI and post-merge checks
+still apply. Preserve unaffected evidence and the execution workflow's bounded
+audit limits. Failures keep dependent acceptance open; fix them before dependent
+work proceeds, while independent authorized work may continue.
+
+When only a required record is missing, first reconcile existing valid results
+into that record. Repeat execution only when evidence is missing, insufficient,
+or invalidated. Do not waive required reviews, checks, or records.
+
+## Readiness And Completion
+
+Before starting:
+
+- [ ] Every selected Must requirement has a phase, proving check, and exit criterion.
+- [ ] Prerequisites for the next runnable block are verified; later dependent
+      work stays blocked until its prerequisites pass. Open questions name the
+      work they block.
 - [ ] Required documentation changes are included in the relevant phase.
 
-## Completion Criteria
+Before closing selected work:
 
-- [ ] Every selected requirement has current acceptance evidence; unselected
-      phases remain open. Whole-PLC completion covers all required scope.
+- [ ] Every selected requirement has current acceptance evidence and required records.
 - [ ] Required audits have no supported actionable in-scope findings remaining,
       including P3. Outside-scope follow-ups are identified separately.
-- [ ] Required specialists reviewed the same stabilized revision read-only,
-      in waves of at most three; the parent checked evidence and combined findings.
-- [ ] Affected checks were rerun after fixes; the final audit verdict uses
-      current evidence and no required check remains incomplete.
-- [ ] Authorized final delivery is verified. Cleanup is complete or each retained
-      checkout has an owner, reason, and next condition to check.
-- [ ] Planning documents show current scope, design, results, and remaining work
-      without contradictory instructions or a need to reconstruct session history.
+- [ ] Authorized delivery is verified. Cleanup is complete or each retained
+      checkout has an owner, reason, and release condition.
+- [ ] Current instructions agree on scope, design, results, and remaining work.
+      The README resume block replaces earlier checkpoints.
 
-Stop when the selected work meets these criteria. Optional outside-scope
-follow-ups do not extend execution or reopen completed work without user
-authorization. Evidence that an existing requirement fails reopens its
-acceptance. Keep genuine blockers visible; do not weaken or invent deferrals
-for required work to declare completion.
+Close a whole phase only when all its requirements and exit criteria pass;
+whole-PLC completion covers all required scope. Leave unselected phases open.
+Optional outside-scope work does not extend execution or reopen completed work
+without user authorization. Evidence that an existing requirement fails reopens
+its acceptance. Do not weaken requirements or invent deferrals to claim completion.

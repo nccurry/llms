@@ -1,50 +1,29 @@
 # <Feature> PLC
 
-## Status
+## Current Work
+
+Replace this block as work changes; do not append successive checkpoints.
 
 - Status: <Draft | Ready | In progress | Complete>
 - Owner: <person, team, or role>
 - Last updated: <YYYY-MM-DD>
-- Current phase: <planning, phase name, validation, or complete>
+- Selected work: <requirement IDs and phases authorized for this delivery>
+- Current state: <what is implemented, verified, delivered, or awaiting a record>
+- Next action: <one concrete step, or none>
+- Blocker: <what is needed and who owns it, or none>
+- Resume check: <command or inspection and expected result; link to the plan>
 
 ## Summary
 
-State the problem, the intended outcome, and the smallest useful result.
-
-## Scope
-
-- In scope: <work this packet owns>
-- Out of scope: <nearby work this packet does not own>
-- Prerequisites: <required work, decision, or none>
+State the problem, intended outcome, and smallest useful result. Link to the
+[scope](SRD.md#scope) and [delivery plan](IMPLEMENTATION_PLAN.md); keep detailed
+requirements, decisions, phase status, and evidence in their owning files.
 
 ## Packet
 
-- [SRD.md](SRD.md): requirements, public behavior, and acceptance criteria
-- [SADD.md](SADD.md): design and tradeoffs
-- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md): phases and validation
-- [FIXTURES.md](FIXTURES.md): optional stable test cases or acceptance matrix
-
-## Decisions
-
-| Decision | Status | Reason |
-| --- | --- | --- |
-| <decision> | <proposed, accepted, or deferred> | <reason> |
-
-## Open Questions
-
-| Question | Owner | What resolves it |
-| --- | --- | --- |
-| <question or none> | <owner> | <decision or evidence> |
-
-## Readiness
-
-- [ ] Current code, tests, and documentation support the packet.
-- [ ] Required behaviors have acceptance criteria.
-- [ ] Major tradeoffs and risks are recorded.
-- [ ] Each phase has a validation step and exit criterion.
-
-## Validation Evidence
-
-| Date | Check | Result |
-| --- | --- | --- |
-| <YYYY-MM-DD> | <test, command, review, or inspection> | <result> |
+- [SRD.md](SRD.md): requirements, public contracts, risks, and open questions
+- [SADD.md](SADD.md): design, ownership, decisions, and tradeoffs
+- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md): delivery order, acceptance,
+  current phase status, and verification evidence
+- [FIXTURES.md](FIXTURES.md): optional stable inputs and expected results;
+  remove this link when the file is omitted

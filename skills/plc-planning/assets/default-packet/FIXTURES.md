@@ -1,17 +1,13 @@
-# <Feature> Fixtures And Acceptance Matrix
+# <Feature> Fixtures
 
-Use this file only when stable examples, test data, API inventories, CLI output,
-or visual reference cases help verify the work. Copy expected-experience
-examples here when they need durable test coverage.
+Use this optional file for stable test data, API inventories, CLI output, or
+visual reference cases that help verify the work. Link to experience examples
+in `SRD.md`; define additional test detail here only when it serves a distinct
+case. Keep actual results in the implementation plan's evidence entries or the
+repository's existing evidence store.
 
 ## Fixture Inventory
 
-| ID | Area | Input | Expected result | Requirements |
+| ID | Area | Input and conditions | Expected result | Requirements |
 | --- | --- | --- | --- | --- |
-| FIX-001 | <area> | <input> | <result> | REQ-001 |
-
-## Acceptance Matrix
-
-| Requirement | Fixture or check | Expected result | Evidence |
-| --- | --- | --- | --- |
-| REQ-001 | FIX-001 or <check> | <result> | <link or result> |
+| FIX-001 | <area> | <input and setup> | <result> | REQ-001 |
