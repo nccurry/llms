@@ -9,6 +9,105 @@ architecture, build commands, and local constraints stay in their project reposi
 - [`agent-dependencies.json`](agent-dependencies.json) pins external skills and agent tools.
 - [`agent-runtime.txt`](agent-runtime.txt) pins the Python libraries used by setup commands.
 
+## Use the skills
+
+Name the outcome and the work to tackle. Call a skill explicitly with `$skill-name`
+in Codex or `/skill-name` in Claude Code. Agents can also select skills from their
+descriptions; the monitored execution workflows require an explicit request.
+
+![Skill workflow: investigate, plan, review the plan, build, audit and repair, then deliver and clean up. Plain English, clear design, and verified claims apply throughout.](docs/images/skill-workflow.svg)
+
+### Pick the next step
+
+| When you want to… | Use | Example request |
+|---|---|---|
+| Understand existing code | [repo-navigation](skills/repo-navigation/SKILL.md) | “Trace how configuration reaches the exporter.” |
+| Reproduce a bug | [debug-and-reproduce](skills/debug-and-reproduce/SKILL.md) | “Reproduce this reload failure and fix its cause.” |
+| Plan a larger change | [plc-planning](skills/plc-planning/SKILL.md) | “Plan incoming OTLP support. Include requirements, phases, and checks.” |
+| Improve a written plan | [review-and-fix-plc](skills/review-and-fix-plc/SKILL.md) | “Have a subagent review this plan, then fix supported findings.” |
+| Create isolated work | [start-this-up](skills/start-this-up/SKILL.md) | “Start this up in a new branch and worktree from main.” |
+| Implement selected plan work | [monitored-sol-plc-execution](skills/monitored-sol-plc-execution/SKILL.md) | “Finish phase 1, including tests and docs. Open an MR; leave it unmerged.” |
+| Review a change thoroughly | [audit-codebase](skills/audit-codebase/SKILL.md) | “Audit this branch against main. Report findings without editing.” |
+| Handle review feedback | [resolve-review-comments](skills/resolve-review-comments/SKILL.md) | “Check the PR feedback against the source and fix valid issues.” |
+| Save current progress | [wrap-this-up](skills/wrap-this-up/SKILL.md) | “Checkpoint the PLC with what passed and what remains.” |
+| Finish delivery | [wrap-this-up](skills/wrap-this-up/SKILL.md) | “Finish the agreed MR delivery, update the PLC, and clean up owned worktrees.” |
+| Remove stale local work | [clean-stale-worktrees](skills/clean-stale-worktrees/SKILL.md) | “Remove eligible finished worktrees. Preserve unique unmerged source.” |
+
+A **PLC** (Plan-Led Change) records requirements, design, delivery phases, and
+validation. Small fixes can go straight from investigation to repair and focused checks.
+
+### Inside a PLC packet
+
+Use the project's planning format first. Otherwise, start with the
+[default packet](skills/plc-planning/assets/default-packet/README.md) for substantial
+work, or the [compact plan](skills/plc-planning/assets/compact-plan.md) for bounded work:
+
+![PLC packet: README.md gives the overview; SRD.md defines requirements; SADD.md explains the design; IMPLEMENTATION_PLAN.md maps requirements to phases and checks. Optional FIXTURES.md holds stable examples and test cases.](docs/images/plc-packet.svg)
+
+```text
+REQ-001: Invalid config leaves the running config unchanged.
+Design:  Parse and validate before replacing the active config.
+Phase 1: Implement reload; test invalid input; record the result.
+
+Current: Implementation complete; local checks passed; PR unmerged; record complete.
+Next:    Finish required PR reviews.
+```
+
+Keep requirement IDs stable. Replace the current-work block as work changes.
+Record each result once and link to it. A missing record calls for reconciling valid evidence
+before repeating checks.
+
+### Choose an execution model
+
+All four monitored workflows reuse [plc-execution](skills/plc-execution/SKILL.md).
+The parent assigns bounded work, inspects delivered code, and owns integration.
+
+| Skill | Parent | Implementation children | After a verified serious delivery failure |
+|---|---|---|---|
+| [monitored-luna-plc-execution](skills/monitored-luna-plc-execution/SKILL.md) | Current model | GPT-6 Luna, max | Switch repairs and new children to GPT-6.1 Sol, medium. |
+| [monitored-sol-plc-execution](skills/monitored-sol-plc-execution/SKILL.md) | Current model | GPT-6.1 Sol, medium | Repair with Sol. |
+| [monitored-sonnet-plc-execution](skills/monitored-sonnet-plc-execution/SKILL.md) | Opus | Sonnet | Switch repairs and new children to Opus. |
+| [monitored-opus-plc-execution](skills/monitored-opus-plc-execution/SKILL.md) | Opus | Opus | Repair with Opus. |
+
+The host must support the selected models and subagents. Ordinary bugs and review
+corrections stay with the assigned model.
+
+### Example: take a feature through delivery
+
+```text
+$plc-planning Plan config reloads. Show expected behavior, failure cases,
+phases, and how each requirement will be verified.
+
+$review-and-fix-plc Review that packet and fix supported findings.
+
+$monitored-sol-plc-execution Implement phase 1 only. Include tests and docs.
+Use an isolated worktree and open a PR to main. Do not merge it.
+
+$wrap-this-up Checkpoint phase 1: record checks, PR state, and remaining work.
+```
+
+After approval to merge:
+
+```text
+$wrap-this-up Complete the agreed PR delivery after required checks pass.
+Verify main, update the PLC, and remove eligible task-owned worktrees.
+```
+
+### Keep these habits throughout
+
+| Skill | What it looks like |
+|---|---|
+| [plain-english](skills/plain-english/SKILL.md) | “Reload keeps the old config if validation fails.” |
+| [design-for-change](skills/design-for-change/SKILL.md) | “Keep parsing separate from applying the config.” |
+| [verify-before-claiming](skills/verify-before-claiming/SKILL.md) | “Local checks passed; CI is pending; the PR is unmerged.” |
+
+Use focused specialists for focused questions: [audit-tests](skills/audit-tests/SKILL.md)
+for missing coverage, [test-quality-audit](skills/test-quality-audit/SKILL.md) for weak
+tests, and [docs-sync](skills/docs-sync/SKILL.md) for documentation drift.
+The combined audit coordinates specialists and fixes supported in-scope findings
+during authorized implementation. Re-audits need a serious finding or substantial
+change; three consecutive passes is the limit.
+
 ## Set up a computer
 
 ### 1. Install the prerequisites
