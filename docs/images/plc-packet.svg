@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="680" viewBox="0 0 960 680" role="img" aria-labelledby="title description">
+  <title id="title">Inside a PLC packet</title>
+  <desc id="description">README.md provides orientation and one replaceable current-work block. It links to SRD.md for requirements, contracts, risks, and open questions; SADD.md for design, ownership, and decisions; and IMPLEMENTATION_PLAN.md for phases, acceptance ownership, status, and evidence. Track implementation, verification, delivery, and required records separately. Optional FIXTURES.md holds stable inputs and expected results. Use the project's format first, or the compact single-document plan for bounded work.</desc>
+  <defs>
+    <linearGradient id="background" x2="1" y2="1">
+      <stop stop-color="#111c32"/>
+      <stop offset="1" stop-color="#182d40"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="680" rx="24" fill="url(#background)"/>
+  <g font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+    <text x="40" y="45" fill="#70e1c2" font-size="12" font-weight="700" letter-spacing="2">THE DEFAULT PLC PACKET</text>
+    <text x="40" y="82" fill="#f5f8ff" font-size="28" font-weight="700">One change. A connected set of documents.</text>
+    <text x="40" y="110" fill="#b6c5d8" font-size="16">Use the project's planning format first. Keep these files in sync as work progresses.</text>
+
+    <rect x="40" y="140" width="880" height="100" rx="12" fill="#20344b" stroke="#70e1c2"/>
+    <text x="60" y="172" fill="#70e1c2" font-size="17" font-weight="700">README.md</text>
+    <text x="60" y="202" fill="#f5f8ff" font-size="21" font-weight="650">What is this change, and where does it stand?</text>
+    <text x="60" y="225" fill="#c6d5e7" font-size="15">Orientation · Selected work · Current state · Next action · Blocker · Resume check</text>
+
+    <path d="M480 240V260M180 280V260H780V280M480 260V280" fill="none" stroke="#70e1c2" stroke-width="2"/>
+    <g fill="#20344b" stroke="#354d67">
+      <rect x="40" y="280" width="280" height="220" rx="12"/>
+      <rect x="340" y="280" width="280" height="220" rx="12"/>
+      <rect x="640" y="280" width="280" height="220" rx="12"/>
+    </g>
+    <g fill="#70e1c2" font-size="15" font-weight="700">
+      <text x="60" y="312">SRD.md</text>
+      <text x="360" y="312">SADD.md</text>
+      <text x="660" y="312">IMPLEMENTATION_PLAN.md</text>
+    </g>
+    <g fill="#f5f8ff" font-size="22" font-weight="650">
+      <text x="60" y="350">What must it do?</text>
+      <text x="360" y="350">How will it work?</text>
+      <text x="660" y="350">How do we deliver?</text>
+    </g>
+    <g fill="#c6d5e7" font-size="16">
+      <text x="60" y="381">Requirements and acceptance</text>
+      <text x="60" y="406">Contracts, risks, open questions</text>
+      <text x="360" y="381">Components and data flow</text>
+      <text x="360" y="406">Ownership and decisions</text>
+      <text x="660" y="381">Phases and dependencies</text>
+      <text x="660" y="406">Status, acceptance, evidence</text>
+    </g>
+    <g fill="#9fb4ce" font-size="14">
+      <text x="60" y="451">“Invalid config keeps the</text>
+      <text x="60" y="473">running config unchanged.”</text>
+      <text x="360" y="451">“Validate before replacing</text>
+      <text x="360" y="473">the active config.”</text>
+      <text x="660" y="451">“Phase 1: reload + failure tests.</text>
+      <text x="660" y="473">Exit: REQ-001 passes.”</text>
+    </g>
+
+    <rect x="40" y="524" width="880" height="76" rx="12" fill="#182c40" stroke="#7891ad" stroke-dasharray="5 5"/>
+    <text x="60" y="554" fill="#c6d5e7" font-size="16" font-weight="700">FIXTURES.md · optional</text>
+    <text x="60" y="580" fill="#b6c5d8" font-size="16">Stable inputs and expected outputs. Link to results in the plan or existing evidence store.</text>
+
+    <path d="M40 622H920" stroke="#354d67"/>
+    <text x="40" y="653" fill="#70e1c2" font-size="14" font-weight="700">CONNECT THE WORK</text>
+    <text x="225" y="653" fill="#c6d5e7" font-size="16">Requirement ID → Design → Phase → Validation evidence</text>
+  </g>
+</svg>

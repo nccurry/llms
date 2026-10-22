@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="660" viewBox="0 0 960 660" role="img" aria-labelledby="title description">
+  <title id="title">From a question to delivered work</title>
+  <desc id="description">Six steps: investigate, plan, review the plan, build selected work, audit and repair, then deliver and clean up. Plain English, clear design, and verified claims apply throughout. Small fixes can skip the planning steps.</desc>
+  <defs>
+    <linearGradient id="background" x2="1" y2="1">
+      <stop stop-color="#111c32"/>
+      <stop offset="1" stop-color="#182d40"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="660" rx="24" fill="url(#background)"/>
+  <g font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+    <text x="40" y="45" fill="#70e1c2" font-size="12" font-weight="700" letter-spacing="2">THE SKILL WORKFLOW</text>
+    <text x="40" y="82" fill="#f5f8ff" font-size="28" font-weight="700">From a question to delivered work</text>
+    <text x="40" y="110" fill="#b6c5d8" font-size="16">Pick the steps your task needs. Keep the plan current as you go.</text>
+
+    <path d="M64 170V550" stroke="#40546f" stroke-width="2"/>
+    <g fill="#20344b" stroke="#354d67">
+      <rect x="96" y="142" width="824" height="62" rx="12"/>
+      <rect x="96" y="216" width="824" height="62" rx="12"/>
+      <rect x="96" y="290" width="824" height="62" rx="12"/>
+      <rect x="96" y="364" width="824" height="62" rx="12"/>
+      <rect x="96" y="438" width="824" height="62" rx="12"/>
+      <rect x="96" y="512" width="824" height="62" rx="12"/>
+    </g>
+    <g fill="#70e1c2">
+      <circle cx="64" cy="173" r="18"/><circle cx="64" cy="247" r="18"/>
+      <circle cx="64" cy="321" r="18"/><circle cx="64" cy="395" r="18"/>
+      <circle cx="64" cy="469" r="18"/><circle cx="64" cy="543" r="18"/>
+    </g>
+    <g fill="#102735" font-size="15" font-weight="750" text-anchor="middle">
+      <text x="64" y="178">1</text><text x="64" y="252">2</text>
+      <text x="64" y="326">3</text><text x="64" y="400">4</text>
+      <text x="64" y="474">5</text><text x="64" y="548">6</text>
+    </g>
+    <g fill="#f5f8ff" font-size="19" font-weight="650">
+      <text x="116" y="180">Investigate</text><text x="116" y="254">Plan</text>
+      <text x="116" y="328">Review the plan</text><text x="116" y="402">Build selected work</text>
+      <text x="116" y="476">Audit and repair</text><text x="116" y="550">Deliver and clean up</text>
+    </g>
+    <g fill="#c6d5e7" font-size="16">
+      <text x="380" y="180">repo-navigation · debug-and-reproduce</text>
+      <text x="380" y="254">plc-planning</text>
+      <text x="380" y="328">review-and-fix-plc</text>
+      <text x="380" y="402">monitored-*-plc-execution</text>
+      <text x="380" y="476">audit-codebase · focused specialists</text>
+      <text x="380" y="550">wrap-this-up · clean-stale-worktrees</text>
+    </g>
+    <path d="M40 596H920" stroke="#354d67"/>
+    <text x="40" y="627" fill="#70e1c2" font-size="14" font-weight="700">THROUGHOUT</text>
+    <text x="185" y="627" fill="#c6d5e7" font-size="16">Plain English · Clear design · Verified claims</text>
+  </g>
+</svg>
