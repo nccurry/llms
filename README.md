@@ -1,7 +1,7 @@
 # LLM Tools and Skills
 
-This repository owns reusable agent processes and personal agent setup. Project facts,
-architecture, build commands, and local constraints stay in their project repositories.
+Reusable agent skills, tools, and personal setup. Keep project-specific facts,
+design notes, build commands, and rules in the project they describe.
 
 - [`skills`](skills/) contains managed Agent Skills and their installer.
 - [`templates`](templates/README.md) has starting `AGENTS.md`, `CLAUDE.md`, and `llms.txt` files for new repositories.
@@ -11,9 +11,9 @@ architecture, build commands, and local constraints stay in their project reposi
 
 ## Use the skills
 
-Name the outcome and the work to tackle. Call a skill explicitly with `$skill-name`
-in Codex or `/skill-name` in Claude Code. Agents can also select skills from their
-descriptions; the monitored execution workflows require an explicit request.
+Describe what you want done. Call a skill with `$skill-name`
+in Codex or `/skill-name` in Claude Code. Agents can also choose skills from their
+descriptions. Ask explicitly to use a monitored implementation workflow.
 
 ![Skill workflow: investigate, plan, review the plan, build, audit and repair, then deliver and clean up. Plain English, clear design, and verified claims apply throughout.](docs/images/skill-workflow.svg)
 
@@ -23,90 +23,21 @@ descriptions; the monitored execution workflows require an explicit request.
 |---|---|---|
 | Understand existing code | [repo-navigation](skills/repo-navigation/SKILL.md) | “Trace how configuration reaches the exporter.” |
 | Reproduce a bug | [debug-and-reproduce](skills/debug-and-reproduce/SKILL.md) | “Reproduce this reload failure and fix its cause.” |
-| Plan a larger change | [plc-planning](skills/plc-planning/SKILL.md) | “Plan incoming OTLP support. Include requirements, phases, and checks.” |
+| Plan a larger change | [plc-planning](skills/plc-planning/SKILL.md) | “Plan config reloads. Include requirements, steps, and checks.” |
 | Improve a written plan | [review-and-fix-plc](skills/review-and-fix-plc/SKILL.md) | “Have a subagent review this plan, then fix supported findings.” |
 | Create isolated work | [start-this-up](skills/start-this-up/SKILL.md) | “Start this up in a new branch and worktree from main.” |
 | Implement selected plan work | [monitored-sol-plc-execution](skills/monitored-sol-plc-execution/SKILL.md) | “Finish phase 1, including tests and docs. Open an MR; leave it unmerged.” |
 | Review a change thoroughly | [audit-codebase](skills/audit-codebase/SKILL.md) | “Audit this branch against main. Report findings without editing.” |
 | Handle review feedback | [resolve-review-comments](skills/resolve-review-comments/SKILL.md) | “Check the PR feedback against the source and fix valid issues.” |
-| Save current progress | [wrap-this-up](skills/wrap-this-up/SKILL.md) | “Checkpoint the PLC with what passed and what remains.” |
-| Finish delivery | [wrap-this-up](skills/wrap-this-up/SKILL.md) | “Finish the agreed MR delivery, update the PLC, and clean up owned worktrees.” |
-| Remove stale local work | [clean-stale-worktrees](skills/clean-stale-worktrees/SKILL.md) | “Remove eligible finished worktrees. Preserve unique unmerged source.” |
+| Save current progress | [wrap-this-up](skills/wrap-this-up/SKILL.md) | “Update the plan with what passed and what remains.” |
+| Finish delivery | [wrap-this-up](skills/wrap-this-up/SKILL.md) | “Merge the approved MR, update the plan, and clean up this task’s worktrees.” |
+| Remove stale local work | [clean-stale-worktrees](skills/clean-stale-worktrees/SKILL.md) | “Remove finished worktrees. Keep unmerged work.” |
 
 A **PLC** (Plan-Led Change) records requirements, design, delivery phases, and
-validation. Small fixes can go straight from investigation to repair and focused checks.
+checks. Small fixes can go straight from investigation to repair and testing.
 
-### Inside a PLC packet
-
-Use the project's planning format first. Otherwise, start with the
-[default packet](skills/plc-planning/assets/default-packet/README.md) for substantial
-work, or the [compact plan](skills/plc-planning/assets/compact-plan.md) for bounded work:
-
-![PLC packet: README.md gives the overview; SRD.md defines requirements; SADD.md explains the design; IMPLEMENTATION_PLAN.md maps requirements to phases and checks. Optional FIXTURES.md holds stable examples and test cases.](docs/images/plc-packet.svg)
-
-```text
-REQ-001: Invalid config leaves the running config unchanged.
-Design:  Parse and validate before replacing the active config.
-Phase 1: Implement reload; test invalid input; record the result.
-
-Current: Implementation complete; local checks passed; PR unmerged; record complete.
-Next:    Finish required PR reviews.
-```
-
-Keep requirement IDs stable. Replace the current-work block as work changes.
-Record each result once and link to it. A missing record calls for reconciling valid evidence
-before repeating checks.
-
-### Choose an execution model
-
-All four monitored workflows reuse [plc-execution](skills/plc-execution/SKILL.md).
-The parent assigns bounded work, inspects delivered code, and owns integration.
-
-| Skill | Parent | Implementation children | After a verified serious delivery failure |
-|---|---|---|---|
-| [monitored-luna-plc-execution](skills/monitored-luna-plc-execution/SKILL.md) | Current model | GPT-6 Luna, max | Switch repairs and new children to GPT-6.1 Sol, medium. |
-| [monitored-sol-plc-execution](skills/monitored-sol-plc-execution/SKILL.md) | Current model | GPT-6.1 Sol, medium | Repair with Sol. |
-| [monitored-sonnet-plc-execution](skills/monitored-sonnet-plc-execution/SKILL.md) | Opus | Sonnet | Switch repairs and new children to Opus. |
-| [monitored-opus-plc-execution](skills/monitored-opus-plc-execution/SKILL.md) | Opus | Opus | Repair with Opus. |
-
-The host must support the selected models and subagents. Ordinary bugs and review
-corrections stay with the assigned model.
-
-### Example: take a feature through delivery
-
-```text
-$plc-planning Plan config reloads. Show expected behavior, failure cases,
-phases, and how each requirement will be verified.
-
-$review-and-fix-plc Review that packet and fix supported findings.
-
-$monitored-sol-plc-execution Implement phase 1 only. Include tests and docs.
-Use an isolated worktree and open a PR to main. Do not merge it.
-
-$wrap-this-up Checkpoint phase 1: record checks, PR state, and remaining work.
-```
-
-After approval to merge:
-
-```text
-$wrap-this-up Complete the agreed PR delivery after required checks pass.
-Verify main, update the PLC, and remove eligible task-owned worktrees.
-```
-
-### Keep these habits throughout
-
-| Skill | What it looks like |
-|---|---|
-| [plain-english](skills/plain-english/SKILL.md) | “Reload keeps the old config if validation fails.” |
-| [design-for-change](skills/design-for-change/SKILL.md) | “Keep parsing separate from applying the config.” |
-| [verify-before-claiming](skills/verify-before-claiming/SKILL.md) | “Local checks passed; CI is pending; the PR is unmerged.” |
-
-Use focused specialists for focused questions: [audit-tests](skills/audit-tests/SKILL.md)
-for missing coverage, [test-quality-audit](skills/test-quality-audit/SKILL.md) for weak
-tests, and [docs-sync](skills/docs-sync/SKILL.md) for documentation drift.
-The combined audit coordinates specialists and fixes supported in-scope findings
-during authorized implementation. Re-audits need a serious finding or substantial
-change; three consecutive passes is the limit.
+See [skill workflows](docs/skill-workflows.md) for plan examples, model choices,
+and the steps from implementation through delivery.
 
 ## Set up a computer
 
@@ -121,10 +52,9 @@ change; three consecutive passes is the limit.
 You don't need mise, Task, Python, Node, or uv. Bootstrap downloads pinned copies into this
 checkout.
 
-On Windows, the setup scripts use the Windows PowerShell 5.1 that comes with Windows. PowerShell
-7 (`pwsh`) is for agent apps such as Claude Code, which run commands through it. Install it with
-winget, not with a global mise. A mise `pwsh` shim fails with `No version is set for shim: pwsh`
-when no global mise config selects a version, and every app that starts `pwsh` then breaks.
+On Windows, setup uses the built-in Windows PowerShell 5.1. Agent apps use
+PowerShell 7 (`pwsh`); install it with winget. See troubleshooting below if a global
+mise installation has taken over `pwsh`.
 
 ### 2. Clone this repository
 
@@ -150,12 +80,11 @@ Windows:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\bootstrap.ps1 install TARGET=all
 ```
 
-This installs the pinned tools, installs the skills, adds the tools to each agent's
-configuration, and runs `doctor` to check the result. `TARGET=all` covers Codex, Claude, Pi,
-and OpenCode. Use `TARGET=codex`, `claude`, `pi`, or `opencode` for one agent only.
+This installs pinned tools and skills, configures the agents, and runs `doctor`.
+`TARGET=all` covers Codex, Claude, Pi, and OpenCode. Use `TARGET=codex`, `claude`, `pi`, or `opencode` for one agent only.
 
-To see what would change first, run `install:dry-run TARGET=all` the same way. It needs one
-plain `bootstrap` run beforehand to download the setup tools.
+To preview changes, first run bootstrap with no arguments to download the setup
+tools, then run `install:dry-run TARGET=all` through the same script.
 
 ### 4. Check it works
 
@@ -180,48 +109,21 @@ safe to repeat: unchanged skills are skipped, and changed ones are backed up fir
 | Problem | Fix |
 |---|---|
 | `mise ERROR No version is set for shim: pwsh` | A global mise owns `pwsh` without a version. Run `mise uninstall powershell --all`, then install PowerShell 7 with winget. |
-| Agent tools point to an old folder | Run `agents:configure TARGET=all` from the current checkout. |
+| Agent tools point to an old folder | Run `agents:configure TARGET=all` through bootstrap from the current checkout. |
 | A skill install failed | Rerun with `OUTPUT=json`. The report lists backup paths and the failed check. |
 
 ## How setup works
 
-| Part | What it does |
-|---|---|
-| `bootstrap.sh` / `bootstrap.ps1` | Downloads a checksum-verified, pinned mise and Task into `.tools/`, then passes its arguments to Task |
-| `mise.toml` / `mise.lock` | Pin Task, uv, and Node, with their download checksums |
-| `Taskfile.yml` | Defines the install, check, development, and update commands |
-| `scripts/` | Install skills and tools, and merge agent configuration |
+Bootstrap downloads the pinned setup tools into `.tools/` and runs commands from
+`Taskfile.yml`. It leaves your shell profile, PATH, and global mise setup unchanged.
+Run commands through bootstrap, such as `./bootstrap.sh doctor`, or use `task` if
+it is already available.
 
-Everything is kept in the ignored `.tools/` folder. Bootstrap does not change your shell
-profile, your PATH, or any global mise setup. uv manages Python; the version comes from
-[`piw/.python-version`](piw/.python-version).
+With no arguments, bootstrap prepares the tools and piw development environment.
+Use `install TARGET=all` to install skills and configure agents.
 
-With no arguments, bootstrap runs `deps:install`. That prepares the pinned tools and the piw
-development environment only. It does not install skills or configure agents.
-
-After the first bootstrap, you can call Task in three ways:
-
-- Keep using bootstrap with Task arguments, for example `./bootstrap.sh doctor`.
-- Add `.tools/bin` to your PATH and run `task doctor`.
-- Use a Task you already have installed. It reads this Taskfile and uses this checkout's tools.
-
-Bootstrap records the folder you called it from in `LLMS_CALLER_CWD`, so `tools:run` works on
-that project when you call this checkout's bootstrap from somewhere else.
-
-`OUTPUT=json` makes the scripts print machine-readable reports.
-
-| Task | What it does |
-|---|---|
-| `install TARGET=...` | Runs `deps:install`, `tools:install`, `skills:install`, `agents:configure`, and `doctor` in order |
-| `install:dry-run TARGET=...` | Shows the tool, skill, and configuration changes without making them |
-| `deps:install`, alias `setup` | Installs pinned Task, uv, and Node, and prepares piw's development environment |
-| `tools:install` | Installs the pinned Serena, ast-grep, GitNexus, and local cq |
-| `tools:run TOOL=... -- ...` | Runs a local tool with its arguments in the caller's project or worktree |
-| `skills:install TARGET=...` | Installs the managed skills and the external skills they need |
-| `agents:configure TARGET=...` | Adds the tools to each agent's configuration and keeps existing settings |
-| `doctor TARGET=...` | Reports tool versions and agent configuration (not live connections) |
-| `deps:versions` | Reports the selected tool versions |
-| `deps:check` | Reports available updates without changing pins |
+See the [setup reference](docs/setup.md) for all commands, version updates,
+skill maintenance, and recovery steps.
 
 ## Agent tools
 
@@ -230,175 +132,32 @@ that project when you call this checkout's bootstrap from somewhere else.
 | Serena | Find symbols and references through standard language servers |
 | ast-grep | Search structural code patterns through the CLI |
 | GitNexus | Query code maps, execution flows, and change impact |
-| cq | Trial a local store of knowledge from previous debugging |
-| Ponytail skills | Review changes and audit code using focused processes |
+| cq | Store and find lessons from previous debugging locally |
+| Ponytail skills | Review code and look for bugs or unnecessary complexity |
 
-Native prerequisite versions belong to mise. Agent packages and external skill sources belong
-to `agent-dependencies.json`; do not duplicate their pins in individual host configurations.
-The npm lock at `agent-tools/package-lock.json` records their complete resolved dependencies.
-After changing npm tool pins, run `task tools:lock` and review the lockfile before installation.
-Reviewed Serena security overrides also live in `agent-dependencies.json`; uv installs them
-with `--overrides` because Serena 1.7.0 otherwise pins older urllib3 and Werkzeug versions.
-Serena's upstream metadata still reports those two exact-pin conflicts in `uv pip check`;
-verify the reviewed versions and language-server behavior rather than treating that output as clean.
-Use this canonical checkout for host launcher paths, then rerun `agents:configure` if it moves.
-Managed Codex integrations use the standard `~/.codex` profile, matching the upstream installers.
-A custom `CODEX_HOME` is rejected before setup; skills-only installation still supports custom destinations.
+The setup above installs and configures these tools.
 
-Configuration selects local transports for managed MCP entries and backs up their previous settings.
-Unrelated servers and preferences are preserved. GitNexus's native installer owns bundled skills and
-hook bodies; local launchers select pinned Node and separate storage for each project or worktree.
-Stale-index reminders invoke that pinned CLI explicitly instead of fetching `gitnexus@latest`.
-Doctor checks those launchers separately from live hook execution and client trust.
-OpenCode setup preserves existing `opencode.jsonc` or legacy `config.json` files. JSONC
-comments are retained by the locked upstream parser; before tool installation, its dry run
-reports that source validation is pending. Project and runtime overrides still need a live
-OpenCode check.
+Run a tool directly with `task tools:run TOOL=ast-grep -- --version`.
+GitNexus is enabled for a personal noncommercial trial; resolve licensing before commercial use.
 
-Serena must activate the project or worktree being inspected. When enabled, use GitNexus in
-indexing-only mode so it does not inject instructions into project repositories. cq storage stays local.
-Use documented integrations where the host supports them, and the CLIs otherwise; Pi does not
-need an added MCP bridge. A successful package installation does not establish that a language
-server, index, or host integration works. Check `doctor` and perform real queries in the selected
-project before relying on them.
-
-### Multiple repos, workspaces, and agents
-
-The managed Serena setup uses a separate stdio connection for each agent session and
-`--project-from-cwd` to select its current checkout. No repo names, repo list, fixed
-project directory, or shared HTTP endpoint are written into host configuration. An agent
-working from a projectless chat must activate the exact repo or worktree explicitly.
-
-`task agents:configure` also merges these generic preferences into Serena's user-level
-configuration, preserving other settings, registered projects, and comments:
-
-```yaml
-gui_log_window: false
-web_dashboard: true
-web_dashboard_open_on_launch: false
-web_dashboard_interface: browser
-```
-
-The configuration lives in `~/.serena/serena_config.yml`, or under `SERENA_HOME` when
-set. Setup records that selected home in the managed Serena launch environment so desktop
-and CLI sessions read the same preferences. A conflicting existing host override is
-rejected before changes; select its existing home explicitly rather than silently
-switching data directories. Changes use the existing private backup and atomic update
-process. Dry runs preview them without writes, and `doctor` checks both preferences and
-host launch arguments.
-New sessions keep a local dashboard available without launching native windows, tray
-icons, or browser tabs. Open a dashboard on demand through Serena's `open_dashboard`
-tool or its logged localhost URL. Existing sessions retain their startup settings.
-
-This follows [Serena's multiple-project guidance](https://oraios.github.io/serena/02-usage/040_workflow.html).
-Separate repos and worktrees need independent project state. HTTP sharing is useful when
-every connected agent deliberately uses the same checkout; a single global endpoint can
-switch the active project underneath other agents. The browser interface is supported
-across platforms; the pinned release labels its shared tray manager experimental.
-See [dashboard settings](https://oraios.github.io/serena/02-usage/060_dashboard.html).
-
-Run installed CLIs through Task without adding their package caches to global PATH:
-
-```bash
-task tools:run TOOL=ast-grep -- --version
-```
-
-From another project, call this checkout's bootstrap by its absolute path with the same Task
-arguments. `tools:run` uses `LLMS_CALLER_CWD` for that project or worktree and forwards the tool's
-exit code. It does not install or configure anything.
-
-GitNexus is enabled for the current personal noncommercial trial. Its PolyForm Noncommercial
-license limits anticipated commercial application; source privacy does not change those terms.
-Commercial licensing is available from its maintainers. Before adopting it for commercial work,
-resolve that license. Index with `--index-only`; the managed environment stores isolated indexes
-under `.tools/agent-tools/gitnexus-indexes`, outside the inspected project.
-
-Repo builds, tests, CI, and contributor setup do not depend on these LLM tools. Keep their
-installation and configuration here. Optional project guidance checks also belong here.
+See the [agent tools guide](docs/agent-tools.md) for configuration, Serena sessions and
+dashboards, GitNexus indexing and licensing, and dependency updates.
 
 ## Development
 
-```bash
-task test
-task check
-task ci
-```
+| Command | Checks |
+|---|---|
+| `task test` | piw application tests and agent launchers; no live Docker Sandboxes needed |
+| `task check` | Formatting, lint, types, coverage, skill validation, and launcher checks |
+| `task ci` | All checks above, plus a piw build and a smoke test of the installed package |
 
-`task test` runs piw's application tests without live Docker Sandboxes and checks the agent
-launchers. Run only the launcher checks with `task test:agent-launchers`.
-When the pinned GitNexus is installed, these checks also exercise its real hook.
-`task check` adds formatting, lint, typing, coverage, and actual skill validation.
-`task ci` also builds piw and smoke-tests the installed wheel. Project-specific commands remain
-available under `piw:` and `skills:`.
+Run `task test:agent-launchers` to check only the launchers. If the pinned GitNexus
+is installed, these checks also run its real hook. Project commands are available
+under `piw:` and `skills:`.
 
-For native tool pin changes, edit `mise.toml`, then refresh `mise.lock` with the project-local mise
-binary. `vars.mise_version` selects the bootstrap release. Keep exact pins and reviewed lockfile
-changes; `deps:check` reports updates without applying them.
-
-## Managed skills
-
-The installer validates managed source before changing a target. It stages each skill, compares
-source and staged digests, backs up changed live copies outside skill discovery, and restores
-previous copies if promotion fails. It also moves managed legacy `*.backup-*` folders out of
-skill discovery to prevent duplicate names.
-
-External required skills are fetched from the pinned upstream sources declared in the dependency
-manifest. Upstream tool installers own their bundled skills and integrations; avoid maintaining
-competing copies. Skill validation reports required source dependencies. Doctor reports package
-and host configuration state; live client connections and skill use require separate checks.
-
-```bash
-task skills:list
-task skills:fetch
-task skills:validate
-task skills:test
-task skills:dry-run TARGET=codex
-task skills:install TARGET=codex
-```
-
-Existing `skills:install:codex`, `skills:install:claude`, `skills:install:pi`, and their dry-run
-commands remain available. OpenCode has matching target-specific commands.
-
-`skills:fetch` prepares verified external source caches without changing live skills.
-`skills:validate` is offline and reports required source caches that are missing or invalid.
-`skills:check` fetches dependencies before validation. Live installation prepares
-external dependencies before changing a skill target.
-
-Use [skill behavior checks](tests/skill-evals.md) to evaluate selection and workflow changes.
-Structural validation proves packaging constraints; it does not establish agent performance.
-Setup scripts are checked by running them. Worktree cleanup uses the agent's
-assessment and standard Git commands; it has no custom preflight script.
-
-The Claude PLC variants reuse `plc-execution` and share their audit and parent
-review rules:
-
-| Skill | Parent | Implementation children | Serious delivery failure |
-| --- | --- | --- | --- |
-| [monitored-sonnet-plc-execution](skills/monitored-sonnet-plc-execution/SKILL.md) | Opus | Sonnet | Switch repairs and new children to Opus for the remaining selected work. |
-| [monitored-opus-plc-execution](skills/monitored-opus-plc-execution/SKILL.md) | Opus | Opus | Repair with Opus under the same review standard. |
-
-Both require all actionable in-scope audit findings to be fixed and the parent
-to review the delivered diff before integration. The parent coordinates
-independent audit reviewers. They preserve Claude's configured effort unless
-the user chooses another setting. Family aliases avoid pinning the workflow to
-one release; explicit user version choices take precedence.
-
-Invoke them in Claude Code as `/monitored-sonnet-plc-execution` or
-`/monitored-opus-plc-execution` with the selected PLC work. Their `model: opus`
-frontmatter requests Opus for the current turn. Use `/model opus` or start with
-`claude --model opus` to keep the session on Opus across follow-up turns. Other
-hosts must support the requested Claude models and child selection to execute
-these workflows; installing the files alone does not provide that capability.
-
-The direct installer remains available through `scripts/install_skills.py`; run it with the
-uv-managed Python version. `scripts/run_install_skills.ps1` is a compatibility wrapper for an
-already available Python runtime. Use root bootstrap for first-time setup.
-
-For recovery, keep installer and configuration reports with `OUTPUT=json`; they identify
-backup paths and failed verification. Fix the reported prerequisite before retrying. A moved
-checkout needs `agents:configure` again so host launchers point to the current location. To
-restore an earlier managed skill revision, check out that reviewed revision here and rerun
-`skills:install`; retain the external backups until the restored skills are verified.
+See [skill behavior checks](tests/skill-evals.md) when changing how agents select
+or follow skills, and [skill maintenance](docs/setup.md#maintain-installed-skills)
+for installer and validation commands.
 
 ## piw
 
