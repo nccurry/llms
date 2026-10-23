@@ -60,8 +60,11 @@ copy, compares file hashes, and backs up changed skills outside the folders agen
 search for skills. If replacement fails, it restores the previous copy. Old
 `*.backup-*` folders are moved out of those search folders to prevent duplicate skills.
 
-Required external skills come from the pinned sources in
-`agent-dependencies.json`. Tool installers manage their own bundled skills and
+Normal skill installs check the upstream GitHub default branch for external
+skills, validate the downloaded files, and record the installed commits and
+checksums in `agent-dependencies.json`. All six Ponytail skills are managed this
+way. An upstream lookup failure stops installation; it does not silently use an
+old version. Tool installers manage their own bundled skills and
 integrations; keep one copy of each. Skill validation checks source dependencies.
 `doctor` checks installed packages and configuration. Try the skills in an agent app
 to check that they work.
@@ -82,10 +85,14 @@ You can also use target-specific commands such as `skills:install:codex` and
 skills. `skills:validate` works offline and reports missing or invalid sources.
 `skills:check` fetches dependencies, validates skills, and runs their script tests.
 Installation prepares external dependencies before changing installed skills.
+Dry runs check current upstream versions without changing the manifest or live
+skills. For a repeatable installation of the recorded commits, pass `--locked`
+to `scripts/install_skills.py`. Fetch and validation commands continue to use
+the recorded commits, so checks do not advance dependency versions.
 
-File validation checks packaging rules. Use [skill behavior checks](../tests/skill-evals.md)
-to assess how agents select and follow skills.
-Setup scripts are checked by running them. Worktree cleanup uses the agent's
+File validation checks packaging rules, not agent behavior. Maintain skill
+instructions from actual use and observed failures. Setup scripts are checked
+by running them. Worktree cleanup uses the agent's
 assessment and standard Git commands; it has no custom preflight script.
 
 The direct installer remains available through `scripts/install_skills.py`; run it with the

@@ -103,6 +103,8 @@ On Windows, run `git pull`, then the same `bootstrap.ps1 install TARGET=all` com
 
 Use `skills:install TARGET=all` instead of `install` to update only the skills. Installs are
 safe to repeat: unchanged skills are skipped, and changed ones are backed up first.
+Skill installs also refresh external skills from upstream and record the resolved
+commits and checksums. Use the installer's `--locked` option to reuse recorded versions.
 
 ### Troubleshooting
 
@@ -155,8 +157,7 @@ Run `task test:agent-launchers` to check only the launchers. If the pinned GitNe
 is installed, these checks also run its real hook. Project commands are available
 under `piw:` and `skills:`.
 
-See [skill behavior checks](tests/skill-evals.md) when changing how agents select
-or follow skills, and [skill maintenance](docs/setup.md#maintain-installed-skills)
+See [skill maintenance](docs/setup.md#maintain-installed-skills)
 for installer and validation commands.
 
 ## piw

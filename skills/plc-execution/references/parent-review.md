@@ -32,12 +32,11 @@ reviewed. Give concrete feedback with source, behavior, missing acceptance, or
 failing check evidence. Retain prescribed model settings; apply any escalation
 rule in the explicitly invoked monitored skill.
 
-The parent coordinates one read-only reviewer per required audit specialist
-in bounded waves. Implementation children request this review and make repairs;
-they do not launch recursive reviewers. Preserve provenance and valid evidence.
-Inspect routine repair diffs and run affected checks. Repeat specialist reviews
-only for serious findings or substantial changes under `audit-codebase`'s
-three-pass limit, carrying the count across handoffs and integration.
+Follow `audit-codebase` for specialist selection, reviewer dispatch, and repeat
+limits. Implementation children request review and make repairs; they do not
+launch recursive reviewers. Preserve provenance, valid evidence, and the pass
+count across handoffs and integration. Verify routine repairs with diff
+inspection and affected checks.
 
 If a finding or missing check remains after repair/final verification, report
 the exact open work. Resolve routine repairs; ask the user only about material

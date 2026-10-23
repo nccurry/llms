@@ -10,12 +10,15 @@ AI_CONTEXT:
 from __future__ import annotations
 
 import argparse
+import copy
+from collections import deque
 import hashlib
 import json
 import os
 import posixpath
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import time
@@ -123,8 +126,9 @@ def parse_frontmatter(skill_md: Path) -> tuple[dict[str, Any], list[str]]:
         return {}, ["SKILL.md frontmatter must end with ---"]
 
     data: dict[str, Any] = {}
-    frontmatter_lines = iter(lines[1:end_index])
-    for raw_line in frontmatter_lines:
+    frontmatter_lines = deque(lines[1:end_index])
+    while frontmatter_lines:
+        raw_line = frontmatter_lines.popleft()
         if not raw_line.strip():
             continue
         if raw_line[:1].isspace() or ":" not in raw_line:
@@ -151,13 +155,11 @@ def parse_frontmatter(skill_md: Path) -> tuple[dict[str, Any], list[str]]:
                 )
                 continue
             folded: list[str] = []
-            for continuation in frontmatter_lines:
-                if continuation and not continuation.startswith("  "):
-                    errors.append(
-                        "folded description must be the final frontmatter field"
-                    )
-                    break
-                folded.append(continuation.strip())
+            while frontmatter_lines and (
+                not frontmatter_lines[0].strip()
+                or frontmatter_lines[0].startswith("  ")
+            ):
+                folded.append(frontmatter_lines.popleft().strip())
             value = " ".join(folded).strip()
             data[key] = value
             continue
@@ -286,9 +288,10 @@ def validate_skill(
         frontmatter, frontmatter_errors = parse_frontmatter(skill_md)
         errors.extend(frontmatter_errors)
 
-    unexpected = sorted(
-        set(frontmatter) - {"name", "description", "disable-model-invocation", "model"}
-    )
+    supported = {"name", "description", "disable-model-invocation", "model"}
+    if external:
+        supported.update({"license", "argument-hint"})
+    unexpected = sorted(set(frontmatter) - supported)
     if unexpected:
         errors.append(f"unexpected frontmatter keys: {', '.join(unexpected)}")
     if "model" in frontmatter and not frontmatter["model"].strip():
@@ -415,6 +418,43 @@ def download_pinned(url: str, expected_hash: str) -> bytes:
     if hashlib.sha256(data).hexdigest() != expected_hash:
         raise ValueError(f"external download checksum mismatch: {url}")
     return data
+
+
+def refresh_external_specs(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Resolve each GitHub default branch once and record immutable payload hashes."""
+    refreshed = copy.deepcopy(manifest)
+    commits: dict[str, str] = {}
+    for name, spec in external_specs(refreshed).items():
+        repository = spec.get("repository", "")
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
+            raise ValueError(f"{name}: refresh requires a GitHub owner/repository")
+        if repository not in commits:
+            result = subprocess.run(
+                ["git", "ls-remote", f"https://github.com/{repository}.git", "HEAD"],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=45,
+            )
+            commit = result.stdout.split()[0] if result.stdout.split() else ""
+            if not re.fullmatch(r"[0-9a-f]{40}", commit):
+                raise ValueError(f"{repository}: could not resolve upstream HEAD")
+            commits[repository] = commit
+        old_prefix = f"https://raw.githubusercontent.com/{repository}/{spec['commit']}/"
+        new_prefix = (
+            f"https://raw.githubusercontent.com/{repository}/{commits[repository]}/"
+        )
+        for field, hash_field in (("url", "sha256"), ("license_url", "license_sha256")):
+            if not spec[field].startswith(old_prefix):
+                raise ValueError(f"{name}: {field} does not match its GitHub source")
+            spec[field] = new_prefix + spec[field][len(old_prefix) :]
+            with urllib.request.urlopen(spec[field], timeout=30) as response:
+                payload = response.read(2_000_001)
+            if len(payload) > 2_000_000:
+                raise ValueError(f"{name}: upstream payload exceeds 2 MB")
+            spec[hash_field] = hashlib.sha256(payload).hexdigest()
+        spec["commit"] = commits[repository]
+    return refreshed
 
 
 def prepare_external_skills(manifest: dict[str, Any], destination: Path) -> Path:
@@ -1019,6 +1059,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--pi-dir")
     parser.add_argument("--opencode-dir")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--locked",
+        action="store_true",
+        help="Install recorded external skill commits without checking upstream.",
+    )
     parser.add_argument("--output", choices=["text", "json"], default="text")
     return parser.parse_args(argv)
 
@@ -1034,6 +1079,12 @@ def main(argv: list[str]) -> int:
             return 0
 
         manifest = dependency_manifest(source)
+        if (
+            args.command == "install"
+            and not args.locked
+            and manifest.get("external_skills")
+        ):
+            manifest = refresh_external_specs(manifest)
         if args.command in {"fetch", "install"} and manifest.get("external_skills"):
             if args.dry_run:
                 with tempfile.TemporaryDirectory(
@@ -1089,7 +1140,11 @@ def main(argv: list[str]) -> int:
             emit(validation, args.output)
             return 1
 
-        result = install_skills(source, targets, args.dry_run)
+        result = install_skills(source, targets, args.dry_run, manifest=manifest)
+        if not args.dry_run and manifest and not args.locked:
+            (repo_root() / "agent-dependencies.json").write_text(
+                json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+            )
         emit(result, args.output)
         return 0
     except Exception as error:

@@ -60,10 +60,13 @@ user-selected work or an explicit user request to restart it.
 
 ## Specialist selection
 
-Assess every domain below. Required coverage comes from the scope, affected
-behavior, repository instructions, and explicit user requests. Record `not
-applicable` with a concrete reason when a domain has no relevant concern. Missing
-evidence is `INCOMPLETE`, never `not applicable`.
+This skill owns specialist selection, including when invoked by PLC execution
+or a monitored wrapper. Assess every domain below against the scope, affected
+behavior, repository instructions, and explicit user requests. Dispatch only
+required specialists. The parent may record `not applicable` with a concrete
+reason without dispatching a reviewer for that domain. If applicability is
+uncertain, inspect enough context to decide or assign a focused reviewer.
+Unavailable required review or evidence is `INCOMPLETE`, never `not applicable`.
 
 1. `abstraction-quality-audit`: ownership, file-tree structure, boundaries,
    modularity, and whether unrelated changes can proceed independently.
