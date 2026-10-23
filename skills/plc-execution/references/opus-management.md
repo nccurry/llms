@@ -77,19 +77,12 @@ independent work moving while that choice is pending.
 ## Require strict audits and parent review
 
 Read [parent review](parent-review.md) before the first delivery. Follow the
-base's independent audit process: the implementation child pauses edits and
-requests review; the parent coordinates one read-only reviewer per specialist,
-at most three concurrently, against the same stabilized base and revision.
-Implementation children do not spawn reviewers or substitute self-review for
-this gate. Audit reviewers use the Opus parent's model unless the user separately
+base's independent audit process, with `audit-codebase` owning specialist
+selection, applicability decisions, and reviewer dispatch. Implementation
+children request review; they do not spawn reviewers or substitute self-review.
+Audit reviewers use the Opus parent's model unless the user separately
 prescribes their model; the wrapper's worker choice applies to implementation
 and repairs.
-
-Preserve the monitored workflows' coverage: every standing specialist listed
-by `audit-codebase` returns a result, including when it finds no relevant issue.
-Apply conditional security, UI, and dependency gates when required. The parent
-checks evidence and records justified inapplicability. Missing review or
-validation is `INCOMPLETE`.
 
 Fix every actionable finding in scope, including nonblocking findings. Verify
 repairs with diff inspection and affected tests; repeat audits only for serious

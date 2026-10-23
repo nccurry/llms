@@ -49,25 +49,15 @@ current model unless the user separately prescribes a reviewer model.
 
 ## Strict handoff audit
 
-The parent coordinates the child's audit through `audit-codebase`: one read-only
-reviewer per specialist, no more than three concurrently, against the same
-stabilized base and revision. Implementation children request review and do not
-spawn agents.
+Follow the base skill's independent audit and parent-review requirements.
+`audit-codebase` owns specialist selection, applicability decisions, reviewer
+dispatch, and the shared ledger. Implementation children request review and
+make assigned repairs; they do not spawn reviewers.
 
-Preserve the monitored workflow's coverage: every standing specialist listed
-by `audit-codebase` returns a result, even when it finds no relevant concern.
-Require the conditional security, UI, and dependency gates when applicable.
-The parent checks evidence and records any justified inapplicability; missing
-review or validation is `INCOMPLETE`.
-
-The assigned writer fixes every supported actionable in-scope finding, including
-P3; reviewers do not edit. Require `PASS` before MR/PR creation or integration.
-Apply an explicit user-approved integration exception only within the limits
-recorded by the base skill; it does not turn a failed/incomplete gate into PASS.
-Outside-scope findings and material unresolved decisions go through the parent.
-Reject incorrect findings with evidence. Keep the base skill's independent
-parent diff review and combined audit on the prepared candidate before its
-final-target merge, followed by required post-merge checks.
+Fix every supported actionable in-scope finding, including P3. Require `PASS`
+before MR/PR creation or integration, subject only to the base's explicit
+user-approved integration exception. Preserve the actual verdict, independent
+parent diff review, and required checks before and after final-target merge.
 
 ## Finish
 

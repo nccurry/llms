@@ -44,7 +44,7 @@ Health:
 ## Routing Boundaries
 
 - Use this skill for dependency security, versions, licenses, maintenance, and bloat.
-- Do not include it in `audit-codebase` unless the user explicitly requests dependency review.
+- When invoked by `audit-codebase`, review its assigned dependency scope; the orchestrator decides whether this specialist is needed.
 - Use `dead-code-audit` when the main question is whether a dependency is unused.
 - Use `performance-audit` when a dependency causes measured runtime or resource cost.
 - Use an application-security specialist for local trust boundaries, authorization, injection, secrets, and cryptography.

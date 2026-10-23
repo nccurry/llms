@@ -159,14 +159,11 @@ and MR creation require the assigned authorized route.
 
 After a meaningful block, the implementation child pauses edits and requests
 review from the parent with its exact base, revision/diff, and evidence. The
-parent follows `audit-codebase`: one read-only reviewer per required specialist,
-at most three concurrently, with no recursive delegation. Give implementation
-children time to yield slots. Inspect the combined diff after meaningful
-integration or at a work-item boundary; reuse valid handoff audit evidence and
+parent follows `audit-codebase` for specialist selection and reviewer dispatch.
+Give implementation children time to yield slots. Inspect the combined diff
+after meaningful integration or at a work-item boundary; reuse valid handoff audit evidence and
 apply `audit-codebase`'s repeat-audit limits before dispatching reviewers again.
 
-Assess every listed domain and run required specialists. Add rendered UI review
-or dependency review when relevant; include the security gate when applicable.
 A discovery-only task or tiny no-code edit can wait for the next meaningful
 block; group related small corrections and record the reason.
 
