@@ -43,11 +43,23 @@ change, omit empty sections, and keep necessary migration guidance visible.
   a small old/new module layout. Show the consequence, not a dump of the diff.
   Verify names and syntax. Label illustrative or expected output when unobserved.
 - **Change breakdown:** Count added and deleted lines for the stated range using
-  Git numstat with rename detection or complete host diff statistics. Group by
-  purpose: production, tests/fixtures, developer tooling, deployment/config,
-  user documentation, planning/evidence, and generated files/lockfiles. Use only
-  populated groups. Inspect ambiguous files, including inline tests; when a
-  mixed file cannot be split reliably, label it mixed rather than guessing.
+  Git numstat with rename detection or complete host diff statistics. Make the
+  kind of change explicit in every row: production code, test code/fixtures,
+  comments/docstrings only, user documentation, planning/evidence, developer
+  tooling, build/CI, deployment/config, or generated files/lockfiles. Feature or
+  module grouping is fine; use a separate `Kind` column or labels such as
+  `Production code — config reload` and `Test code — config reload`. A feature
+  name or path alone does not explain what kind of change the count represents.
+  Use only populated groups and enough detail to identify the affected code or
+  documents without turning the table into a per-file inventory.
+  Inspect the changed content, not just file extensions or directories: a source
+  file can contain only comment edits, and a test plan is documentation rather
+  than test code. Separate comment-only edits from production/test code when
+  practical; comments accompanying a code change can stay with that code.
+  Split mixed groups such as runtime code and docs, or Helm logic and value
+  comments, when the diff supports it. For inseparable mixed files or hunks,
+  state the kinds included (for example, `Mixed: production code + inline tests`)
+  and that counts cover both; do not guess a precise split or count lines twice.
   Include file counts when useful. Note substantial moves, and list binary files
   separately. Reconcile category totals with the diff; disclose incomplete counts.
   Counts describe review scope, not complexity or quality.
@@ -111,11 +123,13 @@ Error: timeout must be greater than zero; active configuration unchanged.
 
 ### Change breakdown
 
-| Area | Added | Deleted |
-| --- | ---: | ---: |
-| Production | 64 | 21 |
-| Tests | 98 | 8 |
-| User documentation | 18 | 3 |
+| Area | Kind | Added | Deleted |
+| --- | --- | ---: | ---: |
+| Config reload validation | Production code | 64 | 21 |
+| Invalid reload and active-config preservation | Test code | 98 | 8 |
+| Reload API docstrings | Comments/docstrings only | 4 | 2 |
+| Reload usage guide | User documentation | 18 | 3 |
+| **Total** | | **184** | **34** |
 
 ### Validation
 
