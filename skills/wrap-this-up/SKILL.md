@@ -112,7 +112,10 @@ For cleanup-only requests, continue to cleanup within the existing authorization
    identity/status immediately before merging. A moved target requires
    reconciliation and refreshed affected checks. Preserve required PR/MR routes,
    reviews, CI, and actionable-comment gates. Reuse the task's existing PR/MR when
-   appropriate and attach created PRs through available host task tools.
+   appropriate and attach created PRs through available host task tools. Use
+   `create-mr-description` to draft or refresh its description before opening it
+   and after source, target, or validation changes, including work without a PLC.
+   Recheck the description before final merge readiness.
 
 4. **Verify delivery and acceptance.** Inspect the actual final target and required
    post-merge checks, including remote identity for remote delivery. A temporary

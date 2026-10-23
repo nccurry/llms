@@ -29,6 +29,7 @@ descriptions. Ask explicitly to use a monitored implementation workflow.
 | Implement selected plan work | [monitored-sol-plc-execution](skills/monitored-sol-plc-execution/SKILL.md) | “Finish phase 1, including tests and docs. Open an MR; leave it unmerged.” |
 | Review a change thoroughly | [audit-codebase](skills/audit-codebase/SKILL.md) | “Audit this branch against main. Report findings without editing.” |
 | Handle review feedback | [resolve-review-comments](skills/resolve-review-comments/SKILL.md) | “Check the PR feedback against the source and fix valid issues.” |
+| Write or refresh a review description | [create-mr-description](skills/create-mr-description/SKILL.md) | “Update the MR description with examples, change counts, and actual test results.” |
 | Save current progress | [wrap-this-up](skills/wrap-this-up/SKILL.md) | “Update the plan with what passed and what remains.” |
 | Finish delivery | [wrap-this-up](skills/wrap-this-up/SKILL.md) | “Merge the approved MR, update the plan, and clean up this task’s worktrees.” |
 | Remove stale local work | [clean-stale-worktrees](skills/clean-stale-worktrees/SKILL.md) | “Remove finished worktrees. Keep unmerged work.” |
