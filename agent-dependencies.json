@@ -68,7 +68,8 @@
   ],
   "skill_dependencies": {
     "plc-execution": [
-      "clean-stale-worktrees"
+      "clean-stale-worktrees",
+      "create-mr-description"
     ],
     "audit-codebase": [
       "ponytail-review",
@@ -104,6 +105,7 @@
       "audit-codebase"
     ],
     "wrap-this-up": [
+      "create-mr-description",
       "plain-english",
       "verify-before-claiming",
       "design-for-change",
@@ -111,6 +113,9 @@
       "plc-planning",
       "docs-sync",
       "clean-stale-worktrees"
+    ],
+    "resolve-review-comments": [
+      "create-mr-description"
     ]
   }
 }

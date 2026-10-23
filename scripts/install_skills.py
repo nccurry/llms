@@ -32,6 +32,7 @@ MANAGED_SKILLS = [
     "clean-stale-worktrees",
     "code-quality-audit",
     "correctness-reliability-audit",
+    "create-mr-description",
     "dead-code-audit",
     "dependency-auditor",
     "debug-and-reproduce",

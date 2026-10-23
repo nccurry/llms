@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create MR Description"
+  short_description: "Write and refresh clear MR and PR descriptions"
+  default_prompt: "Use $create-mr-description to write or refresh this MR or PR description from the current diff and validation evidence."
