@@ -2,9 +2,10 @@
 
 Read only for an authorized MR/PR route. Follow the assignment's host, target,
 and creator. By default the child opens its branch against the recorded target
-after strict audit PASS and parent review. Describe resulting behavior, selected
-work, validation, and known dependencies. Use structured arguments or a body
-file for multiline descriptions.
+after strict audit PASS and parent review. Use `create-mr-description` before
+opening the review. Refresh its description after published changes, rebases or
+target changes, material validation updates, and before final merge readiness.
+Keep the description tied to the current diff and applicable evidence.
 
 Use authenticated host tools to inspect reviews and CI at the current revision.
 Wait for pending required checks and reviews, then read their actual results.
