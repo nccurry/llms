@@ -1,20 +1,20 @@
 ---
 name: start-this-up
-description: Prepare isolated git work for a new feature by creating a safe feature branch and linked worktree from main without disturbing ongoing work in the current checkout. Use when the user says "start this up", "start a new branch/worktree", "create a feature worktree", "set up isolated work for this task", or asks Codex to begin work on a feature that should later merge back into main.
+description: Prepare isolated git work by creating a feature branch and linked worktree from main, or by resuming a backlog plan's existing branch and bringing it up to date with main, without disturbing ongoing work in the current checkout. Runs the tests first so later failures aren't blamed on the new work, and records the worktree in the plan's Current Work block. Use when the user says "start this up", "start a new branch/worktree", "create a feature worktree", "set up isolated work for this task", "pick up where we left off on this plan", or asks to begin or resume work that should later merge back into main.
 ---
 
 # Start This Up
 
 ## Operating Rules
 
-Treat this as the safe beginning of a git worktree workflow. The goal is: a new local feature branch exists, a linked worktree exists for that branch, the branch starts from the best available main ref, and all future task work happens in the new worktree.
+Treat this as the safe beginning of a git worktree workflow. The goal is: a local feature branch exists (new, or resumed from a backlog plan), a linked worktree exists for that branch, the branch starts from or is brought up to date with the best available main ref, and all future task work happens in that worktree.
 
 - Start only when the user explicitly asks to create isolated work, a feature branch, a worktree, or to begin a task that should be separated from ongoing work.
 - Do not hard-code a branch prefix. Use the user's requested branch name first; otherwise follow repository branch naming conventions from instructions, docs, or recent branch patterns. If no convention is discoverable, prefer `<git-username>/<feature-slug>`.
 - Never stash, reset, delete, overwrite, or switch away from user work to force progress.
 - Do not treat a dirty current worktree as a blocker when the workflow can create the new worktree without mutating it. Report it so the user knows it remains untouched.
 - Do not pull or fast-forward a dirty main worktree. Prefer using an updated remote main ref after `git fetch` when a remote exists.
-- Do not reuse an existing branch or directory unless the user explicitly asked for that exact branch or path.
+- Do not reuse an existing branch or directory unless the user explicitly asked for that exact branch or path, or is resuming a plan whose Current Work block names it (see Resume Existing Work). When resuming, skip preflight's `--branch` check, which treats an existing branch as a blocker.
 - Do not push, create a remote branch, or open a pull request unless the user explicitly asks.
 - Place the worktree under its campaign folder as described in [worktree layout](references/worktree-layout.md). Read that file before choosing a path.
 - After creating the worktree, continue implementation commands from the new worktree path.
@@ -94,23 +94,40 @@ git worktree list
    - Confirm the new worktree is on the intended branch and has a clean status.
    - If the repository has setup or restore steps that are required before coding, run the lightest normal setup step from the new worktree.
 
-5. Continue from the new worktree.
+5. Run the tests before any work.
+   - Run the repository's normal test command (from `AGENTS.md`, the task runner, or CI config) in the new worktree.
+   - Report failures as already present on the base ref, with the failing test names, so they aren't later blamed on the new work. Don't fix them unless asked.
+   - If there is no test command or it needs services that aren't available, say so and continue.
+
+6. Record the worktree in the plan.
+   - If the work has a plan with a Current Work block (see `plc-planning`), add the checkout, its branch, and its state to "Where the work lives", and update the next action, in the copy the new branch carries. Commit only the plan file, as `docs(plan): start <checkout>`.
+   - Skip this for work with no plan.
+
+7. Continue from the new worktree.
    - Treat the new worktree path as the working directory for all implementation, testing, and git commands related to the feature.
    - Leave the original worktree and any uncommitted work exactly as found.
 
-## Existing Branches
+## Resume Existing Work
 
-If the user asks to continue an existing branch:
+Use this when the user picks up a backlog plan or asks to continue an existing branch.
 
-- Use `git worktree list --porcelain` to see whether that branch already has a worktree.
-- If it already has a worktree, continue from that path instead of creating another one.
-- If the branch exists but is not checked out anywhere, create a worktree without `-b`:
+1. Find the plan and read its Current Work block: where the work lives, the next action, and blockers. Without a plan, use the branch the user named. If Current Work names no branch that still exists (a wrap-up for now deletes merged branches), start a new branch from main with the normal workflow above.
+2. Use `git worktree list --porcelain` to see whether the branch already has a worktree. If it does, continue from that path. If not, create one in the campaign folder without `-b`:
 
 ```powershell
 git worktree add <absolute-target-path> <branch-name>
 ```
 
-- If the branch exists and its base is ambiguous, report that before making changes.
+3. Bring the branch up to date with main, so the work isn't built on a stale base.
+   - Fetch, then compare: `git -C <path> rev-list --left-right --count HEAD...<remote-main>`.
+   - If it's behind, update it with the repository's convention: merge `<remote-main>` into the branch by default, or rebase when `AGENTS.md` says so and the branch isn't shared or pushed for review.
+   - Skip the update and report if the worktree has uncommitted changes, is locked, or another agent is using it.
+   - On conflicts, stop, abort the merge or rebase, and report the conflicting files. Don't resolve them without the user.
+4. Run the tests (step 5 above) on the updated branch.
+5. Record the worktree and the update in the plan's Current Work block, as in step 6 above.
+6. Report the plan's Current Work in a few lines: where the work stands, what changed on main since, and the next action. For a full update, run `plc-checkpoint`.
+
+If the branch's base is ambiguous, report that before making changes.
 
 ## Stop Conditions
 
@@ -133,6 +150,9 @@ Report:
 - base ref used
 - whether fetch was run
 - whether the new worktree status is clean
+- the test result on the starting commit, with any failures named
+- for a resumed branch, how far behind main it was and how it was updated
+- the plan's Current Work entry added, or that there is no plan
 - any existing dirty work intentionally left untouched
 - anything intentionally not done, such as pushing the branch
 

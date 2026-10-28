@@ -47,7 +47,10 @@ Record the check's actual result only after running it.
      [the compact plan](assets/compact-plan.md). Small fixes may need only
      investigation, repair, and focused checks.
    - Do not invent lifecycle folders, file names, ledgers, or approval steps
-     when neither the repository nor the user asks for them.
+     when neither the repository nor the user asks for them. One exception:
+     a completed packet moves to `done/` under the plans folder, unless the
+     repository has its own convention, so finished plans don't sit beside
+     active ones.
    - Store a durable packet with the repository's other durable planning docs.
      If there is no clear location, state the proposed location before writing.
 
@@ -176,3 +179,8 @@ Record the check's actual result only after running it.
    - Check links and headings.
    - Run repo-appropriate documentation checks and `git diff --check` when
      available.
+   - For a new full packet, or one whose requirements or design changed
+     substantially, run [review-and-fix-plc](../review-and-fix-plc/SKILL.md)
+     before handoff unless the user declines. An independent reader catches
+     gaps the author can't see. Skip it for compact plans and for routine
+     Current Work updates.

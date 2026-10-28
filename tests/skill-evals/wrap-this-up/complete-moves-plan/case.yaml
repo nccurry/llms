@@ -1,0 +1,10 @@
+schema_version: 1
+skill: wrap-this-up
+description: "The PLC's only phase is done on its branch. Wrapping it up completes the PLC, so the plan moves to the done folder."
+setup: python fixture/build.py <dest>
+working_directory: <dest>/notify
+prompt: "We're done with the digest PLC. Wrap it up."
+max_turns: 60
+check: python ../check_wrap.py <dest>
+graders:
+  - graders/outcome.md

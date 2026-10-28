@@ -1,0 +1,10 @@
+schema_version: 1
+skill: plc-checkpoint
+description: P1 was merged on origin by someone else; local main and its packet copy are behind.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/catalog
+prompt: Summarize what we've done on the search PLC and what's left to finish it.
+max_turns: 30
+graders:
+  - graders/outcome.md
+  - ../graders/state.md

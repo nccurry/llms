@@ -1,0 +1,4 @@
+interface:
+  display_name: "PLC Checkpoint"
+  short_description: "Catch up on work, tidy what's merged, update the plan"
+  default_prompt: "Use $plc-checkpoint to tell me where the current work stands, tidy what's already merged, and update the plan's Current Work block."

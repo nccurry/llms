@@ -1,0 +1,12 @@
+schema_version: 1
+skill: plc-checkpoint
+# A near miss: this request belongs to wrap-this-up, so plc-checkpoint must not
+# be the skill that handles it.
+expect: not-selected
+description: The user asks to wrap up a finished PLC, which is closeout work, not a status report.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/gateway
+prompt: Wrap this up. Don't push anything; local main is the target.
+max_turns: 40
+graders:
+  - graders/outcome.md

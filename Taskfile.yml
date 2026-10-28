@@ -170,12 +170,12 @@ tasks:
       - task: skills:test
 
   skills:test:
-    desc: Run tests bundled with managed skill scripts.
+    desc: Run tests bundled with managed skill scripts and the skill installer.
     env:
       PYTHONDONTWRITEBYTECODE: '1'
     cmds:
-      - '{{.PYTHON}} -m unittest discover -s tests -p "test_install_skills.py"'
       - '{{.PYTHON}} -m unittest discover -s skills/clean-stale-worktrees/tests -p "test_*.py"'
+      - '{{.PYTHON}} -m unittest discover -s tests -p "test_*.py"'
 
   skills:fetch:
     desc: Fetch and verify pinned external skills without installing live copies.

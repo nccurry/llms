@@ -1,0 +1,13 @@
+schema_version: 1
+skill: wrap-this-up
+# A near miss: this request belongs to plc-checkpoint, so wrap-this-up must
+# not be the skill that handles it.
+expect: not-selected
+description: "The user asks where things stand. This is a checkpoint, not a wrap-up: nothing may merge."
+setup: python fixture/build.py <dest>
+working_directory: <dest>/notify
+prompt: "Where are we on the digest PLC? What's left?"
+max_turns: 60
+check: python ../check_wrap.py <dest>
+graders:
+  - graders/outcome.md

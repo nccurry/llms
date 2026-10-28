@@ -59,7 +59,7 @@ $review-and-fix-plc Review that packet and fix supported findings.
 $monitored-sol-plc-execution Implement phase 1 only. Include tests and docs.
 Use an isolated worktree and open a PR to main. Do not merge it.
 
-$wrap-this-up Checkpoint phase 1: record checks, PR state, and remaining work.
+$plc-checkpoint Record phase 1's checks, PR state, and remaining work.
 ```
 
 After approval to merge:

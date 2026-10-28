@@ -1,0 +1,20 @@
+schema_version: 1
+skill: plc-checkpoint
+description: Ad-hoc work with no PLC or plan file. The plan exists only in the conversation and git.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/cli-wt/color-output/color
+prompt: |
+  Earlier in this session:
+
+  User: Add a --color flag to the CLI that prints output in green. Also make
+  it respect the NO_COLOR environment variable, and add a --no-color flag
+  that wins over --color.
+
+  Assistant: Added --color with a test and committed both. Starting on
+  NO_COLOR now.
+
+  User: Where are we? What's left?
+max_turns: 30
+graders:
+  - graders/outcome.md
+  - ../graders/state.md
