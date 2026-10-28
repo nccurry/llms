@@ -1,0 +1,10 @@
+schema_version: 1
+skill: plc-checkpoint
+description: The next morning. The PLC's Status was written yesterday; since then P1 merged into the integration branch, and P2 is still in progress.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/ledger
+prompt: Morning. Catch me up on the reconcile PLC - where were we and what's next?
+max_turns: 40
+graders:
+  - graders/outcome.md
+  - ../graders/state.md

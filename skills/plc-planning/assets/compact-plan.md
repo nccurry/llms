@@ -5,12 +5,20 @@ require a full packet. Remove these instructions and sections that do not apply.
 
 ## Current Work
 
+- Status: <In progress | Complete>
 - Owner: <person, team, or role>
-- Last updated: <YYYY-MM-DD>
+- Last updated: <YYYY-MM-DD>, `<branch>` at `<short commit>`
 - Selected work and endpoint: <authorized scope and concrete finish>
 - State: <implementation; verification; delivery; required records>
 - Next action and blocker: <one concrete step; blocker and owner, or none>
 - Resume check: <command or inspection and expected result>
+
+Where the work lives (a worktree lock, not this table, holds a checkout
+against cleanup):
+
+| Checkout | Branch | Owner | State |
+| --- | --- | --- | --- |
+| `<repo>-wt/<campaign>/<checkout>` | `<branch>` | <agent, session, or person> | <in progress or locked: reason> |
 
 Replace this block as work changes; do not append successive checkpoints.
 

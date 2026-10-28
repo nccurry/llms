@@ -25,12 +25,12 @@ descriptions. Ask explicitly to use a monitored implementation workflow.
 | Reproduce a bug | [debug-and-reproduce](skills/debug-and-reproduce/SKILL.md) | “Reproduce this reload failure and fix its cause.” |
 | Plan a larger change | [plc-planning](skills/plc-planning/SKILL.md) | “Plan config reloads. Include requirements, steps, and checks.” |
 | Improve a written plan | [review-and-fix-plc](skills/review-and-fix-plc/SKILL.md) | “Have a subagent review this plan, then fix supported findings.” |
-| Create isolated work | [start-this-up](skills/start-this-up/SKILL.md) | “Start this up in a new branch and worktree from main.” |
+| Create or resume isolated work | [start-this-up](skills/start-this-up/SKILL.md) | “Start this up in a new branch and worktree from main.” |
 | Implement selected plan work | [monitored-sol-plc-execution](skills/monitored-sol-plc-execution/SKILL.md) | “Finish phase 1, including tests and docs. Open an MR; leave it unmerged.” |
 | Review a change thoroughly | [audit-codebase](skills/audit-codebase/SKILL.md) | “Audit this branch against main. Report findings without editing.” |
 | Handle review feedback | [resolve-review-comments](skills/resolve-review-comments/SKILL.md) | “Check the PR feedback against the source and fix valid issues.” |
 | Write or refresh a review description | [create-mr-description](skills/create-mr-description/SKILL.md) | “Update the MR description with examples, change counts, and actual test results.” |
-| Save current progress | [wrap-this-up](skills/wrap-this-up/SKILL.md) | “Update the plan with what passed and what remains.” |
+| Catch up and save progress | [plc-checkpoint](skills/plc-checkpoint/SKILL.md) | “Where are we? Update the plan and tidy what’s merged.” |
 | Finish delivery | [wrap-this-up](skills/wrap-this-up/SKILL.md) | “Merge the approved MR, update the plan, and clean up this task’s worktrees.” |
 | Remove stale local work | [clean-stale-worktrees](skills/clean-stale-worktrees/SKILL.md) | “Remove finished worktrees. Keep unmerged work.” |
 

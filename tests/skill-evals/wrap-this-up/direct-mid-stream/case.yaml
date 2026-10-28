@@ -1,0 +1,10 @@
+schema_version: 1
+skill: wrap-this-up
+description: "P1 is done and pushed; P2 has its Slack text but not channel posting. The user wants everything merged now and P2 finished later."
+setup: python fixture/build.py <dest>
+working_directory: <dest>/notify
+prompt: "Wrap up the digest PLC. Merge what we have into main - P2 isn't finished, we'll pick it up later."
+max_turns: 60
+check: python ../check_wrap.py <dest>
+graders:
+  - graders/outcome.md

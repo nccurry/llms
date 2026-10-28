@@ -1,0 +1,10 @@
+schema_version: 1
+skill: plc-checkpoint
+description: The plan says P2 waits on another repo, but the dependency is already on that repo's origin/main.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/scheduler
+prompt: What's left on the durations PLC, and what are we blocked on?
+max_turns: 30
+graders:
+  - graders/outcome.md
+  - ../graders/state.md

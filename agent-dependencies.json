@@ -152,10 +152,25 @@
       "plc-execution",
       "plc-planning",
       "docs-sync",
-      "clean-stale-worktrees"
+      "clean-stale-worktrees",
+      "plc-checkpoint"
     ],
     "resolve-review-comments": [
       "create-mr-description"
+    ],
+    "plc-checkpoint": [
+      "plain-english",
+      "verify-before-claiming",
+      "plc-planning",
+      "clean-stale-worktrees",
+      "plc-alignment-audit",
+      "wrap-this-up"
+    ],
+    "start-this-up": [
+      "plc-planning"
+    ],
+    "plc-planning": [
+      "review-and-fix-plc"
     ]
   }
 }

@@ -1,0 +1,10 @@
+schema_version: 1
+skill: plc-checkpoint
+description: The api repo's plan lives in a separate plans repo. Its Status still says P1 is planned, but P1 is implemented on a branch.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/api-wt/sync-api/p1-endpoint
+prompt: Checkpoint the sync-api work and make sure the plan is current.
+max_turns: 40
+graders:
+  - graders/outcome.md
+  - ../graders/state.md

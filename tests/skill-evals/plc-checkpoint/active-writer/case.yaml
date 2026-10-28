@@ -1,0 +1,11 @@
+schema_version: 1
+skill: plc-checkpoint
+description: The worktree's packet has uncommitted edits from another agent; the skill must not write over them.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/billing
+prompt: Where are we on the invoice export PLC? Make sure the PLC is up to date.
+max_turns: 30
+check: python ../check_state.py <dest> --protect billing-wt/invoice-export/p1-csv:docs/plans/invoice-export/IMPLEMENTATION_PLAN.md
+graders:
+  - graders/outcome.md
+  - ../graders/state.md

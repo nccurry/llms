@@ -85,8 +85,12 @@ case and a known failure.
 
 Map each selected requirement and named design goal to its existing PLC ID,
 owner, proving check/review, and state: pending, verified, deferred, or blocked.
-Keep this completion map in the existing work list or phase notes; do not create
-a second durable plan. Track implementation, verification, delivery, and required
+Keep this completion map in the plan's Phase Status table and Current Work
+block, or the repository's equivalent work list; do not create a second durable
+plan. Rewrite Current Work, including "Last updated", the next action, and
+where the work lives, after each child merge, at phase close, and before
+finishing, so a later session or `plc-checkpoint` starts from current state.
+Track implementation, verification, delivery, and required
 records separately. Record each result once with requirement/check ID, tested
 source (including relevant uncommitted changes), date, relevant dependencies,
 platform/backend and configuration, exact method, expected and actual results,
@@ -225,8 +229,9 @@ does not extend to unrelated checkouts, remote branches, or final integration.
 Before creating worktrees, read [the cleanup procedure](references/worktree-cleanup.md)
 and [worktree layout](../start-this-up/references/worktree-layout.md). Keep every
 checkout, review copy, and untracked output for this PLC under its campaign
-folder, and track each checkout in the existing work list with its owner, path,
-branch/commit, and cleanup state across handoffs and compaction.
+folder, and track each checkout in the Current Work block's "Where the work lives"
+table (or the existing work list) with its owner, path, branch/commit, and
+cleanup state across handoffs and compaction.
 
 The parent cleans up after each verified delivery, at phase close, and before
 finishing, following the cleanup procedure. Remove review and verification

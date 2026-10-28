@@ -1,0 +1,24 @@
+schema_version: 1
+skill: plc-checkpoint
+description: Two scope calls made earlier in the conversation are not in the packet.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/tavern
+# The prompt replays an earlier part of the session so the decisions exist
+# only in the conversation.
+prompt: |
+  Earlier in this session:
+
+  Assistant: P1 is ready to merge. Two calls I'm making on my own: I dropped
+  the cost from shop rows, because the purchase dialog already shows it and
+  the row was too crowded. I also left the rarity filter out of this slice;
+  I'll list it as a follow-up.
+
+  User: ok, merge it.
+
+  Assistant: Merged P1 into main.
+
+  User: Where are we on the shop PLC, and what decisions have we made since we started?
+max_turns: 30
+graders:
+  - graders/outcome.md
+  - ../graders/state.md

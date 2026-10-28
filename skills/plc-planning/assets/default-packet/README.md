@@ -3,15 +3,24 @@
 ## Current Work
 
 Replace this block as work changes; do not append successive checkpoints.
+Per-phase state lives in the
+[Phase Status](IMPLEMENTATION_PLAN.md#phase-status) table.
 
 - Status: <Draft | Ready | In progress | Complete>
 - Owner: <person, team, or role>
-- Last updated: <YYYY-MM-DD>
+- Last updated: <YYYY-MM-DD>, `<branch>` at `<short commit>`
 - Selected work: <requirement IDs and phases authorized for this delivery>
 - Current state: <what is implemented, verified, delivered, or awaiting a record>
 - Next action: <one concrete step, or none>
 - Blocker: <what is needed and who owns it, or none>
 - Resume check: <command or inspection and expected result; link to the plan>
+
+Where the work lives (a worktree lock, not this table, holds a checkout
+against cleanup):
+
+| Checkout | Branch | Owner | State |
+| --- | --- | --- | --- |
+| `<repo>-wt/<campaign>/<checkout>` | `<branch>` | <agent, session, or person> | <in progress, integration, or locked: reason> |
 
 ## Summary
 

@@ -80,7 +80,13 @@ feature. Conversely, an associated or closed-but-unmerged MR does not prove
 delivery. Read [delivery checks](references/delivery-proof.md) when ancestry or
 current bytes do not settle the question.
 
-For branch deletion or discarding local changes, account for meaningful
+A branch whose tip is contained in another branch that is being kept, such as
+a child merged into its campaign's integration branch
+(`git merge-base --is-ancestor <branch> <kept-branch>`), loses nothing when
+deleted. That containment is enough to delete it; it is not proof of delivery
+to the final target.
+
+For other branch deletion or discarding local changes, account for meaningful
 remaining source changes: delivered to the final target,
 retained in a verified successor, superseded by adopted behavior, explicitly
 abandoned under the user's instructions, or unresolved. Check post-merge local
@@ -154,7 +160,9 @@ Before deleting a local branch, recheck its exact commit and ensure no checkout
 uses it. Prefer `git branch -d <name>` for history-merged branches. Use `-D` only
 after independently confirming delivery or an authorized source disposition;
 never escalate a refusal without understanding it. A recovery copy alone is not
-proof of delivery. Remote branch deletion needs separate authorization.
+proof of delivery. Remote branch deletion needs separate authorization, except
+that `plc-checkpoint` and `wrap-this-up` delete their own work's remote
+branches once proven merged into the remote's main.
 
 Finish by checking registrations, refs, and the original checkout's status.
 Report removals, verification, discarded artifacts, campaign-level unfinished

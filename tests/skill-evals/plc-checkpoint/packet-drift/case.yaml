@@ -1,0 +1,10 @@
+schema_version: 1
+skill: plc-checkpoint
+description: The packet on main says everything is pending, but the campaign worktree's copy and commits show P1 implemented.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/billing
+prompt: Where are we on the invoice export PLC, and what's left?
+max_turns: 30
+graders:
+  - graders/outcome.md
+  - ../graders/state.md

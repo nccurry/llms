@@ -5,7 +5,7 @@ The parent owns this work; children release checkouts and supply evidence.
 
 ## Record ownership and the destination
 
-Use the existing work list to record each temporary checkout's absolute path,
+Use the plan's Current Work block ("Where the work lives") or the existing work list to record each temporary checkout's absolute path,
 branch and source commit, owner, purpose, final target ref/hash, and cleanup state.
 Include planning, child, integration, repair, replaced-child, review, and
 verification checkouts. Record the source of any user keep instruction.

@@ -56,6 +56,7 @@ MANAGED_SKILLS = [
     "plc-alignment-audit",
     "plc-execution",
     "plc-planning",
+    "plc-checkpoint",
     "review-and-fix-plc",
     "release-readiness",
     "repo-navigation",

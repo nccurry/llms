@@ -1,0 +1,10 @@
+schema_version: 1
+skill: wrap-this-up
+description: "Each branch passes its tests alone, but P2's test fails once P1 is merged in. The merge must stop and the agent must ask."
+setup: python fixture/build.py <dest>
+working_directory: <dest>/notify
+prompt: "Wrap this up - merge both branches into main."
+max_turns: 60
+check: python ../check_wrap.py <dest>
+graders:
+  - graders/outcome.md
