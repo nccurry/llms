@@ -2,6 +2,14 @@
 
 Status: built, 2026-10-27. Replaces [plc-status-skill.md](plc-status-skill.md).
 
+**Update, 2026-10-28:** `main` gained its own replaceable "Current Work"
+block and a compact plan while this was being built. The two were merged: the
+skills read and rewrite Current Work, per-phase state lives in the Phase Status
+table in `IMPLEMENTATION_PLAN.md`, and the compact plan replaces the one-page
+plan. From this design, Current Work gains the branch and commit on "Last
+updated" and the "Where the work lives" table. Below, "Status section" means
+the Current Work block.
+
 ## Problems this fixes
 
 1. **Coming back the next day.** You need a refresher on what an agent was
