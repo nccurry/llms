@@ -10,7 +10,7 @@ vars:
   PYTHON: '{{.UV}} run --isolated --no-project --python "{{.PYTHON_VERSION}}" --with-requirements "{{.ROOT_DIR}}/agent-runtime.txt" python'
   TARGET: '{{default "all" .TARGET}}'
   OUTPUT: '{{default "text" .OUTPUT}}'
-  INHERITED_PATH: '{{default (default .PATH .Path) .LLMS_ORIGINAL_PATH}}'
+  INHERITED_PATH: '{{default (env "PATH") (env "LLMS_ORIGINAL_PATH")}}'
 
 env:
   MISE_DATA_DIR: '{{.ROOT_DIR}}/.tools/mise/data'
