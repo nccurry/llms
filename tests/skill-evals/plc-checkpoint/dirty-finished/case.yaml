@@ -7,4 +7,5 @@ prompt: Where are we on the filters PLC? Tidy up whatever's finished.
 max_turns: 40
 graders:
   - graders/outcome.md
+  - ../graders/plan-record.md
   - ../graders/state.md

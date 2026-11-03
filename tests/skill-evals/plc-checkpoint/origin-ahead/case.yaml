@@ -7,4 +7,5 @@ prompt: Summarize what we've done on the search PLC and what's left to finish it
 max_turns: 30
 graders:
   - graders/outcome.md
+  - ../graders/plan-record.md
   - ../graders/state.md

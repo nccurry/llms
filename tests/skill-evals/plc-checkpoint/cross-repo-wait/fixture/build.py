@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from fixture_lib import (
     commit,
+    current_work,
     destination,
     git,
     make_repo,
@@ -25,19 +26,16 @@ REQUIREMENTS = """| ID | Requirement | Acceptance |
   folder `../timekit`), tracked there as TK-7.
 """
 
-PLAN = """## Phase Summary
+PLAN = """### P1: Start times
 
-| Phase | Goal | Requirements | Validation | Status |
-| --- | --- | --- | --- | --- |
-| P1 | Start times | SCH-001 | `test_start_time` | Merged |
-| P2 | Durations | SCH-002 | `test_duration` | Blocked: waiting on timekit TK-7 |
+- Requirements: SCH-001
+- Check: `test_start_time` passes.
 
-## Completion map
+### P2: Durations
 
-| Requirement | Evidence | State |
-| --- | --- | --- |
-| SCH-001 | `test_start_time` passed on main | Verified |
-| SCH-002 | none | Blocked on timekit `parse_duration` (TK-7) |
+- Requirements: SCH-002
+- Check: `test_duration` passes.
+- Needs: `parse_duration` from timekit (TK-7).
 """
 
 PARSE_TIME = """from datetime import time
@@ -74,11 +72,39 @@ def test_start_time():
 
 dest = destination()
 lib = make_repo(dest, "timekit", {"timekit/__init__.py": PARSE_TIME})
-app = make_repo(dest, "scheduler", packet("durations", REQUIREMENTS, PLAN))
-commit(
+app = make_repo(dest, "scheduler", {"README.md": "# scheduler\n"})
+p1 = commit(
     app,
     "feat(jobs): accept a start time (SCH-001)",
     {"src/jobs.py": JOBS, "tests/test_jobs.py": JOBS_TEST},
+)
+commit(
+    app,
+    "docs(plan): add durations PLC",
+    packet(
+        "durations",
+        "Durations",
+        "Let jobs take a start time and a duration, so a schedule can say when a job ends.",
+        current_work(
+            last_updated=f"2026-10-25, `main` at `{p1}`",
+            next_action="start P2 once timekit TK-7 lands",
+            current_state="P1 verified on `main`. P2 waits on timekit TK-7.",
+            status="Blocked",
+            blocker="P2 needs `parse_duration` from timekit (TK-7); the timekit maintainers own it",
+            depends_on="timekit TK-7 (`parse_duration`, sibling folder `../timekit`)",
+        ),
+        [
+            ("P1", "Start times", f"Verified — `test_start_time` passed on `main` @ `{p1}`"),
+            ("P2", "Durations", "Blocked — waits on timekit TK-7 (`parse_duration`)"),
+        ],
+        REQUIREMENTS,
+        PLAN,
+        log=[
+            "2026-10-22 Created.",
+            f"2026-10-25 P1 Verified: `test_start_time` passed on `main` @ `{p1}`.",
+            "2026-10-25 P2 Blocked on timekit TK-7.",
+        ],
+    ),
 )
 git(app, "push", "-q", "origin", "main")
 

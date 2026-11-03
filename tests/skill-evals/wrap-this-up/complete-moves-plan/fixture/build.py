@@ -17,7 +17,15 @@ expect(
     removed_worktrees=["notify-wt/digest/p1-email"],
     deleted_branches=["plc/digest-p1"],
     deleted_remote_branches=["plc/digest-p1"],
-    remote_files=["docs/plans/done/digest/README.md"],
+    remote_files=["docs/plans/completed/digest/README.md"],
     absent_remote_files=["docs/plans/digest/README.md"],
+    remote_text={
+        "docs/plans/completed/digest/README.md": [
+            "- Status: Complete",
+            "- Owner: @alex",
+            "Historical record as of",
+            "the code is the current truth",
+        ]
+    },
 )
 print(dest)

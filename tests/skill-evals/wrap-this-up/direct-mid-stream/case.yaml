@@ -8,3 +8,4 @@ max_turns: 60
 check: python ../check_wrap.py <dest>
 graders:
   - graders/outcome.md
+  - ../../plc-checkpoint/graders/plan-record.md

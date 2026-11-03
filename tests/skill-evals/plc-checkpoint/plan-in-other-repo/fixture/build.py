@@ -1,4 +1,4 @@
-"""The plan for the api repo lives in a separate plans repo; its Status is stale."""
+"""The plan for the api repo lives in a separate plans repo; its Current Work is stale."""
 
 import sys
 from pathlib import Path
@@ -7,13 +7,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from fixture_lib import (
     add_worktree,
     commit,
+    current_work,
     destination,
     expect,
     git,
     make_repo,
     packet,
     snapshot,
-    current_work,
 )
 
 REQUIREMENTS = """| ID | Requirement | Acceptance |
@@ -22,12 +22,15 @@ REQUIREMENTS = """| ID | Requirement | Acceptance |
 | SYN-002 | The cursor expires after 24 hours. | `test_cursor_expiry` passes. |
 """
 
-PLAN = """## Phase Summary
+PLAN = """### P1: Sync endpoint
 
-| Phase | Goal | Requirements | Validation |
-| --- | --- | --- | --- |
-| P1 | Sync endpoint | SYN-001 | `test_sync_since` |
-| P2 | Cursor expiry | SYN-002 | `test_cursor_expiry` |
+- Requirements: SYN-001
+- Check: `test_sync_since` passes.
+
+### P2: Cursor expiry
+
+- Requirements: SYN-002
+- Check: `test_cursor_expiry` passes.
 """
 
 AGENTS = """# api
@@ -52,17 +55,18 @@ commit(
     "docs(plan): add sync-api PLC",
     packet(
         "sync-api",
+        "Sync API",
+        "Let clients fetch only the changes since their last sync, with a cursor that expires.",
+        current_work(
+            last_updated=f"2026-10-24, api `main` at `{api_start}`",
+            next_action="start P1 in an api worktree",
+            current_state="Nothing started.",
+            status="Planned",
+        ),
+        [("P1", "Sync endpoint", "Planned"), ("P2", "Cursor expiry", "Planned")],
         REQUIREMENTS,
         PLAN,
-        status=current_work(
-            last_updated=f"2026-10-24, api `main` at `{api_start}`",
-            rows=[
-                ("P1 (SYN-001)", "planned", "unassigned", "none"),
-                ("P2 (SYN-002)", "planned", "unassigned", "none"),
-            ],
-            checkouts=[],
-            next_action="start P1 in an api worktree",
-        ),
+        log=["2026-10-24 Created."],
     ),
 )
 git(plans, "push", "-q", "origin", "main")

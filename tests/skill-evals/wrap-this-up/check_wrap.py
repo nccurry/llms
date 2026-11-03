@@ -14,6 +14,10 @@ _expect.json may list:
   deleted_remote_branches  branches that must be gone from the remote
   remote_files      paths that must exist on the remote's main
   absent_remote_files      paths that must not exist on the remote's main
+  remote_text       {path: [text, ...]}: each text must appear in that file
+                    on the remote's main
+  absent_remote_text       {path: [text, ...]}: no text may appear in that
+                    file on the remote's main
 
 Prints a JSON report and exits 0 when every expectation holds, 1 otherwise.
 """
@@ -94,6 +98,21 @@ def check(dest: Path) -> dict:
     for path in expect.get("absent_remote_files", []):
         if not run("git", "--git-dir", remote, "cat-file", "-e", f"main:{path}").returncode:
             failures.append(f"{path} should not be on origin/main")
+
+    def remote_file(path: str) -> str | None:
+        shown = run("git", "--git-dir", remote, "show", f"main:{path}")
+        return shown.stdout if shown.returncode == 0 else None
+
+    for path, texts in expect.get("remote_text", {}).items():
+        content = remote_file(path)
+        for text in texts:
+            if content is None or text not in content:
+                failures.append(f"{path} on origin/main lacks {text!r}")
+    for path, texts in expect.get("absent_remote_text", {}).items():
+        content = remote_file(path) or ""
+        for text in texts:
+            if text in content:
+                failures.append(f"{path} on origin/main must not contain {text!r}")
 
     return {"ok": not failures, "failures": failures}
 
