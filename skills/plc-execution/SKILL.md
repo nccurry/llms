@@ -51,11 +51,10 @@ repeated handoffs, abandoned attempts, and session narration out of requirements
 design. A new reader must be able to identify approved scope, current design,
 and remaining work without reconstructing the conversation. Label pending
 proposals as unapproved; do not silently weaken or defer requirements to match
-delivered code. Replace the owning plan's current-work section (README in the
-default packet) with selected work, current state, next action, blocker/owner,
-and a resume check. Preserve repository-specific locations. Do not append
-successive checkpoints; move useful history outside the active reading path
-without retaining superseded instructions as current directions.
+delivered code. Rewrite the plan's Current Work block in the README with the
+shared template's keys, as `plc-checkpoint` step 5 describes, and put history
+in its `## Log`. Preserve repository-specific locations. Do not append
+successive checkpoints or keep superseded instructions as current directions.
 
 Useful implementation notes belong in the existing packet and must be committed
 with the work. Delete temporary notes when no longer useful. Keep raw receipts
@@ -84,14 +83,14 @@ or platform qualification, prove the checking method early on a representative
 case and a known failure.
 
 Map each selected requirement and named design goal to its existing PLC ID,
-owner, proving check/review, and state: pending, verified, deferred, or blocked.
-Keep this completion map in the plan's Phase Status table and Current Work
-block, or the repository's equivalent work list; do not create a second durable
-plan. Rewrite Current Work, including "Last updated", the next action, and
-where the work lives, after each child merge, at phase close, and before
-finishing, so a later session or `plc-checkpoint` starts from current state.
-Track implementation, verification, delivery, and required
-records separately. Record each result once with requirement/check ID, tested
+owner, proving check/review, and a state word from `plc-planning`'s
+[word list](../plc-planning/SKILL.md#words). Keep this completion map in the
+README's `## Phases` table and Current Work block, or the repository's
+equivalent work list; do not create a second durable plan. Rewrite Current
+Work, including "Last updated", the next action, and where the work lives,
+after each child merge, at phase close, and before finishing, so a later
+session or `plc-checkpoint` starts from current state. Record each result
+once with requirement/check ID, tested
 source (including relevant uncommitted changes), date, relevant dependencies,
 platform/backend and configuration, exact method, expected and actual results,
 and material limits. Link to existing methods and evidence stores where sufficient.
@@ -207,7 +206,7 @@ the prepared combined source:
    review and verify it before accepting it.
 4. Reconcile the completion map with current source and the user request.
    Selected requirements need owners and current proof.
-5. Update PLC results only after their checks pass. Mark a whole phase complete
+5. Update PLC results only after their checks pass. Mark a whole phase Verified
    only when all its requirements passed, even if the selected block was smaller.
 
 Use `audit-codebase`'s limit of three consecutive audit passes total, including

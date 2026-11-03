@@ -1,70 +1,46 @@
-# <Change> Plan
+<!-- Compact plan: the shared PLC template as a single file. Save it as
+`plc-<slug>.md` in a lifecycle folder such as `planned/`. When the work
+needs more detail, make a `<slug>/` folder, move this file into it as
+`README.md`, and add SRD.md (requirements, contracts and risks), SADD.md
+(design and decisions) or IMPLEMENTATION_PLAN.md (phase details and
+evidence) from plc-planning's default packet. Delete this note. -->
 
-Use this single-document form for bounded work when the repository does not
-require a full packet. Remove these instructions and sections that do not apply.
+# <ID> <Feature name>
+
+<One or two sentences: what this delivers and why. Cards and lists show
+this.>
 
 ## Current Work
 
-- Status: <In progress | Complete>
-- Owner: <person, team, or role>
+- Status: Planned
+- Owner: @<handle>, or a team name with its people's handles
 - Last updated: <YYYY-MM-DD>, `<branch>` at `<short commit>`
-- Selected work and endpoint: <authorized scope and concrete finish>
-- State: <implementation; verification; delivery; required records>
-- Next action and blocker: <one concrete step; blocker and owner, or none>
-- Resume check: <command or inspection and expected result>
+- Next action: <one concrete step, or None>
+- Blocker: <what is needed and who owns it, or None>
+- Depends on: <packet IDs or folder names, comma-separated, or None>
+- Current state: <one or two lines: what is done, merged, verified or waiting>
+- Resume check: <the first command to run and its expected result>
 
-Where the work lives (a worktree lock, not this table, holds a checkout
-against cleanup):
+Where the work lives:
 
 | Checkout | Branch | Owner | State |
 | --- | --- | --- | --- |
-| `<repo>-wt/<campaign>/<checkout>` | `<branch>` | <agent, session, or person> | <in progress or locked: reason> |
+| None | | | |
 
-Replace this block as work changes; do not append successive checkpoints.
+## Phases
 
-## Outcome And Requirements
+| Phase | Name | Owner | State |
+| --- | --- | --- | --- |
+| P1 | <name> | @<handle> | Planned |
 
-State the problem, in-scope outcome, non-goals, and constraints.
+## Done when
 
-| ID | Required behavior | Acceptance criteria |
-| --- | --- | --- |
-| REQ-001 | <observable behavior> | <objective result> |
+- REQ-001: <observable behavior>. Check: `<command or test>` → <expected result>
 
-## Current System And Design
+## Open questions
 
-Record the source revision inspected and relevant code/tests. Verify needed
-prerequisites in source or runtime evidence. Explain the chosen approach,
-tradeoffs, fixed contracts and ownership; leave routine internal choices open.
-Include public input/output and failure examples when behavior changes.
+- Open question: <question> (waits on @<handle>)
 
-## Steps And Verification
+## Log
 
-List the delivery order, affected areas, prerequisite checks, exact validation
-commands or procedures, expected results, and rollback when needed. Include
-required documentation changes and review standards. For shared work, name one
-acceptance owner and the exact capability needed from each contributor.
-Prove difficult measurement methods early. Before expanding scope, consider
-reuse, deletion, or a narrower deliverable; material expansion needs existing
-user authority or approval.
-
-## Risks And Open Questions
-
-For each material item, name the affected work, owner, whether it blocks that
-work, and the resolving check or permitted temporary assumption.
-
-## Evidence And Completion
-
-Record each result once: requirement ID, tested source, date, relevant environment
-and dependencies, method, expected result, actual result, and material limits.
-A command may link to the unchanged method above. Keep required skipped checks
-incomplete. Separate implementation, verification, delivery, and missing records.
-
-Run focused checks while working and broader checks at delivery boundaries.
-Repeat invalidated checks or reviews with a reason; preserve unaffected evidence
-and bounded audit limits. Repository-required CI and post-merge checks still apply.
-Complete missing records from valid evidence before repeating execution.
-Close only when selected acceptance, required reviews and records, and authorized
-delivery are verified. Cleanup must also be complete, or each retained checkout
-must have an owner, reason, and release condition.
-Keep unresolved requirements open; do not weaken acceptance to finish. Replace
-superseded instructions in place and keep optional future work outside this delivery.
+- <YYYY-MM-DD> Created.

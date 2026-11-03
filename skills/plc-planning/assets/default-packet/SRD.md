@@ -22,11 +22,17 @@ silently turn that snapshot into a fixed product target.
 
 ## Requirements
 
-Use one observable behavior or constraint per requirement. Keep IDs stable.
+Use one observable behavior or constraint per requirement. Each names a check
+that can be run: a command or test, and its expected result. EARS wording
+("WHEN … the system SHALL …") is optional.
 
-| ID | Priority | Requirement | Acceptance criteria |
+IDs are permanent: never renumber, reuse or rename them. A dropped requirement
+stays where it is, marked `Dropped — <reason>`, and a new one takes the next
+number.
+
+| ID | Priority | Requirement | Check |
 | --- | --- | --- | --- |
-| REQ-001 | Must | <observable behavior or constraint> | <objective result> |
+| REQ-001 | Must | <observable behavior or constraint> | `<command or test>` → <expected result> |
 
 ## User Experience And Public Surface
 
@@ -84,17 +90,19 @@ second definition. Internal implementation choices belong in `SADD.md`.
 
 ## Traceability
 
-Keep delivery phases and actual results in `IMPLEMENTATION_PLAN.md`.
+Phase state lives in the README `## Phases` table; phase details and evidence
+live in `IMPLEMENTATION_PLAN.md`.
 
-| Requirement | Design section | Validation method | Evidence reference |
-| --- | --- | --- | --- |
-| REQ-001 | <SADD section> | <test, command, review, or inspection> | <link to plan evidence entry> |
+| Requirement | Design section | Phase |
+| --- | --- | --- |
+| REQ-001 | <SADD section> | <phase ID> |
 
-## Risks, Assumptions, And Open Questions
+## Risks And Assumptions
 
-Keep unresolved questions here. Record adopted decisions in `SADD.md` and
-remove superseded instructions from current sections.
+Open questions go in the README's `## Open questions` section, one
+`Open question:` line each. Record adopted decisions in `SADD.md` and remove
+superseded instructions from current sections.
 
 | Item | Type | Affected requirements or phases | Blocks work? | Owner | Resolution or permitted assumption |
 | --- | --- | --- | --- | --- | --- |
-| <item or none> | <risk, assumption, or question> | <IDs> | <yes: name blocked work, or no> | <owner> | <check, decision needed, or safe temporary assumption and its limits> |
+| <item> | <risk or assumption> | <IDs> | <yes: name blocked work, or no> | <owner> | <check, decision needed, or safe temporary assumption and its limits> |
