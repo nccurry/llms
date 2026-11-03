@@ -10,6 +10,11 @@ plan. From this design, Current Work gains the branch and commit on "Last
 updated" and the "Where the work lives" table. Below, "Status section" means
 the Current Work block.
 
+**Update, 2026-11-03:** the shared PLC template replaced this shape. Phase
+state lives in the README's `## Phases` table, history in its `## Log`, and
+finished plans move to `completed/`. See
+[plc-planning's shared template](../../skills/plc-planning/SKILL.md#shared-template).
+
 ## Problems this fixes
 
 1. **Coming back the next day.** You need a refresher on what an agent was
