@@ -60,8 +60,8 @@ wrap-this-up cleans up everything for the work it lands; clean-stale-worktrees
 sweeps abandoned work.
 
 **Finished plans move.** When wrap-this-up completes a plan, it moves to the
-repo's done folder (`<plans folder>/done/` unless the repo has its own
-convention). A partly finished plan stays where it is.
+repo's completed folder (`<plans folder>/completed/` unless the repo has its
+own convention). A partly finished plan stays where it is.
 
 ## plc-checkpoint
 
@@ -103,7 +103,7 @@ For when you're done, or done for now, and want it on main.
 5. **Merge and confirm** main (on the remote when there is one) contains each
    branch.
 6. **Finish the plan:** rewrite Status. If every requirement passed, mark it
-   complete and move it to the done folder. Otherwise it stays, with what's
+   complete and move it to the completed folder. Otherwise it stays, with what's
    left listed.
 7. **Clean up this work:** after a merge into main, remove every worktree and
    delete local and remote branches and the campaign folder. With a PR/MR left
