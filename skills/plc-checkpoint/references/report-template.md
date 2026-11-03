@@ -16,7 +16,7 @@ Current phase, the work happening now, and who or which session owns it.
 ### Done
 | Requirement / phase | State | Evidence |
 | --- | --- | --- |
-| EXP-001 / P1 | merged | PR #12, merge a1b2c3d; `test_export_csv` passed in CI on a1b2c3d |
+| EXP-001 / P1 | Verified | PR #12, merge a1b2c3d; `test_export_csv` passed in CI on a1b2c3d |
 
 ### In progress
 | Checkout | Branch | Ahead / behind target | Uncommitted | Lock | PR | Owner |
@@ -78,7 +78,7 @@ stubs `report`; nothing is uncommitted.
 ### Done
 | Requirement / phase | State | Evidence |
 | --- | --- | --- |
-| REC-001 / P1 | merged into integration | merge 9a8b7c6 on `plc/reconcile`; `test_match` not yet run there |
+| REC-001 / P1 | Implemented — merged into `plc/reconcile` | merge 9a8b7c6 on `plc/reconcile`; `test_match` not yet run there |
 
 ### In progress
 | Checkout | Branch | Ahead / behind target | Uncommitted | Lock | PR | Owner |
@@ -113,6 +113,6 @@ On `plc/reconcile`: `python -c "from src.reconcile import match"`.
 
 ### Records updated
 `docs/plans/reconcile/README.md` on `plc/reconcile`, commit 5d6e7f8: Current Work
-and Phase Status rewritten (P1 merged into integration, p1 checkout removed,
-new Last updated and next action).
+and Phases rewritten (P1 Implemented, merged into integration; p1 checkout
+removed; new Last updated and next action), and one Log line added.
 ```

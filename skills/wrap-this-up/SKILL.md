@@ -1,6 +1,6 @@
 ---
 name: wrap-this-up
-description: "Use when the user is done with a piece of work, or done for now, and wants it landed - 'wrap this up', 'merge it down', 'we're done', 'close this out', or finishing after PLC, Luna, Sol, or Opus execution. Merges everything in flight, finished or not, into main directly or through a PR/MR (merged only when the user says), rewrites the plan's Current Work to its real end state, moves a completed plan to done, and removes the work's worktrees and branches locally and on the remote. For an update that keeps work going, use plc-checkpoint."
+description: "Use when the user is done with a piece of work, or done for now, and wants it landed - 'wrap this up', 'merge it down', 'we're done', 'close this out', or finishing after PLC, Luna, Sol, or Opus execution. Merges everything in flight, finished or not, into main directly or through a PR/MR (merged only when the user says), rewrites the plan's Current Work to its real end state, moves a finished plan to the completed folder, and removes the work's worktrees and branches locally and on the remote. For an update that keeps work going, use plc-checkpoint."
 ---
 
 # Wrap This Up
@@ -102,14 +102,25 @@ merge it in and rerun the affected checks. Never force-push `main`.
 
 ## 6. Finish the plan
 
-Rewrite Current Work, and in a full packet the Phase Status table, to the
-real end state, in the plan's own format:
+Rewrite Current Work and the README's `## Phases` table to the real end
+state, following [plc-checkpoint](../plc-checkpoint/SKILL.md) step 5,
+including its old-shape move, Log lines, evidence rule, and requirement
+comparison:
 
 - Each item merged, verified, or still open, with the merge commit and the
   checks that ran on it.
-- If every requirement has passed its acceptance: mark the plan Complete and
-  move it to the repo's done folder (`<plans folder>/done/<slug>/` unless the
-  repo has its own convention). Update links that pointed at the old path.
+- If every requirement has passed its acceptance, finish the plan:
+  1. Set Status to Complete, and start Current Work with the line
+     "Historical record as of <commit>; the code is the current truth.",
+     naming the merge commit on the target.
+  2. Move the packet folder or one-file plan with `git mv` to
+     `<plans folder>/completed/`.
+  3. Before committing the move, run
+     `python3 <skills-dir>/plc-planning/scripts/format_check.py --packet <moved packet> --strict`.
+     It must exit 0: fix the format problems it reports. If it reports a
+     phase that is not Verified, Live, Deferred or Dropped, the plan is not
+     finished: move it back and leave it open.
+  4. Update links that pointed at the old path.
 - Otherwise the plan stays where it is, with what's left as the next step.
   Don't mark anything complete to make the wrap-up look finished.
 - Record decisions and open questions from the conversation, as

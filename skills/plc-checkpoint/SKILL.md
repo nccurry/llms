@@ -54,11 +54,11 @@ and how plans are committed.
 ## 2. Start from the last Current Work
 
 Read the plan's Current Work block first: its "Last updated" date and commit,
-current state, next action, blockers, and where the work lives. In a full
-packet, also read the Phase Status table in `IMPLEMENTATION_PLAN.md`. The rest
-of the checkpoint is "what changed since then". An older packet may have no
-Current Work block, or state scattered across sections; read those, and step 5
-gives it a proper Current Work block.
+current state, next action, blockers, and where the work lives. Also read the
+README's `## Phases` table and the last lines of its `## Log`. The rest of the
+checkpoint is "what changed since then". An older packet may have no Current
+Work block, phase state in `IMPLEMENTATION_PLAN.md`, or state scattered across
+sections; read those, and step 5 moves it to the shared template.
 
 ## 3. Gather what changed
 
@@ -89,14 +89,9 @@ Fetch first, then collect facts. Record the commit each fact applies to.
    [dependency-check](references/dependency-check.md). Use one subagent per
    repo when there are several and the host supports it.
 
-Sort each item onto this ladder, quoting the plan's words when they differ:
-
-`planned → in progress → implemented → merged → verified → live`
-
-plus **blocked**, **deferred**, and **dropped** (the last two only with
-approval in the plan or the conversation). "Merged" names the branch it
-merged into: the integration branch is not `main`. A phase takes the lowest
-state among its items.
+Sort each item onto the phase state words in `plc-planning`'s
+[word list](../plc-planning/SKILL.md#words), quoting the plan's words when
+they differ. A phase takes the lowest state among its items.
 
 If a source is unavailable (no host login, a path on another machine), say
 so under blind spots. Don't guess its state.
@@ -151,20 +146,38 @@ worktree while the campaign is open.
 
 ## 5. Rewrite Current Work
 
-Rewrite the plan's Current Work block in place, in the format from
-`plc-planning`'s templates: status, "Last updated" (today, the branch, and
-its commit), current state, next action, blocker, resume check, and where the
-work lives (after tidying). In a full packet, also update the affected rows of
-the Phase Status table: implementation, verification, and delivery, with
-evidence. Replace the old content; don't append a history.
+If the plan is an active packet in an older shape, move it first with
+`plc-planning`'s [old-packet migration](../plc-planning/references/old-packet-migration.md),
+then update it. Don't add a second status block beside the old one.
 
-Also bring these up to date in their own sections: decisions from the
-conversation (accepted if the user approved, otherwise proposed), open
-questions, and blockers the evidence has cleared.
+Rewrite the plan's Current Work block in place with the keys of `plc-planning`'s
+[shared template](../plc-planning/SKILL.md#shared-template), in its order:
+Status, Owner, "Last updated" (today, the branch, and its commit), then the
+other keys and where the work lives (after tidying). Keep Owner, Depends on,
+and any `Replaces:` or `Superseded by:` line unless the evidence or the user
+changes them. Replace the old content; history goes to the Log.
+
+Then, in the same README:
+
+- Update the affected rows of the `## Phases` table under `plc-planning`'s
+  [Phases rules](../plc-planning/SKILL.md#rules). Each changed note names the
+  merge request or commit. Mark a phase Verified or Live only with its
+  evidence in the note; without it, the phase stays Merged.
+- Add one dated line to `## Log` for each state change, decision, or
+  surprise since the last update. Don't change older Log lines.
+- Compare each requirement ID, in `## Done when` or SRD.md, with what
+  shipped. Record each gap as a new phase row, a Deferred phase, or an
+  `Open question:` line; never tick it silently.
+- Bring decisions, open questions, and blockers the evidence has cleared up
+  to date. Decisions from the conversation are accepted if the user
+  approved, otherwise proposed.
 
 Don't change requirement or design text: when code and a requirement
-disagree, add an open question. Don't mark anything verified or complete
-without its evidence.
+disagree, add an open question. Don't mark the plan Complete while a
+requirement lacks its evidence.
+
+Then run `python3 <skills-dir>/plc-planning/scripts/format_check.py --packet <packet>`
+and fix what it reports in the parts you changed.
 
 **Which copy, and where to commit:**
 

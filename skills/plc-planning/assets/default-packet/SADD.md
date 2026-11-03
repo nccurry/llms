@@ -42,13 +42,17 @@ when they apply.
 ## Test Design
 
 Explain which unit, integration, end-to-end, visual, or manual checks prove the
-design. Use existing test facilities where they suffice. Put commands, expected
-results, and actual evidence in `IMPLEMENTATION_PLAN.md`.
+design. Use existing test facilities where they suffice. Each requirement's
+check lives with the requirement in `SRD.md`; results go under their phase in
+`IMPLEMENTATION_PLAN.md`.
 
 ## Deferred Work
 
+Design items left for later. A deferred phase stays in the README `## Phases`
+table, marked `Deferred — <reason>`.
+
 | Item | Reason | Follow-up owner or trigger |
 | --- | --- | --- |
-| <item or none> | <reason> | <owner or when to revisit> |
+| <item> | <reason> | <owner or when to revisit> |
 
 Required acceptance cannot be moved here merely to declare completion.
