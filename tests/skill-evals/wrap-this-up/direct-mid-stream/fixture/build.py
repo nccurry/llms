@@ -18,6 +18,8 @@ expect(
     deleted_branches=["plc/digest-p1", "plc/digest-p2"],
     deleted_remote_branches=["plc/digest-p1"],
     remote_files=["docs/plans/digest/README.md"],
-    absent_remote_files=["docs/plans/done/digest/README.md"],
+    absent_remote_files=["docs/plans/completed/digest/README.md"],
+    remote_text={"docs/plans/digest/README.md": ["- Owner: @alex"]},
+    absent_remote_text={"docs/plans/digest/README.md": ["- Status: Complete"]},
 )
 print(dest)

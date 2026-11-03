@@ -5,7 +5,8 @@ setup: python fixture/build.py <dest>
 working_directory: <dest>/billing
 prompt: Where are we on the invoice export PLC? Make sure the PLC is up to date.
 max_turns: 30
-check: python ../check_state.py <dest> --protect billing-wt/invoice-export/p1-csv:docs/plans/invoice-export/IMPLEMENTATION_PLAN.md
+check: python ../check_state.py <dest> --protect billing-wt/invoice-export/p1-csv:docs/plans/invoice-export/IMPLEMENTATION_PLAN.md --protect billing-wt/invoice-export/p1-csv:docs/plans/invoice-export/README.md
 graders:
   - graders/outcome.md
+  - ../graders/plan-record.md
   - ../graders/state.md

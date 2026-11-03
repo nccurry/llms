@@ -1,6 +1,6 @@
 # plc-checkpoint eval cases
 
-Eleven runnable cases for [`plc-checkpoint`](../../../skills/plc-checkpoint/SKILL.md),
+Twelve runnable cases for [`plc-checkpoint`](../../../skills/plc-checkpoint/SKILL.md),
 modeled on the case shape in trailofbits/skills: each case folder has a
 `case.yaml`, a `fixture/build.py` that creates its git repositories, and
 Markdown graders. They live here, not in the skill folder, because the
@@ -8,16 +8,17 @@ installer copies the whole skill folder into each agent.
 
 | Case | What it checks |
 | --- | --- |
-| [morning-refresh](morning-refresh/case.yaml) | Yesterday's Status is stale; P1 merged into integration since. Report the change, tidy P1, rewrite Status |
-| [packet-drift](packet-drift/case.yaml) | `main`'s packet says pending; the worktree's copy and commits show P1 implemented |
+| [morning-refresh](morning-refresh/case.yaml) | Yesterday's Current Work is stale; P1 merged into integration since. Report the change, tidy P1, rewrite Current Work, keep Owner and the Replaces link, add a Log line |
+| [packet-drift](packet-drift/case.yaml) | `main`'s packet says nothing has started; the worktree's copy and commits show P1 implemented |
 | [origin-ahead](origin-ahead/case.yaml) | P1 merged on `origin/main`; local `main` is behind. Tidy the merged worktree and branches |
 | [dirty-finished](dirty-finished/case.yaml) | P1 merged, but its worktree has untracked notes: keep it |
-| [chat-decision](chat-decision/case.yaml) | Two scope calls made in the conversation are missing from the packet |
-| [cross-repo-wait](cross-repo-wait/case.yaml) | The plan waits on another repo whose `origin/main` already has the work |
-| [plan-in-other-repo](plan-in-other-repo/case.yaml) | The plan lives in a separate plans repo: commit Status there, push nothing |
+| [chat-decision](chat-decision/case.yaml) | Two scope calls made in the conversation are missing from the packet, and the merged code no longer meets SHOP-001: record the gap, never tick it |
+| [cross-repo-wait](cross-repo-wait/case.yaml) | The plan waits on another repo whose `origin/main` already has the work: unblock P2 and keep the Depends on line |
+| [plan-in-other-repo](plan-in-other-repo/case.yaml) | The plan lives in a separate plans repo: commit Current Work there, push nothing |
 | [ad-hoc](ad-hoc/case.yaml) | No plan: report from the conversation and git, create nothing |
 | [report-only](report-only/case.yaml) | "Just tell me, don't change anything" must change nothing |
 | [active-writer](active-writer/case.yaml) | Another agent's uncommitted packet edits must be left alone |
+| [old-shape](old-shape/case.yaml) | The packet is in an older shape: move it to the shared template first, ending with one `## Current Work`, then update it |
 | [near-miss-wrap-up](near-miss-wrap-up/case.yaml) | "Wrap this up" must go to `wrap-this-up` |
 
 `check_state.py` compares a fixture with the `_snapshot.json` and
@@ -30,8 +31,16 @@ installer copies the whole skill folder into each agent.
   worktrees, code edits, and any change to `SRD.md`.
 
 It prints JSON and exits 1 on a violation. The outcome graders then judge the
-report and the plan edits. `fixture_lib.py` is shared with the
-[wrap-this-up cases](../wrap-this-up/README.md).
+report and the plan edits, and [plan-record.md](graders/plan-record.md) holds
+the shared template's rules for any plan edit: one `## Current Work`, Owner
+and links kept, state words with the commit in each changed phase note, a
+dated Log line per change, Verified only with evidence, and gaps recorded.
+
+Every fixture packet uses the shared PLC template, owned by `@alex`, except
+the old-shape case, whose packet is old on purpose. `fixture_lib.py` builds
+the packets and checks their shape. It is shared with the
+[wrap-this-up](../wrap-this-up/README.md) and
+[plc-planning](../plc-planning/README.md) cases.
 
 ## Run a case
 
@@ -55,9 +64,16 @@ Run each case at least three times; one run does not show reliability.
 Follow the general rules in [skill-evals.md](../../skill-evals.md).
 
 `tests/test_plc_checkpoint_fixtures.py` builds every fixture, checks the git
-facts each case depends on, and tests the checker. It does not run an agent.
+facts each case depends on and the shape of each packet, and tests the
+checker. It does not run an agent.
 
 ## Results
+
+Results before 2026-11-03 used the older packet shape: a `## Status` or
+older Current Work block, with phase state in the implementation plan. The
+fixtures and graders now use the shared PLC template, so those results do
+not cover the Owner, Log, evidence, gap and old-shape points. The old-shape
+case has no runs yet.
 
 ### 2026-10-27, first run of plc-checkpoint
 

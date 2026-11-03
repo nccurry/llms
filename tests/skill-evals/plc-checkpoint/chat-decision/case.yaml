@@ -21,4 +21,5 @@ prompt: |
 max_turns: 30
 graders:
   - graders/outcome.md
+  - ../graders/plan-record.md
   - ../graders/state.md

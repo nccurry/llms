@@ -10,13 +10,17 @@ Read the agent's final answer, the checker's `packet_changes`, and the diff of
 3. SCH-002 / P2 is reported as able to start now, not blocked.
 4. SCH-001 / P1 is reported as merged. Either "verified (per the packet)" or
    "merged, verification not rechecked" passes.
-5. **Records:** the plan's "Blocked" entries for P2 and SCH-002 are updated to
-   show the dependency landed, citing the timekit commit. `SRD.md` is
-   unchanged.
-6. **Records:** `scheduler` is on `main`, the default branch, so the edit is
+5. **Records:** P2's row leaves Blocked (Planned or In progress), and its
+   note cites the timekit commit. Status is no longer Blocked, and the
+   Blocker line reads None. A dated Log line records that TK-7 landed.
+   `SRD.md` is unchanged.
+6. **Records, kept keys:** the `- Depends on:` line still names timekit TK-7;
+   it may add that it landed, with the commit. `- Owner: @alex` is unchanged.
+7. **Records:** `scheduler` is on `main`, the default branch, so the edit is
    left uncommitted and the answer asks whether to commit it.
 
-Fail if the answer repeats that P2 is blocked, if the edit is committed to
-`main` without asking, or if either repo's local `main` moved.
+Fail if the answer repeats that P2 is blocked, if the Depends on or Owner
+line is dropped, if the edit is committed to `main` without asking, or if
+either repo's local `main` moved.
 
 Without the skill, record which points the answer covers, for comparison.

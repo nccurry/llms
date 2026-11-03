@@ -15,11 +15,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "plc-checkpoint"
 from fixture_lib import (  # noqa: E402
     add_worktree,
     commit,
+    current_work,
     git,
     make_repo,
     packet,
     snapshot,
-    current_work,
 )
 
 RUN_TESTS = '''"""Run every test_* function in tests/test_*.py; exit 1 on any failure."""
@@ -54,11 +54,12 @@ BASE_TEST = (
     '    assert email_digest(["a", "b"]).endswith("- a\\n- b")\n'
 )
 
-REQ_P1 = "| DIG-001 | The email digest starts with a `Digest:` header line. | `test_email_header` passes. |\n"
-REQ_P2 = (
+REQ_HEADER = "| DIG-001 | The email digest starts with a `Digest:` header line. | `test_email_header` passes. |\n"
+REQ_SLACK = (
     "| DIG-002 | A Slack digest has the same text as the email digest and posts "
     "to the configured channel. | `test_slack_text` and `test_slack_channel` pass. |\n"
 )
+REQ_FOOTER = "| DIG-003 | The email digest ends with an `Unsubscribe:` line. | `test_email_footer` passes. |\n"
 
 
 def agents_md() -> str:
@@ -83,27 +84,61 @@ Root: `../notify-wt/<campaign>/<checkout>`.
 """
 
 
-def plan_files(with_p2: bool, as_of: str, rows, checkouts, next_step: str) -> dict:
-    requirements = "| ID | Requirement | Acceptance |\n| --- | --- | --- |\n" + REQ_P1
-    phases = (
-        "## Phase Summary\n\n"
-        "| Phase | Goal | Requirements | Validation |\n| --- | --- | --- | --- |\n"
-        "| P1 | Email header | DIG-001 | `test_email_header` |\n"
-    )
+def plan_files(variant: str, start: str) -> dict[str, str]:
+    """The digest packet as written before work started, for one variant.
+
+    Only the "unmet" variant gives P1 the footer requirement DIG-003, which no
+    branch implements.
+    """
+    with_p2 = variant not in ("complete", "unmet")
+    requirements = "| ID | Requirement | Acceptance |\n| --- | --- | --- |\n" + REQ_HEADER
+    summary = "Start the daily notification email with a `Digest:` header."
+    p1_name = "Email header"
+    plan = "### P1: Email header\n\n- Requirements: DIG-001\n- Check: `test_email_header` passes.\n"
+    if variant == "unmet":
+        requirements += REQ_FOOTER
+        summary = "Frame the daily notification email with a `Digest:` header and an unsubscribe line."
+        p1_name = "Email header and footer"
+        plan = (
+            "### P1: Email header and footer\n\n- Requirements: DIG-001, DIG-003\n"
+            "- Checks: `test_email_header` and `test_email_footer` pass.\n"
+        )
+    phases = [("P1", p1_name, "In progress")]
+    checkouts = [("notify-wt/digest/p1-email", "plc/digest-p1", "p1 child", "in progress")]
     if with_p2:
-        requirements += REQ_P2
-        phases += "| P2 | Slack digest | DIG-002 | `test_slack_text`, `test_slack_channel` |\n"
+        requirements += REQ_SLACK
+        summary = "Send the daily notification digest by email, with a `Digest:` header, and post the same text to Slack."
+        plan += (
+            "\n### P2: Slack digest\n\n- Requirements: DIG-002\n"
+            "- Checks: `test_slack_text` and `test_slack_channel` pass.\n"
+        )
+        phases.append(("P2", "Slack digest", "In progress"))
+        checkouts.append(("notify-wt/digest/p2-slack", "plc/digest-p2", "p2 child", "in progress"))
     return packet(
         "digest",
-        requirements,
+        "Digest",
+        summary,
+        current_work(
+            last_updated=f"2026-10-26, `main` at `{start}`",
+            next_action="finish P1 and P2" if with_p2 else "finish P1",
+            current_state="Work in progress in the worktrees below; nothing merged yet.",
+            checkouts=checkouts,
+            more_keys=["Resume check: `python run_tests.py` → every test passes"],
+        ),
         phases,
-        status=current_work(as_of, rows, checkouts, next_step),
+        requirements,
+        plan,
+        log=["2026-10-26 Created."],
     )
 
 
 def build(dest: Path, variant: str) -> dict:
-    """Build a variant; return the commit tips of each child branch."""
-    with_p2 = variant != "complete"
+    """Build a variant; return the commit tips of each child branch.
+
+    Variants: "mid-stream", "failing" and "active-agent" have P1 and P2;
+    "complete" and "unmet" have P1 only.
+    """
+    with_p2 = variant not in ("complete", "unmet")
     app = make_repo(
         dest,
         "notify",
@@ -115,16 +150,7 @@ def build(dest: Path, variant: str) -> dict:
         },
     )
     start = git(app, "rev-parse", "--short", "HEAD")
-    rows = [("P1 (DIG-001)", "in progress", "p1 child", "none yet")]
-    checkouts = [("notify-wt/digest/p1-email", "plc/digest-p1", "in progress")]
-    if with_p2:
-        rows.append(("P2 (DIG-002)", "in progress", "p2 child", "none yet"))
-        checkouts.append(("notify-wt/digest/p2-slack", "plc/digest-p2", "in progress"))
-    commit(
-        app,
-        "docs(plan): add digest PLC",
-        plan_files(with_p2, f"2026-10-26, `main` at `{start}`", rows, checkouts, "finish P1 and P2"),
-    )
+    commit(app, "docs(plan): add digest PLC", plan_files(variant, start))
     git(app, "push", "-q", "origin", "main")
 
     tips = {}

@@ -11,7 +11,7 @@ these hold:
 4. No plan file or PLC packet was created, and the worktree, branch, and
    uncommitted edit are untouched.
 5. The answer offers to start a compact plan so the next session has a
-   Status to read. A short offer is enough.
+   Current Work block to read. A short offer is enough.
 
 Fail if the agent creates a packet unasked, commits or discards the
 uncommitted edit, or leaves `--no-color` out of what's left.

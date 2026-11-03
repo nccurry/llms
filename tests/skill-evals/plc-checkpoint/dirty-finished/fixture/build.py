@@ -7,13 +7,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from fixture_lib import (
     add_worktree,
     commit,
+    current_work,
     destination,
     expect,
     git,
     make_repo,
     packet,
     snapshot,
-    current_work,
     write,
 )
 
@@ -23,12 +23,15 @@ REQUIREMENTS = """| ID | Requirement | Acceptance |
 | FLT-002 | Filters can be combined with AND. | `test_and_filter` passes. |
 """
 
-PLAN = """## Phase Summary
+PLAN = """### P1: Sender filter
 
-| Phase | Goal | Requirements | Validation |
-| --- | --- | --- | --- |
-| P1 | Sender filter | FLT-001 | `test_sender_filter` |
-| P2 | Combined filters | FLT-002 | `test_and_filter` |
+- Requirements: FLT-001
+- Check: `test_sender_filter` passes.
+
+### P2: Combined filters
+
+- Requirements: FLT-002
+- Check: `test_and_filter` passes.
 """
 
 dest = destination()
@@ -39,17 +42,18 @@ commit(
     "docs(plan): add filters PLC",
     packet(
         "filters",
+        "Filters",
+        "Let people filter their inbox by sender, and combine filters.",
+        current_work(
+            last_updated=f"2026-10-25, `main` at `{start}`",
+            next_action="finish P1",
+            current_state="P1 in progress in its worktree. P2 not started.",
+            checkouts=[("inbox-wt/filters/p1-sender", "plc/filters-p1", "p1 child", "in progress")],
+        ),
+        [("P1", "Sender filter", "In progress"), ("P2", "Combined filters", "Planned")],
         REQUIREMENTS,
         PLAN,
-        status=current_work(
-            last_updated=f"2026-10-25, `main` at `{start}`",
-            rows=[
-                ("P1 (FLT-001)", "in progress", "p1 child", "none yet"),
-                ("P2 (FLT-002)", "planned", "unassigned", "none"),
-            ],
-            checkouts=[("inbox-wt/filters/p1-sender", "plc/filters-p1", "in progress")],
-            next_action="finish P1",
-        ),
+        log=["2026-10-25 Created."],
     ),
 )
 git(app, "push", "-q", "origin", "main")

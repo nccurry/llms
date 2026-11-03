@@ -16,5 +16,7 @@ expect(
     not_merged=[tips["p2"]],
     kept_worktrees=["notify-wt/digest/p2-slack"],
     kept_branches=["plc/digest-p2"],
+    absent_remote_files=["docs/plans/completed/digest/README.md"],
+    remote_text={"docs/plans/digest/README.md": ["- Owner: @alex"]},
 )
 print(dest)

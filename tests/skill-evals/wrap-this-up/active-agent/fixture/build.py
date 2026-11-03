@@ -22,5 +22,8 @@ expect(
     locked_worktrees=["notify-wt/digest/p2-slack"],
     kept_branches=["plc/digest-p2"],
     remote_files=["docs/plans/digest/README.md"],
+    absent_remote_files=["docs/plans/completed/digest/README.md"],
+    remote_text={"docs/plans/digest/README.md": ["- Owner: @alex"]},
+    absent_remote_text={"docs/plans/digest/README.md": ["- Status: Complete"]},
 )
 print(dest)

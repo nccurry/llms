@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from fixture_lib import (
     add_worktree,
     commit,
+    current_work,
     destination,
     expect,
     git,
@@ -22,28 +23,51 @@ REQUIREMENTS = """| ID | Requirement | Acceptance |
 | SRCH-002 | Search results are paged 20 at a time. | `test_search_pages` passes. |
 """
 
+PLAN = """### P1: Case-insensitive search
 
-def plan(p1_state: str, evidence: str) -> str:
-    return f"""## Phase Summary
+- Requirements: SRCH-001
+- Check: `test_search_case` passes.
 
-| Phase | Goal | Requirements | Validation | Status |
-| --- | --- | --- | --- | --- |
-| P1 | Case-insensitive search | SRCH-001 | `test_search_case` | {p1_state} |
-| P2 | Paging | SRCH-002 | `test_search_pages` | Planned |
+### P2: Paging
 
-## Completion map
-
-| Requirement | Evidence | State |
-| --- | --- | --- |
-| SRCH-001 | {evidence} | {p1_state} |
-| SRCH-002 | none | Pending |
+- Requirements: SRCH-002
+- Check: `test_search_pages` passes.
 """
+
+SUMMARY = "Make catalog search forgiving about case, and page long result lists."
+
+
+def search_packet(status: str, p1_state: str, log: list[str]) -> dict[str, str]:
+    return packet(
+        "search",
+        "Search",
+        SUMMARY,
+        status,
+        [("P1", "Case-insensitive search", p1_state), ("P2", "Paging", "Planned")],
+        REQUIREMENTS,
+        PLAN,
+        log=log,
+    )
 
 
 dest = destination()
-app = make_repo(
-    dest, "catalog", packet("search", REQUIREMENTS, plan("In progress", "none"))
+app = make_repo(dest, "catalog", {"README.md": "# catalog\n"})
+start = git(app, "rev-parse", "--short", "HEAD")
+commit(
+    app,
+    "docs(plan): add search PLC",
+    search_packet(
+        current_work(
+            last_updated=f"2026-10-24, `main` at `{start}`",
+            next_action="finish P1 and merge it into `main`",
+            current_state="P1 in progress in its worktree. P2 not started.",
+            checkouts=[("catalog-wt/search/p1-case", "plc/search-p1", "p1 child", "in progress")],
+        ),
+        "In progress",
+        ["2026-10-24 Created."],
+    ),
 )
+git(app, "push", "-q", "origin", "main")
 p1 = add_worktree(app, "search", "p1-case", "plc/search-p1")
 commit(
     p1,
@@ -69,10 +93,14 @@ merge = git(other, "rev-parse", "--short", "HEAD")
 commit(
     other,
     "docs(plan): P1 merged",
-    packet(
-        "search",
-        REQUIREMENTS,
-        plan("Merged", f"merge {merge}; `test_search_case` passed in CI on {merge}"),
+    search_packet(
+        current_work(
+            last_updated=f"2026-10-26, `main` at `{merge}`",
+            next_action="start P2",
+            current_state=f"P1 merged into `main` at `{merge}`. P2 not started.",
+        ),
+        f"Merged — `{merge}`",
+        ["2026-10-24 Created.", f"2026-10-26 P1 Merged @ `{merge}`."],
     ),
 )
 git(other, "push", "-q", "origin", "main")

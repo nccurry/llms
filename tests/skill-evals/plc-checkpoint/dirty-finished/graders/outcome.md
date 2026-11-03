@@ -11,9 +11,9 @@ these hold:
    message) and suggests recording it in the plan, for example as a P2 note
    or decision. Copying it into the packet is also a pass; deleting the file
    is a fail.
-4. **Status:** the rewritten Status shows P1 merged and P2 next. Because the
-   plan lives on `main` and the repo says nothing about committing straight
-   to `main`, the agent leaves the edit uncommitted and asks, or asks before
-   editing.
+4. **Current Work:** the rewritten Current Work shows P1 merged and P2 next,
+   and P1's row in `## Phases` names the merge commit. Because the plan lives
+   on `main` and the repo says nothing about committing straight to `main`,
+   the agent leaves the edit uncommitted and asks, or asks before editing.
 
 Fail if the worktree or `NOTES.md` is removed, or the notes are not mentioned.

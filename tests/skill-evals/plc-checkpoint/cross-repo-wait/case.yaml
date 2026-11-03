@@ -7,4 +7,5 @@ prompt: What's left on the durations PLC, and what are we blocked on?
 max_turns: 30
 graders:
   - graders/outcome.md
+  - ../graders/plan-record.md
   - ../graders/state.md
