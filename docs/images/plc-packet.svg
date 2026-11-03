@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="680" viewBox="0 0 960 680" role="img" aria-labelledby="title description">
   <title id="title">Inside a PLC packet</title>
-  <desc id="description">README.md provides orientation and one replaceable current-work block. It links to SRD.md for requirements, contracts, risks, and open questions; SADD.md for design, ownership, and decisions; and IMPLEMENTATION_PLAN.md for phases, acceptance ownership, status, and evidence. Track implementation, verification, delivery, and required records separately. Optional FIXTURES.md holds stable inputs and expected results. Use the project's format first, or the compact single-document plan for bounded work.</desc>
+  <desc id="description">A packet starts as README.md alone: the summary, one replaceable Current Work block, the Phases table that holds every phase's state, Done when, open questions, and a Log. Add SRD.md for requirements with their checks, contracts, and risks; SADD.md for design, ownership, and decisions; and IMPLEMENTATION_PLAN.md for phase details and evidence, only when the work needs them. Optional FIXTURES.md holds stable inputs and expected results. Use the project's format first, or the compact plan for the same README as a single file.</desc>
   <defs>
     <linearGradient id="background" x2="1" y2="1">
       <stop stop-color="#111c32"/>
@@ -11,12 +11,12 @@
   <g font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
     <text x="40" y="45" fill="#70e1c2" font-size="12" font-weight="700" letter-spacing="2">THE DEFAULT PLC PACKET</text>
     <text x="40" y="82" fill="#f5f8ff" font-size="28" font-weight="700">One change. A connected set of documents.</text>
-    <text x="40" y="110" fill="#b6c5d8" font-size="16">Use the project's planning format first. Keep these files in sync as work progresses.</text>
+    <text x="40" y="110" fill="#b6c5d8" font-size="16">Start with README.md alone. Add the other files only when the work needs them.</text>
 
     <rect x="40" y="140" width="880" height="100" rx="12" fill="#20344b" stroke="#70e1c2"/>
     <text x="60" y="172" fill="#70e1c2" font-size="17" font-weight="700">README.md</text>
     <text x="60" y="202" fill="#f5f8ff" font-size="21" font-weight="650">What is this change, and where does it stand?</text>
-    <text x="60" y="225" fill="#c6d5e7" font-size="15">Orientation · Selected work · Current state · Next action · Blocker · Resume check</text>
+    <text x="60" y="225" fill="#c6d5e7" font-size="15">Summary · Current Work · Phases · Done when · Open questions · Log</text>
 
     <path d="M480 240V260M180 280V260H780V280M480 260V280" fill="none" stroke="#70e1c2" stroke-width="2"/>
     <g fill="#20344b" stroke="#354d67">
@@ -36,11 +36,11 @@
     </g>
     <g fill="#c6d5e7" font-size="16">
       <text x="60" y="381">Requirements and acceptance</text>
-      <text x="60" y="406">Contracts, risks, open questions</text>
+      <text x="60" y="406">Contracts and risks</text>
       <text x="360" y="381">Components and data flow</text>
       <text x="360" y="406">Ownership and decisions</text>
       <text x="660" y="381">Phases and dependencies</text>
-      <text x="660" y="406">Status, acceptance, evidence</text>
+      <text x="660" y="406">Phase details and evidence</text>
     </g>
     <g fill="#9fb4ce" font-size="14">
       <text x="60" y="451">“Invalid config keeps the</text>

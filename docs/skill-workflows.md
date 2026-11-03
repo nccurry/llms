@@ -14,24 +14,50 @@ design, delivery steps, and checks.
 
 ## Write a change plan
 
-Use the project's planning format first. Otherwise, start with the
-[default packet](../skills/plc-planning/assets/default-packet/README.md) for larger
-changes, or the [compact plan](../skills/plc-planning/assets/compact-plan.md) for smaller changes:
+Use the project's planning format first. Otherwise, every plan starts as one
+README from the shared template: the
+[default packet](../skills/plc-planning/assets/default-packet/README.md), or the
+[compact plan](../skills/plc-planning/assets/compact-plan.md) for the same README
+as a single file. Add SRD.md, SADD.md, or IMPLEMENTATION_PLAN.md only when the
+work needs that much detail:
 
-![PLC packet: README.md gives the overview; SRD.md defines requirements; SADD.md explains the design; IMPLEMENTATION_PLAN.md maps requirements to phases and checks. Optional FIXTURES.md holds stable examples and test cases.](images/plc-packet.svg)
+![PLC packet: README.md holds the summary, Current Work, the Phases table, Done when, open questions, and the Log. SRD.md defines requirements and their checks; SADD.md explains the design; IMPLEMENTATION_PLAN.md holds phase details and evidence. Add them only when needed. Optional FIXTURES.md holds stable examples and test cases.](images/plc-packet.svg)
 
 ```text
-REQ-001: Invalid config leaves the running config unchanged.
-Design:  Parse and validate before replacing the active config.
-Phase 1: Implement reload; test invalid input; record the result.
+# Config reload
 
-Current: Implementation complete; local checks passed; PR unmerged; record complete.
-Next:    Finish required PR reviews.
+Reload the config without a restart, keeping the old config if the new one is invalid.
+
+## Current Work
+
+- Status: In progress
+- Owner: @alex
+- Last updated: 2026-11-03, `plc/reload` at `abc1234`
+- Next action: Finish required PR reviews.
+
+## Phases
+
+| Phase | Name   | Owner | State                                          |
+| ----- | ------ | ----- | ---------------------------------------------- |
+| P1    | Reload | @alex | Implemented — PR #12 open; local checks passed |
+
+## Done when
+
+- REQ-001: Invalid config leaves the running config unchanged.
+  Check: `task test -- reload` → passes
+
+## Log
+
+- 2026-11-02 Created.
+- 2026-11-03 P1 Implemented in PR #12.
 ```
 
-Keep requirement IDs stable. Replace the current-work block as work changes.
-Record each result once and link to it. If a record is missing, check existing
-results before running checks again.
+Keep requirement and phase IDs stable. Replace Current Work as work changes,
+and add a dated Log line for each change. A phase is Verified only when its
+check passed on the merged code. Record each result once and link to it. If a
+record is missing, check existing results before running checks again. A
+finished plan moves to `completed/`. The full rules and the format check are
+in [plc-planning](../skills/plc-planning/SKILL.md#shared-template).
 
 ## Choose an execution model
 
