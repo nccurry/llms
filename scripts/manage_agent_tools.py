@@ -1041,10 +1041,13 @@ def configure(target: str) -> dict[str, Any]:
                     run(tool_command("serena") + ["setup", client], timeout=90)
                 )
             except RuntimeError as error:
-                if "not found or not functional" not in str(error):
+                if "not found or not functional" not in str(error) and not (
+                    host == "claude"
+                    and "requires remote managed settings" in str(error)
+                ):
                     raise
                 limitations.append(
-                    "Serena client setup unavailable; using documented manual MCP configuration"
+                    f"Serena client setup unavailable; using documented manual MCP configuration: {error}"
                 )
         if host != "pi" and manifest()["tools"]["gitnexus"].get(
             "integration_enabled", True
@@ -1090,6 +1093,14 @@ def configure(target: str) -> dict[str, Any]:
             try:
                 upstream.append(
                     run(tool_command("cq") + ["install", "--target", host], timeout=90)
+                )
+            except RuntimeError as error:
+                if host != "claude" or "requires remote managed settings" not in str(
+                    error
+                ):
+                    raise
+                limitations.append(
+                    f"cq plugin setup unavailable; rerun agents:configure after claude auth login: {error}"
                 )
             finally:
                 # Restore only cq's entry so other settings edited during native
