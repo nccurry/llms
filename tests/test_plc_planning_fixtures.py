@@ -18,9 +18,10 @@ from fixture_lib import (  # noqa: E402
     write,
 )
 
-PLAN_PATH = "docs/plans/planned/limit-check/README.md"
+# The one shape the case grades: a one-file plan in planned/.
+PLAN_PATH = "docs/plans/planned/plc-limit-check.md"
 
-# A README-only plan in the shared PLC template, as the small-change case
+# A one-file plan in the shared PLC template, as the small-change case
 # expects. `{head}` is the fixture's commit.
 GOOD_PLAN = """# Limit check
 
@@ -117,9 +118,10 @@ class SmallChangeFixtureTest(unittest.TestCase):
         write(self.app, {relative: text})
 
     def run_in_app(self, *args: str) -> subprocess.CompletedProcess:
-        # Bytecode writing stays on, as on most machines; the fixture's
-        # .gitignore must keep the checkout clean anyway.
-        env = {key: value for key, value in GIT_ENV.items() if key != "PYTHONDONTWRITEBYTECODE"}
+        # Bytecode writing stays on, with no cache folder elsewhere, as on
+        # most machines; the fixture's .gitignore must keep the checkout clean.
+        off = ("PYTHONDONTWRITEBYTECODE", "PYTHONPYCACHEPREFIX")
+        env = {key: value for key, value in GIT_ENV.items() if key not in off}
         return subprocess.run(
             [sys.executable, *args],
             cwd=self.app,
@@ -134,8 +136,10 @@ class SmallChangeFixtureTest(unittest.TestCase):
         self.assertEqual(tests.returncode, 0, tests.stderr)
         listed = self.run_in_app("harbor.py", "list", "--limit", "-1")
         self.assertEqual(listed.stdout.split(), ["A1", "A2", "B1", "B2"])
+        self.assertTrue(any(self.app.rglob("__pycache__")))
         plans_readme = (self.app / "docs/plans/README.md").read_text(encoding="utf-8")
         self.assertIn("`planned/`", plans_readme)
+        self.assertIn("`plc-<slug>.md`", plans_readme)
         self.assertFalse((self.app / "docs/plans/planned").exists())
         self.assertEqual(git(self.app, "status", "--porcelain"), "")
         self.assertEqual(
@@ -148,10 +152,9 @@ class SmallChangeFixtureTest(unittest.TestCase):
             },
         )
 
-    def test_readme_only_plan_passes(self):
+    def test_one_file_plan_passes(self):
         self.write_good_plan()
-        packet = (self.app / PLAN_PATH).parent
-        findings = format_check().check_packet(packet, strict=True, lifecycle="planned")
+        findings = format_check().check_packet(self.app / PLAN_PATH, strict=True)
         self.assertEqual(findings, [])
         report = check(self.dest)
         self.assertTrue(report["ok"], report)
@@ -163,9 +166,17 @@ class SmallChangeFixtureTest(unittest.TestCase):
         git(self.app, "commit", "-qm", "docs(plan): add limit check plan")
         self.assertTrue(check(self.dest)["ok"])
 
-    def test_one_file_plan_passes(self):
-        self.write_good_plan("docs/plans/planned/plc-limit-check.md")
-        self.assertTrue(check(self.dest)["ok"])
+    def test_packet_folder_fails(self):
+        # The skill and the repository both say a small plan is one file.
+        folder_readme = "docs/plans/planned/limit-check/README.md"
+        self.write_good_plan(folder_readme)
+        self.assertEqual(
+            check(self.dest)["problems"],
+            [
+                f"changed beyond the one plan file: ['{folder_readme}']",
+                "expected one new plan in docs/plans/planned/, found none",
+            ],
+        )
 
     def test_one_file_plan_without_the_plc_prefix_fails(self):
         self.write_good_plan("docs/plans/planned/limit-check.md")
@@ -179,22 +190,22 @@ class SmallChangeFixtureTest(unittest.TestCase):
 
     def test_two_plans_fail(self):
         self.write_good_plan()
-        self.write_good_plan("docs/plans/planned/plc-limit-check.md")
+        self.write_good_plan("docs/plans/planned/plc-limit-check-later.md")
         self.assertEqual(
             check(self.dest)["problems"],
             [
                 "expected one new plan in docs/plans/planned/, found "
-                f"['docs/plans/planned/limit-check/README.md', "
-                f"'docs/plans/planned/plc-limit-check.md']"
+                "['docs/plans/planned/plc-limit-check-later.md', "
+                "'docs/plans/planned/plc-limit-check.md']"
             ],
         )
 
-    def test_full_packet_fails(self):
+    def test_side_file_beside_the_plan_fails(self):
         self.write_good_plan()
-        write(self.app, {"docs/plans/planned/limit-check/SRD.md": "# Requirements\n"})
+        write(self.app, {"docs/plans/planned/plc-limit-check-srd.md": "# Requirements\n"})
         self.assertEqual(
             check(self.dest)["problems"],
-            ["changed beyond the one plan file: ['docs/plans/planned/limit-check/SRD.md']"],
+            ["changed beyond the one plan file: ['docs/plans/planned/plc-limit-check-srd.md']"],
         )
 
     def test_code_change_fails(self):
@@ -205,8 +216,14 @@ class SmallChangeFixtureTest(unittest.TestCase):
         )
 
     def test_plan_outside_planned_fails(self):
-        self.write_good_plan("docs/plans/limit-check/README.md")
-        self.assertFalse(check(self.dest)["ok"])
+        self.write_good_plan("docs/plans/plc-limit-check.md")
+        self.assertEqual(
+            check(self.dest)["problems"],
+            [
+                "changed beyond the one plan file: ['docs/plans/plc-limit-check.md']",
+                "expected one new plan in docs/plans/planned/, found none",
+            ],
+        )
 
     def test_other_owner_fails(self):
         self.write_good_plan(owner="@sam")
@@ -218,10 +235,10 @@ class SmallChangeFixtureTest(unittest.TestCase):
 
     def test_plan_in_planned_must_say_planned(self):
         self.write_good_plan()
-        readme = self.app / PLAN_PATH
-        text = readme.read_text(encoding="utf-8")
+        plan = self.app / PLAN_PATH
+        text = plan.read_text(encoding="utf-8")
         text = text.replace("- Status: Planned", "- Status: In progress")
-        readme.write_text(text, encoding="utf-8")
+        plan.write_text(text, encoding="utf-8")
         self.assertEqual(
             check(self.dest)["problems"],
             [
@@ -234,8 +251,7 @@ class SmallChangeFixtureTest(unittest.TestCase):
         self.write_good_plan()
         git(self.app, "add", "--all")
         git(self.app, "commit", "-q", "--amend", "-m", "feat: list free berths, with a plan")
-        problems = check(self.dest)["problems"]
-        self.assertEqual(problems[0], "history rewritten or reset")
+        self.assertEqual(check(self.dest)["problems"], ["history rewritten or reset"])
 
     def test_old_compact_shape_fails(self):
         write(self.app, {PLAN_PATH: OLD_COMPACT_PLAN})
@@ -243,6 +259,7 @@ class SmallChangeFixtureTest(unittest.TestCase):
         self.assertIn("eval: no ## Phases section", problems)
         self.assertIn(f"{PLAN_PATH}:1: Log: no ## Log section", problems)
         self.assertIn("eval: ## Log is not the last section", problems)
+        self.assertIn("eval: Current Work has no Resume check line", problems)
 
 
 class PacketShapeTest(unittest.TestCase):
@@ -386,6 +403,42 @@ class PacketShapeTest(unittest.TestCase):
             self.problems(text, "### P1: Something else\n\n- Check: x\n"),
             ["eval: phase row links to a missing plan heading: #p1-reject-limits-below-1"],
         )
+
+    def test_n_a_is_a_placeholder(self):
+        text = self.GOOD.replace("- Blocker: None", "- Blocker: N/A")
+        self.assertEqual(
+            self.problems(text), ["eval: placeholder text (N/A, TBD or <...>) left in the README"]
+        )
+
+    def test_log_line_with_only_a_month_is_reported(self):
+        text = self.GOOD.replace("- 2026-11-03 Created.", "- 2026-11 Created.")
+        self.assertEqual(self.problems(text), ["eval: Log line has no date: - 2026-11 Created."])
+
+    def test_log_date_followed_by_punctuation_passes(self):
+        text = self.GOOD.replace("- 2026-11-03 Created.", "- 2026-11-03: Created.")
+        self.assertEqual(self.problems(text), [])
+
+    def test_every_template_key_and_the_work_table_are_required(self):
+        no_resume = self.GOOD.replace("- Resume check: `python -m unittest` → OK\n", "")
+        self.assertEqual(
+            self.problems(no_resume), ["eval: Current Work has no Resume check line"]
+        )
+        no_table = self.GOOD.replace(
+            "Where the work lives:\n\n| Checkout | Branch | Owner | State |\n"
+            "| --- | --- | --- | --- |\n| None | | | |\n\n",
+            "",
+        )
+        self.assertEqual(
+            self.problems(no_table), ['eval: Current Work has no "Where the work lives" table']
+        )
+
+    def test_fenced_content_counts_as_content(self):
+        text = self.GOOD.replace(
+            "## Log", "## Commands\n\n```sh\nharbor list --limit 1\n```\n\n## Log"
+        )
+        self.assertEqual(self.problems(text), [])
+        empty = self.GOOD.replace("## Log", "## Commands\n\n## Log")
+        self.assertEqual(self.problems(empty), ["eval: empty section ## Commands"])
 
     def test_bold_keys_and_escaped_pipes_get_the_same_verdict_from_both_layers(self):
         """The evals' own rules read keys and table cells as the shipped check does."""

@@ -154,7 +154,7 @@ def plan_files(variant: str, start: str) -> dict[str, str]:
             next_action="finish P1 and P2" if with_p2 else "finish P1",
             current_state="Work in progress in the worktrees below; nothing merged yet.",
             checkouts=checkouts,
-            more_keys=["Resume check: `python run_tests.py` → every test passes"],
+            resume_check="`python run_tests.py` → every test passes",
         ),
         phases,
         requirements,
@@ -239,6 +239,21 @@ def build(dest: Path, variant: str) -> dict:
 
     snapshot(dest, [app])
     return tips
+
+
+# What check_wrap.py requires of the plan on origin/main, by where it ends up.
+OPEN_PLAN = {
+    "path": "docs/plans/digest",
+    "statuses": ["In progress", "Blocked"],
+    "owner": "@alex",
+    "historical": False,
+}
+COMPLETED_PLAN = {
+    "path": "docs/plans/completed/digest",
+    "statuses": ["Complete"],
+    "owner": "@alex",
+    "historical": True,
+}
 
 
 def expect(dest: Path, **data) -> None:
