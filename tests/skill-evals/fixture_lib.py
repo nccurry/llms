@@ -464,6 +464,13 @@ def phase_rule_problem(readme: str, phase: str, rule: dict) -> str | None:
     return None
 
 
+def requirement_rows(srd: str) -> list[list[str]]:
+    """The cells of each row of SRD.md's requirements table, the table whose
+    first column is ID, as the shipped format check reads it."""
+    fc = format_check()
+    return [cells for _, cells in fc.requirement_rows(fc.unfenced(srd.splitlines()))]
+
+
 def listed_checkouts(readme: str) -> list[str]:
     """The Checkout cell of each row of Current Work's "Where the work lives"
     table, without the header and divider."""

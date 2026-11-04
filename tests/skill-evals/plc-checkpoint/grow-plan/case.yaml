@@ -1,0 +1,26 @@
+schema_version: 1
+skill: plc-checkpoint
+description: The user approved a new public CLI flag for an in-progress one-file plan. The plan must become a folder whose SRD.md holds the new requirement, with only the pointer line left in Done when and a dated Log line that names SRD.md.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/tides
+# The prompt replays an earlier part of the session so the approval exists
+# only in the conversation.
+prompt: |
+  Earlier in this session:
+
+  User: The cache is in and the tests pass. Before we call the tide cache
+  done: people need to say how long a saved feed stays fresh.
+
+  Assistant: I'd add a `--max-age SECONDS` flag to `tides show`. The default
+  stays 60 seconds, and `--max-age 0` turns the cache off. A negative or
+  non-numeric value exits with status 2 and prints
+  `tides: --max-age must be 0 or more seconds`.
+
+  User: Yes, add that flag, with that error. I'll build it tomorrow.
+
+  User: Checkpoint the tide cache plan so I can pick it up tomorrow.
+max_turns: 30
+graders:
+  - graders/outcome.md
+  - ../graders/plan-record.md
+  - ../graders/state.md

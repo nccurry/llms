@@ -102,6 +102,77 @@ DONE_WHEN_LINE = "The requirements and their checks are in [SRD.md](SRD.md)."
 POINTER_LINE = "Phase state lives in the README's [Phases](README.md#phases) table."
 
 
+# The grow-plan plan after a correct checkpoint. The user approved the
+# `--max-age` flag, a public contract, so the one-file plan became a folder:
+# GROWN_SRD holds TIDE-001 and the new TIDE-002 with their checks,
+# `## Done when` holds only the pointer line, P2 holds the new work, and the
+# Log has the decision and a line naming SRD.md.
+GROWN_README = """# Tide cache
+
+Cache the tide feed for a minute, so repeated `tides show` calls don't fetch it each time.
+
+## Current Work
+
+- Status: In progress
+- Owner: @alex
+- Last updated: 2026-11-04, `main` at `{head}`
+- Next action: Write a failing test for `tides show --max-age -1` in `tests/test_cli.py`.
+- Blocker: None
+- Depends on: None
+- Current state: P1 verified @ `{merge}`. P2, the approved `--max-age` flag, is not started.
+- Resume check: `python -m unittest` → 2 tests OK
+
+Where the work lives:
+
+| Checkout | Branch | Owner | State |
+| --- | --- | --- | --- |
+| None | | | |
+
+## Phases
+
+| Phase | Name | Owner | State |
+| --- | --- | --- | --- |
+| P1 | Cache the feed | | Verified — `python -m unittest` → 2 tests OK @ `{merge}` |
+| P2 | `--max-age` flag | | Planned |
+
+## Done when
+
+{done_when}
+
+## Log
+
+- 2026-11-02 Created.
+- 2026-11-03 P1 merged @ `{merge}`.
+- 2026-11-03 P1 verified: `python -m unittest` → 2 tests OK @ `{merge}`.
+- 2026-11-04 Decision: add `tides show --max-age SECONDS` (TIDE-002), approved by @alex in chat.
+- 2026-11-04 Added SRD.md: the `--max-age` flag is a public contract.
+"""
+GROWN_SRD = """# Tide cache requirements
+
+## Requirements
+
+| ID | Priority | Requirement | Check |
+| --- | --- | --- | --- |
+| TIDE-001 | Must | A second `tides show` within a minute reads the feed once. | `python -m unittest tests.test_cache` → passes |
+| TIDE-002 | Must | `tides show --max-age SECONDS` keeps a fetched feed that many seconds, 60 by default, and `--max-age 0` turns the cache off. A negative or non-numeric value exits with status 2 and prints `tides: --max-age must be 0 or more seconds`. | `python -m unittest tests.test_cli` → passes |
+
+## User Experience And Public Surface
+
+| Surface | Action or input | Expected result | Compatibility |
+| --- | --- | --- | --- |
+| CLI | `tides show --max-age -1` | Exit status 2 and `tides: --max-age must be 0 or more seconds` | new |
+"""
+# The requirements as `## Done when` lines, where a one-file plan keeps them.
+TIDE_REQUIREMENTS = (
+    "- TIDE-001: A second `tides show` within a minute reads the feed once."
+    " Check: `python -m unittest tests.test_cache` → passes\n"
+    "- TIDE-002: `tides show --max-age -1` exits with status 2."
+    " Check: `python -m unittest tests.test_cli` → passes"
+)
+GROWN = "tides/docs/plans/in-progress/tide-cache"
+ONE_FILE_PLAN = "docs/plans/in-progress/plc-tide-cache.md"
+
+
 def build(case: str, dest: Path, env: dict[str, str] = GIT_ENV) -> None:
     subprocess.run(
         [sys.executable, str(CASES / case / "fixture" / "build.py"), str(dest)],
@@ -417,6 +488,110 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assert_old_shape_violation(
             "Where the work lives still names removed marina-wt/audit-log/p1-record",
             change_readme=keep_row,
+        )
+
+    def test_grow_plan(self):
+        build("grow-plan", self.dest)
+        app = self.dest / "tides"
+        plan = app / ONE_FILE_PLAN
+        self.assertEqual(shipped_findings(plan), [])
+        self.assertEqual(eval_only_problems(plan, owner=OWNER), [])
+        text = plan.read_text(encoding="utf-8")
+        self.assertEqual(packet_status(text), "In progress")
+        self.assertEqual(phase_state(text, "P1"), "Verified")
+        self.assertNotIn("--max-age", text)
+        self.assertFalse((app / "docs/plans/in-progress/tide-cache").exists())
+        self.assertEqual(git(app, "branch", "--list"), "* main")
+        self.assertEqual(len(git(app, "worktree", "list").splitlines()), 1)
+        self.assertTrue(is_ancestor(app, "main", "origin/main"))
+        # P1's evidence is true: the fixture's tests pass.
+        tests = subprocess.run(
+            [sys.executable, "-B", "-m", "unittest"], cwd=app, capture_output=True, text=True
+        )
+        self.assertEqual(tests.returncode, 0, tests.stderr)
+        self.assertIn("Ran 2 tests", tests.stderr)
+        # Left as built, the plan fails for one reason: it is still one file.
+        expected = [f"{GROWN}: the one-file plan tides/{ONE_FILE_PLAN} is still there"]
+        self.assertEqual(check(self.dest)["violations"], expected)
+
+    def grow_plan(self, done_when=DONE_WHEN_LINE, change_readme=None, change_srd=None) -> Path:
+        """Build grow-plan and write the result its grader expects, after the
+        arguments make it wrong in one way. Return the packet folder."""
+        build("grow-plan", self.dest)
+        app = self.dest / "tides"
+        packet = app / "docs/plans/in-progress/tide-cache"
+        packet.mkdir()
+        git(app, "mv", ONE_FILE_PLAN, "docs/plans/in-progress/tide-cache/README.md")
+        head = git(app, "rev-parse", "--short", "HEAD")
+        merge = git(app, "rev-parse", "--short", "HEAD^")
+        readme = GROWN_README.format(head=head, merge=merge, done_when=done_when)
+        readme = change_readme(readme) if change_readme else readme
+        srd = change_srd(GROWN_SRD) if change_srd else GROWN_SRD
+        (packet / "README.md").write_text(readme, encoding="utf-8", newline="\n")
+        (packet / "SRD.md").write_text(srd, encoding="utf-8", newline="\n")
+        return packet
+
+    def assert_grow_plan_violation(self, violation: str, **changes) -> None:
+        self.grow_plan(**changes)
+        self.assertEqual(check(self.dest)["violations"], [f"{GROWN}: {violation}"])
+
+    def test_grow_plan_grown_passes(self):
+        """The result the grow-plan grader expects passes the checker and the shape check."""
+        packet = self.grow_plan()
+        report = check(self.dest)
+        self.assertTrue(report["ok"], report)
+        self.assertEqual(
+            report["packet_changes"],
+            [
+                f"tides: created {GROWN.removeprefix('tides/')}/README.md",
+                f"tides: created {GROWN.removeprefix('tides/')}/SRD.md",
+                f"tides: removed {ONE_FILE_PLAN}",
+            ],
+        )
+        self.assertEqual(shipped_findings(packet), [])
+        self.assertEqual(eval_only_problems(packet, owner=OWNER), [])
+
+    def test_grow_plan_requirement_left_in_the_one_file_plan_fails(self):
+        build("grow-plan", self.dest)
+        app = self.dest / "tides"
+        head = git(app, "rev-parse", "--short", "HEAD")
+        merge = git(app, "rev-parse", "--short", "HEAD^")
+        readme = GROWN_README.format(head=head, merge=merge, done_when=TIDE_REQUIREMENTS)
+        readme = readme.replace("- 2026-11-04 Added SRD.md: the `--max-age` flag is a public contract.\n", "")
+        (app / ONE_FILE_PLAN).write_text(readme, encoding="utf-8", newline="\n")
+        expected = [f"{GROWN}: the one-file plan tides/{ONE_FILE_PLAN} is still there"]
+        self.assertEqual(check(self.dest)["violations"], expected)
+
+    def test_grow_plan_requirement_also_in_done_when_fails(self):
+        self.assert_grow_plan_violation(
+            f"## Done when does not hold only {DONE_WHEN_LINE!r}",
+            done_when=f"{DONE_WHEN_LINE}\n\n{TIDE_REQUIREMENTS}",
+        )
+
+    def test_grow_plan_without_the_log_line_fails(self):
+        def drop_log_line(text: str) -> str:
+            return text.replace("- 2026-11-04 Added SRD.md: the `--max-age` flag is a public contract.\n", "")
+
+        self.assert_grow_plan_violation(
+            "no dated ## Log line holds 'SRD.md'", change_readme=drop_log_line
+        )
+
+    def test_grow_plan_new_requirement_without_a_check_fails(self):
+        def drop_check(text: str) -> str:
+            return text.replace("| `python -m unittest tests.test_cli` → passes |", "| |")
+
+        self.assert_grow_plan_violation(
+            "no requirement row with a check in SRD.md holds '--max-age'", change_srd=drop_check
+        )
+
+    def test_grow_plan_format_finding_fails(self):
+        def add_lifecycle(text: str) -> str:
+            return text.replace("requirements\n\n", "requirements\n\n- Lifecycle: Draft\n\n", 1)
+
+        self.assert_grow_plan_violation(
+            f"format check: {GROWN}/SRD.md:3: Phases: Lifecycle line outside the README;"
+            " status lives in its ## Current Work and ## Phases",
+            change_srd=add_lifecycle,
         )
 
     def test_plan_in_other_repo(self):

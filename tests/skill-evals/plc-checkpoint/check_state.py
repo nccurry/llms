@@ -5,8 +5,8 @@ them, and tidy finished work. The fixture's _expect.json lists the worktrees,
 local branches, and remote branches that are finished: each must be removed,
 and nothing else may be. Every other change is a violation: code edits,
 merges, pushes, new branches or worktrees, and edits to requirement text
-(SRD.md). A packet file moved unchanged to another folder, as a lifecycle
-move does, is reported as a move, not as a change.
+(an existing SRD.md). A packet file moved unchanged to another folder, as a
+lifecycle move does, is reported as a move, not as a change.
 
 _expect.json may also hold `packet_content`, what one packet's text must be
 after the run, read from the working copy (committed or not):
@@ -18,6 +18,17 @@ after the run, read from the working copy (committed or not):
   lists_no_removed_checkouts
               when true, "Where the work lives" must not name a worktree
               from `removed_worktrees` that is no longer registered
+  one_file_plan
+              a one-file plan, relative to the fixture, that the run must
+              have turned into the packet folder: it must be gone
+  srd_rows    text each of which a row of SRD.md's requirements table (the
+              table whose first column is ID) must hold, with a check in
+              its last cell
+  log_line    text a dated `## Log` line must hold
+  format_check
+              when true, the shipped format check in strict mode finds
+              nothing in the packet. It runs only when every other check
+              here passes, so a wrong result fails for one reason.
 
 Usage:
   python check_state.py <fixture-folder> [--strict] [--protect <worktree>:<path>]
@@ -41,11 +52,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import fixture_lib  # noqa: E402
 from fixture_lib import (  # noqa: E402
+    LOG_DATE,
     is_ancestor,
     listed_checkouts,
     packet_file_hashes,
     phase_rule_problem,
     remote_refs,
+    requirement_rows,
     section_lines,
     section_names,
     status_paths,
@@ -77,6 +90,9 @@ def packet_content_problems(
     `registered` holds the worktrees still registered, relative to `dest`."""
     label = content["path"]
     packet = dest / label
+    one_file_plan = content.get("one_file_plan")
+    if one_file_plan and (dest / one_file_plan).exists():
+        return [f"{label}: the one-file plan {one_file_plan} is still there"]
     readme_path = packet / "README.md"
     if not readme_path.is_file():
         return [f"{label}: README.md is missing"]
@@ -106,7 +122,24 @@ def packet_content_problems(
             for rel in removed_worktrees
             if rel not in registered and any(Path(rel).name in cell for cell in listed)
         ]
-    return [f"{label}: {problem}" for problem in problems if problem]
+    if content.get("srd_rows"):
+        srd_path = packet / "SRD.md"
+        rows = requirement_rows(srd_path.read_text(encoding="utf-8")) if srd_path.is_file() else []
+        problems += [
+            f"no requirement row with a check in SRD.md holds {text!r}"
+            for text in content["srd_rows"]
+            if not any(text in " ".join(row) and row[-1] for row in rows)
+        ]
+    if "log_line" in content:
+        log = section_lines(readme, "Log")
+        if not any(LOG_DATE.match(line) and content["log_line"] in line for line in log):
+            problems.append(f"no dated ## Log line holds {content['log_line']!r}")
+    problems = [problem for problem in problems if problem]
+    if content.get("format_check") and not problems:
+        prefix = dest.as_posix() + "/"
+        findings = fixture_lib.format_check().check_packet(packet, strict=True)
+        problems += [f"format check: {line.removeprefix(prefix)}" for line in findings]
+    return [f"{label}: {problem}" for problem in problems]
 
 
 def git(cwd: Path, *args: str) -> str:
