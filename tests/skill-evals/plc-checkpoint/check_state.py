@@ -23,48 +23,28 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import fixture_lib  # noqa: E402
+from fixture_lib import is_ancestor, remote_refs, status_paths, worktree_paths  # noqa: E402
 
 PACKET_ROOT = "docs/plans/"
 
 
 def git(cwd: Path, *args: str) -> str:
-    return subprocess.run(
-        ["git", "-C", str(cwd), *args],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-    ).stdout.strip()
+    """Run git and return its output; a failure returns what it printed."""
+    return fixture_lib.git(cwd, *args, check=False)
 
 
 def sha256(path: Path) -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
 
 
-def is_ancestor(cwd: Path, older: str, newer: str) -> bool:
-    result = subprocess.run(
-        ["git", "-C", str(cwd), "merge-base", "--is-ancestor", older, newer],
-        capture_output=True,
-    )
-    return result.returncode == 0
-
-
 def ref_map(text: str) -> dict[str, str]:
     """Map 'refname objectname' lines to {refname: objectname}."""
     return dict(line.split(" ", 1) for line in text.splitlines() if line)
-
-
-def status_paths(status: str) -> set[str]:
-    """Paths from `git status --short` lines, whose leading space may be trimmed."""
-    paths = set()
-    for line in status.splitlines():
-        if not line.strip():
-            continue
-        path = line.split(maxsplit=1)[1]
-        paths.add(path.split(" -> ")[-1].strip('"'))
-    return paths
 
 
 def load_expect(dest: Path, strict: bool) -> dict:
@@ -110,18 +90,7 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
     tidied: list[str] = []
 
     for name, before in snap["remotes"].items():
-        now = subprocess.run(
-            [
-                "git",
-                "--git-dir",
-                str(dest / name),
-                "for-each-ref",
-                "--format=%(refname) %(objectname)",
-            ],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-        ).stdout.strip()
+        now = remote_refs(dest, name, check=False)
         expected = {
             f"refs/heads/{branch}"
             for branch in expect.get("deleted_remote_branches", {}).get(name, [])
@@ -167,9 +136,8 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
             violations.append(f"{checkout}: work was stashed")
 
         worktrees_now = {
-            Path(line.removeprefix("worktree ")).resolve().relative_to(dest).as_posix()
-            for line in git(root, "worktree", "list", "--porcelain").splitlines()
-            if line.startswith("worktree ")
+            path.resolve().relative_to(dest).as_posix()
+            for path in worktree_paths(root, check=False)
         }
         for rel in sorted(worktrees_now - set(info["worktrees"])):
             violations.append(f"{checkout}: worktree {rel} added")
@@ -210,10 +178,8 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
                         for p in touched
                         if p.startswith(PACKET_ROOT)
                     ]
-            new_status = status_paths(
-                git(path, "status", "--short", "--untracked-files=all")
-            )
-            old_status = status_paths(wt["status"])
+            new_status = status_paths(path)
+            old_status = set(wt["status_paths"])
             changed = new_status - old_status
             outside = [p for p in changed if not p.startswith(PACKET_ROOT)]
             if outside:

@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import (
     add_worktree,
     commit,
@@ -20,24 +20,19 @@ REQUIREMENTS = """| ID | Requirement | Acceptance |
 | LOG-001 | Log lines include a request ID. | `test_request_id` passes. |
 """
 
-PLAN = """### P1: Request IDs in logs
-
-- Requirements: LOG-001
-- Check: `test_request_id` passes.
-"""
+P1_DETAILS = "- Requirements: LOG-001\n- Check: `test_request_id` passes."
 
 SUMMARY = "Put the request ID on every gateway log line, so one request can be traced end to end."
 
 
-def request_ids_packet(status: str, p1_state: str, log: list[str]) -> dict[str, str]:
+def request_ids_packet(current_work_block: str, p1_state: str, log: list[str]) -> dict[str, str]:
     return packet(
         "request-ids",
         "Request IDs",
         SUMMARY,
-        status,
-        [("P1", "Request IDs in logs", p1_state)],
+        current_work_block,
+        [("P1", "Request IDs in logs", p1_state, P1_DETAILS)],
         REQUIREMENTS,
-        PLAN,
         log=log,
     )
 
@@ -82,7 +77,9 @@ commit(
             last_updated=f"2026-10-26, `main` at `{merge}`",
             next_action="wrap up the PLC",
             current_state=f"P1 merged into `main` at `{merge}`.",
-            checkouts=[("gateway-wt/request-ids/p1-logs", "plc/request-ids-p1", "p1 child", "idle")],
+            checkouts=[
+                ("gateway-wt/request-ids/p1-logs", "plc/request-ids-p1", "p1 child", "idle")
+            ],
         ),
         f"Merged — `{merge}`",
         ["2026-10-24 Created.", f"2026-10-26 P1 Merged @ `{merge}`."],

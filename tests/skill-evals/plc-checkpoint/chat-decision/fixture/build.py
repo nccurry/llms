@@ -4,7 +4,7 @@ no longer meets SHOP-001 as written."""
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import (
     add_worktree,
     commit,
@@ -23,24 +23,22 @@ REQUIREMENTS = """| ID | Requirement | Acceptance |
 | SHOP-002 | Players can filter the shop by rarity. | `test_shop_filter` passes. |
 """
 
-PLAN = """### P1: Shop rows and filter
+P1_DETAILS = "- Requirements: SHOP-001, SHOP-002\n- Checks: `test_shop_row`, `test_shop_filter`"
 
-- Requirements: SHOP-001, SHOP-002
-- Checks: `test_shop_row`, `test_shop_filter`
-"""
+DECISION = (
+    "2026-10-21 Decision: rarity uses the existing color palette,"
+    " to match the inventory screen."
+)
 
-DECISION = "2026-10-21 Decision: rarity uses the existing color palette, to match the inventory screen."
 
-
-def shop_packet(status: str, p1_state: str, log: list[str]) -> dict[str, str]:
+def shop_packet(current_work_block: str, p1_state: str, log: list[str]) -> dict[str, str]:
     return packet(
         "shop",
         "Shop",
         "Add a shop screen where players see what is for sale and filter it by rarity.",
-        status,
-        [("P1", "Shop rows and filter", p1_state)],
+        current_work_block,
+        [("P1", "Shop rows and filter", p1_state, P1_DETAILS)],
         REQUIREMENTS,
-        PLAN,
         log=log,
     )
 
@@ -90,7 +88,9 @@ commit(
         current_work(
             last_updated=f"2026-10-27, `main` at `{merge}`",
             next_action="add the rarity filter (SHOP-002)",
-            current_state=f"Shop rows merged into `main` at `{merge}`. The rarity filter is not started.",
+            current_state=(
+                f"Shop rows merged into `main` at `{merge}`. The rarity filter is not started."
+            ),
         ),
         f"In progress — shop rows merged @ `{merge}`; `test_shop_row` passed",
         ["2026-10-20 Created.", DECISION, f"2026-10-27 P1 shop rows merged @ `{merge}`."],

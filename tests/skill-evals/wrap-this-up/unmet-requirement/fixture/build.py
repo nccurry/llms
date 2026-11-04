@@ -11,10 +11,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from digest_fixture import build, expect  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plc-checkpoint"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import destination  # noqa: E402
 
 README = "docs/plans/digest/README.md"
+SRD = "docs/plans/digest/SRD.md"
 
 dest = destination()
 tips = build(dest, "unmet")
@@ -26,7 +27,9 @@ expect(
     deleted_remote_branches=["plc/digest-p1"],
     remote_files=[README],
     absent_remote_files=["docs/plans/completed/digest/README.md"],
-    remote_text={README: ["- Owner: @alex"]},
+    # The README starts with no mention of DIG-003, so naming it shows the gap
+    # was recorded; SRD.md must still list it.
+    remote_text={README: ["- Owner: @alex", "DIG-003"], SRD: ["DIG-003"]},
     absent_remote_text={README: ["- Status: Complete", "Historical record as of"]},
 )
 print(dest)

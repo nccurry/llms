@@ -5,9 +5,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-CASES = Path(__file__).resolve().parent / "skill-evals" / "wrap-this-up"
-sys.path.insert(0, str(CASES.parent / "plc-checkpoint"))
-from fixture_lib import packet_shape_problems  # noqa: E402
+EVALS = Path(__file__).resolve().parent / "skill-evals"
+CASES = EVALS / "wrap-this-up"
+sys.path.insert(0, str(EVALS))
+from fixture_lib import GIT_ENV, git, packet_shape_problems  # noqa: E402
 
 ALL_CASES = [
     "direct-mid-stream",
@@ -18,6 +19,12 @@ ALL_CASES = [
     "near-miss-status",
 ]
 PLAN = "docs/plans/digest"
+COMPLETED = "docs/plans/completed/digest"
+P1_WORKTREE = "notify-wt/digest/p1-email"
+P2_WORKTREE = "notify-wt/digest/p2-slack"
+# complete-moves-plan's check that the historical-record line opens Current Work.
+HISTORICAL = "## Current Work\n\nHistorical record as of"
+OK = {"ok": True, "failures": []}
 
 
 def build(case: str, dest: Path) -> None:
@@ -25,21 +32,21 @@ def build(case: str, dest: Path) -> None:
         [sys.executable, str(CASES / case / "fixture" / "build.py"), str(dest)],
         check=True,
         capture_output=True,
+        env=GIT_ENV,
     )
 
 
-def git(cwd: Path, *args: str, check: bool = True) -> str:
-    return subprocess.run(
-        ["git", "-C", str(cwd), *args],
-        check=check,
+def tests_pass(cwd: Path) -> bool:
+    # Bytecode writing stays on, as on most machines; the fixture's .gitignore
+    # must keep the checkout clean anyway.
+    env = {key: value for key, value in GIT_ENV.items() if key != "PYTHONDONTWRITEBYTECODE"}
+    result = subprocess.run(
+        [sys.executable, "run_tests.py"],
+        cwd=cwd,
         capture_output=True,
         text=True,
-    ).stdout.strip()
-
-
-def tests_pass(cwd: Path) -> bool:
-    result = subprocess.run(
-        [sys.executable, "run_tests.py"], cwd=cwd, capture_output=True, text=True
+        encoding="utf-8",
+        env=env,
     )
     return result.returncode == 0
 
@@ -49,57 +56,100 @@ def check(dest: Path) -> dict:
         [sys.executable, str(CASES / "check_wrap.py"), str(dest)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        env=GIT_ENV,
     )
     return json.loads(result.stdout)
 
 
 class WrapThisUpFixtureTest(unittest.TestCase):
-    """Each fixture must set up the situation its grader expects."""
+    """Each fixture must set up the situation its grader expects, and
+    check_wrap.py must pass a correct result and name what a wrong one broke."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.dest = Path(self.tmp.name) / "fixture"
         self.app = self.dest / "notify"
-        self.p1 = self.dest / "notify-wt" / "digest" / "p1-email"
-        self.p2 = self.dest / "notify-wt" / "digest" / "p2-slack"
+        self.p1 = self.dest / P1_WORKTREE
+        self.p2 = self.dest / P2_WORKTREE
 
     def tearDown(self):
         self.tmp.cleanup()
 
-    def merge_into_p2(self) -> None:
-        git(self.p2, "-c", "user.name=x", "-c", "user.email=x@x", "merge", "-q",
-            "--no-edit", "plc/digest-p1")
+    def build(self, case: str) -> None:
+        build(case, self.dest)
+        self.p1_tip = git(self.p1, "rev-parse", "HEAD")
+        self.p2_tip = git(self.p2, "rev-parse", "HEAD") if self.p2.exists() else None
 
-    def edit_readme(self, folder: str, old: str, new: str) -> None:
-        readme = self.app / folder / "README.md"
-        text = readme.read_text(encoding="utf-8")
-        self.assertIn(old, text)
-        readme.write_text(text.replace(old, new, 1), encoding="utf-8", newline="\n")
-
-    def merge_p1_and_clean_up(self) -> str:
-        """Merge P1 into main and remove its worktree and branches; return the merge commit."""
-        git(self.app, "merge", "-q", "--no-ff", "plc/digest-p1", "-m", "Merge P1")
-        git(self.app, "worktree", "remove", str(self.p1))
-        git(self.app, "branch", "-D", "plc/digest-p1")
-        git(self.app, "push", "-q", "origin", "--delete", "plc/digest-p1")
+    def merge(self, *branches: str) -> str:
+        """Merge branches into main; return the last merge commit."""
+        for branch in branches:
+            git(self.app, "merge", "-q", "--no-ff", branch, "-m", f"Merge {branch}")
         return git(self.app, "rev-parse", "--short", "HEAD")
 
+    def merge_p1_into_p2(self) -> None:
+        git(self.p2, "merge", "-q", "--no-edit", "plc/digest-p1")
+
+    def remove(self, worktree: Path, branch: str, on_remote: bool = False) -> None:
+        git(self.app, "worktree", "remove", str(worktree))
+        git(self.app, "branch", "-D", branch)
+        if on_remote:
+            git(self.app, "push", "-q", "origin", "--delete", branch)
+
+    def push(self) -> None:
+        git(self.app, "push", "-q", "origin", "main")
+
+    def replace_in(self, relative: str, old: str, new: str) -> None:
+        path = self.app / relative
+        text = path.read_text(encoding="utf-8")
+        self.assertIn(old, text)
+        path.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
+
+    def edit_readme(self, old: str, new: str) -> None:
+        self.replace_in(f"{PLAN}/README.md", old, new)
+
+    def commit_plan(self, message: str) -> None:
+        git(self.app, "commit", "-qam", message)
+        self.push()
+
     def complete_the_plan(self, merge: str) -> None:
-        """Mark the plan Complete with P1 Verified, and move it to completed/."""
-        self.edit_readme(PLAN, "- Status: In progress", "- Status: Complete")
+        """Mark the plan Complete with P1 Verified, move it to completed/, and
+        update AGENTS.md's link to it."""
         self.edit_readme(
-            PLAN,
+            "## Current Work\n\n",
+            f"## Current Work\n\nHistorical record as of `{merge}`;"
+            " the code is the current truth.\n\n",
+        )
+        self.edit_readme("- Status: In progress", "- Status: Complete")
+        self.edit_readme(
             "- Current state: Work in progress in the worktrees below; nothing merged yet.",
-            f"- Current state: P1 merged and verified. Historical record as of `{merge}`;"
-            " the code is the current truth.",
+            f"- Current state: P1 merged and verified @ `{merge}`.",
         )
         self.edit_readme(
-            PLAN, "| In progress |", f"| Verified — run_tests.py → 2 passed @ `{merge}` |"
+            "| In progress |", f"| Verified — run_tests.py → 2 passed @ `{merge}` |"
         )
         (self.app / "docs/plans/completed").mkdir()
-        git(self.app, "mv", PLAN, "docs/plans/completed/digest")
-        git(self.app, "commit", "-qam", "docs(plan): digest complete")
-        git(self.app, "push", "-q", "origin", "main")
+        git(self.app, "mv", PLAN, COMPLETED)
+        self.replace_in("AGENTS.md", f"{PLAN}/README.md", f"{COMPLETED}/README.md")
+        self.commit_plan("docs(plan): digest complete")
+
+    def finish_p1(self) -> str:
+        """Merge P1, push, and remove its worktree and branches; return the merge."""
+        merge = self.merge("plc/digest-p1")
+        self.push()
+        self.remove(self.p1, "plc/digest-p1", on_remote=True)
+        return merge
+
+    def correct_mid_stream(self) -> None:
+        self.merge("plc/digest-p1", "plc/digest-p2")
+        self.push()
+        self.remove(self.p1, "plc/digest-p1", on_remote=True)
+        self.remove(self.p2, "plc/digest-p2")
+
+    def assert_failures(self, expected: list[str]) -> None:
+        self.assertEqual(check(self.dest)["failures"], expected)
+
+    # The fixtures.
 
     def test_every_packet_has_the_shared_shape(self):
         for case in ALL_CASES:
@@ -112,76 +162,37 @@ class WrapThisUpFixtureTest(unittest.TestCase):
                     (packet / "IMPLEMENTATION_PLAN.md").read_text(encoding="utf-8"),
                 )
                 self.assertEqual(problems, [])
+                agents = (dest / "notify" / "AGENTS.md").read_text(encoding="utf-8")
+                self.assertIn(f"({PLAN}/README.md)", agents)
 
     def test_each_branch_passes_alone_and_together(self):
-        build("direct-mid-stream", self.dest)
+        self.build("direct-mid-stream")
         for checkout in (self.app, self.p1, self.p2):
             self.assertTrue(tests_pass(checkout), checkout)
-        self.merge_into_p2()
+            self.assertEqual(git(checkout, "status", "--porcelain"), "", checkout)
+        self.merge_p1_into_p2()
         self.assertTrue(tests_pass(self.p2))
 
     def test_failing_checks_fail_only_when_combined(self):
-        build("failing-checks", self.dest)
+        self.build("failing-checks")
         self.assertTrue(tests_pass(self.p1))
         self.assertTrue(tests_pass(self.p2))
-        self.merge_into_p2()
+        self.merge_p1_into_p2()
         self.assertFalse(tests_pass(self.p2))
 
     def test_active_agent_lock(self):
-        build("active-agent", self.dest)
+        self.build("active-agent")
         self.assertIn("locked", git(self.app, "worktree", "list", "--porcelain"))
 
-    def test_untouched_fixture_fails_merge_cases(self):
-        build("direct-mid-stream", self.dest)
-        self.assertFalse(check(self.dest)["ok"])
-
-    def test_untouched_fixture_passes_cases_that_merge_nothing(self):
-        for case in ("failing-checks", "near-miss-status"):
-            with self.subTest(case=case):
-                dest = Path(self.tmp.name) / case
-                build(case, dest)
-                self.assertTrue(check(dest)["ok"])
-
-    def test_correct_wrap_up_passes(self):
-        build("complete-moves-plan", self.dest)
-        self.complete_the_plan(self.merge_p1_and_clean_up())
-        report = check(self.dest)
-        self.assertTrue(report["ok"], report)
-
-    def test_completing_without_the_historical_record_line_fails(self):
-        build("complete-moves-plan", self.dest)
-        self.merge_p1_and_clean_up()
-        self.edit_readme(PLAN, "- Status: In progress", "- Status: Complete")
-        (self.app / "docs/plans/completed").mkdir()
-        git(self.app, "mv", PLAN, "docs/plans/completed/digest")
-        git(self.app, "commit", "-qam", "docs(plan): digest complete")
-        git(self.app, "push", "-q", "origin", "main")
-        failures = check(self.dest)["failures"]
-        self.assertTrue(any("Historical record as of" in f for f in failures), failures)
-
-    def test_dropping_the_owner_fails(self):
-        build("direct-mid-stream", self.dest)
-        git(self.app, "merge", "-q", "--no-ff", "plc/digest-p1", "-m", "Merge P1")
-        git(self.app, "merge", "-q", "--no-ff", "plc/digest-p2", "-m", "Merge P2")
-        self.edit_readme(PLAN, "- Owner: @alex", "- Owner: the user")
-        git(self.app, "commit", "-qam", "docs(plan): rewrite Current Work")
-        git(self.app, "push", "-q", "origin", "main")
-        for worktree in (self.p1, self.p2):
-            git(self.app, "worktree", "remove", str(worktree))
-        git(self.app, "branch", "-D", "plc/digest-p1", "plc/digest-p2")
-        git(self.app, "push", "-q", "origin", "--delete", "plc/digest-p1")
-        failures = check(self.dest)["failures"]
-        self.assertEqual(
-            failures, ["docs/plans/digest/README.md on origin/main lacks '- Owner: @alex'"]
-        )
-
     def test_unmet_requirement_fixture(self):
-        build("unmet-requirement", self.dest)
+        self.build("unmet-requirement")
         srd = (self.app / PLAN / "SRD.md").read_text(encoding="utf-8")
         self.assertIn("DIG-003", srd)
         self.assertIn("test_email_footer", srd)
         plan = (self.app / PLAN / "IMPLEMENTATION_PLAN.md").read_text(encoding="utf-8")
         self.assertIn("DIG-001, DIG-003", plan)
+        readme = (self.app / PLAN / "README.md").read_text(encoding="utf-8")
+        self.assertNotIn("DIG-003", readme)
         self.assertFalse(self.p2.exists())
         # P1 passes its tests, but nothing implements or tests the footer.
         self.assertTrue(tests_pass(self.p1))
@@ -190,41 +201,209 @@ class WrapThisUpFixtureTest(unittest.TestCase):
             "--", "src", "tests", check=False,
         )
         self.assertEqual(found, "")
-        self.assertFalse(check(self.dest)["ok"])
 
-    def test_completing_with_an_unmet_requirement_fails(self):
-        build("unmet-requirement", self.dest)
-        self.complete_the_plan(self.merge_p1_and_clean_up())
-        failures = check(self.dest)["failures"]
-        self.assertIn(
-            "docs/plans/completed/digest/README.md should not be on origin/main", failures
+    # Untouched fixtures.
+
+    def test_untouched_fixture_fails_merge_cases(self):
+        self.build("direct-mid-stream")
+        self.assert_failures(
+            [
+                f"{self.p1_tip[:7]} is not on origin/main",
+                f"{self.p2_tip[:7]} is not on origin/main",
+                f"worktree {P1_WORKTREE} still exists",
+                f"worktree {P2_WORKTREE} still exists",
+                "local branch plc/digest-p1 still exists",
+                "local branch plc/digest-p2 still exists",
+                "remote branch plc/digest-p1 still exists",
+            ]
         )
 
+    def test_untouched_fixture_passes_cases_that_merge_nothing(self):
+        for case in ("failing-checks", "near-miss-status"):
+            with self.subTest(case=case):
+                dest = Path(self.tmp.name) / case
+                build(case, dest)
+                self.assertEqual(check(dest), OK)
+
+    # Correct results pass.
+
+    def test_correct_mid_stream_result_passes(self):
+        self.build("direct-mid-stream")
+        self.correct_mid_stream()
+        self.assertEqual(check(self.dest), OK)
+
+    def test_correct_wrap_up_passes(self):
+        self.build("complete-moves-plan")
+        self.complete_the_plan(self.finish_p1())
+        self.assertEqual(check(self.dest), OK)
+        readme = (self.app / COMPLETED / "README.md").read_text(encoding="utf-8")
+        plan = (self.app / COMPLETED / "IMPLEMENTATION_PLAN.md").read_text(encoding="utf-8")
+        self.assertEqual(packet_shape_problems(readme, plan), [])
+
+    def test_correct_active_agent_result_passes(self):
+        self.build("active-agent")
+        self.finish_p1()
+        self.assertEqual(check(self.dest), OK)
+
     def test_keeping_an_unmet_requirement_open_passes(self):
-        build("unmet-requirement", self.dest)
-        merge = self.merge_p1_and_clean_up()
+        self.build("unmet-requirement")
+        merge = self.finish_p1()
         self.edit_readme(
-            PLAN,
             "| In progress |",
             f"| Merged — `{merge}`; DIG-003 footer and `test_email_footer` missing |",
         )
         self.edit_readme(
-            PLAN,
-            "## Packet",
+            "## Log",
             "## Open questions\n\n"
-            "- Open question: finish DIG-003 or drop it? (waits on @alex)\n\n## Packet",
+            "- Open question: finish DIG-003 or drop it? (waits on @alex)\n\n## Log",
         )
-        git(self.app, "commit", "-qam", "docs(plan): P1 merged; DIG-003 open")
-        git(self.app, "push", "-q", "origin", "main")
-        report = check(self.dest)
-        self.assertTrue(report["ok"], report)
+        self.commit_plan("docs(plan): P1 merged; DIG-003 open")
+        self.assertEqual(check(self.dest), OK)
 
-    def test_rewritten_main_fails_the_checker(self):
-        build("near-miss-status", self.dest)
+    # One wrong result per expectation; each names exactly what it broke.
+
+    def test_unmerged_branch_fails(self):
+        self.build("direct-mid-stream")
+        self.finish_p1()
+        self.remove(self.p2, "plc/digest-p2")
+        self.assert_failures([f"{self.p2_tip[:7]} is not on origin/main"])
+
+    def test_merging_locked_work_fails(self):
+        self.build("active-agent")
+        self.merge("plc/digest-p2")
+        self.finish_p1()
+        self.assert_failures([f"{self.p2_tip[:7]} reached origin/main but must not have"])
+
+    def test_keeping_a_finished_worktree_fails(self):
+        self.build("complete-moves-plan")
+        merge = self.merge("plc/digest-p1")
+        self.push()
+        git(self.app, "push", "-q", "origin", "--delete", "plc/digest-p1")
+        self.complete_the_plan(merge)
+        self.assert_failures(
+            [f"worktree {P1_WORKTREE} still exists", "local branch plc/digest-p1 still exists"]
+        )
+
+    def test_keeping_a_finished_local_branch_fails(self):
+        self.build("complete-moves-plan")
+        merge = self.merge("plc/digest-p1")
+        self.push()
+        git(self.app, "worktree", "remove", str(self.p1))
+        git(self.app, "push", "-q", "origin", "--delete", "plc/digest-p1")
+        self.complete_the_plan(merge)
+        self.assert_failures(["local branch plc/digest-p1 still exists"])
+
+    def test_keeping_a_finished_remote_branch_fails(self):
+        self.build("complete-moves-plan")
+        merge = self.merge("plc/digest-p1")
+        self.push()
+        self.remove(self.p1, "plc/digest-p1")
+        self.complete_the_plan(merge)
+        self.assert_failures(["remote branch plc/digest-p1 still exists"])
+
+    def test_removing_unmerged_work_fails(self):
+        self.build("failing-checks")
+        self.remove(self.p2, "plc/digest-p2")
+        self.assert_failures(
+            [
+                f"worktree {P2_WORKTREE} was removed but must be kept",
+                "local branch plc/digest-p2 was deleted but must be kept",
+            ]
+        )
+
+    def test_unlocking_another_sessions_worktree_fails(self):
+        self.build("active-agent")
+        self.finish_p1()
+        git(self.app, "worktree", "unlock", str(self.p2))
+        self.assert_failures([f"worktree {P2_WORKTREE} lost its lock"])
+
+    def test_removing_a_locked_worktree_fails(self):
+        # Removing the locked worktree once crashed the checker.
+        self.build("active-agent")
+        self.finish_p1()
+        git(self.app, "worktree", "remove", "-f", "-f", str(self.p2))
+        self.assert_failures(
+            [
+                f"worktree {P2_WORKTREE} was removed but must be kept",
+                f"worktree {P2_WORKTREE} lost its lock",
+            ]
+        )
+
+    def test_deleting_the_plan_fails(self):
+        self.build("failing-checks")
+        self.merge("plc/digest-p1")
+        git(self.app, "rm", "-q", "-r", PLAN)
+        self.commit_plan("docs(plan): remove digest plan")
+        self.assert_failures([f"{PLAN}/README.md is missing on origin/main"])
+
+    def test_completing_with_an_unmet_requirement_fails(self):
+        self.build("unmet-requirement")
+        self.complete_the_plan(self.finish_p1())
+        self.assert_failures(
+            [
+                f"{COMPLETED}/README.md should not be on origin/main",
+                f"{PLAN}/README.md is missing on origin/main",
+                f"{PLAN}/SRD.md is missing on origin/main",
+            ]
+        )
+
+    def test_not_recording_an_unmet_requirement_fails(self):
+        self.build("unmet-requirement")
+        merge = self.finish_p1()
+        self.edit_readme("| In progress |", f"| Merged — `{merge}` |")
+        self.commit_plan("docs(plan): P1 merged")
+        self.assert_failures([f"{PLAN}/README.md on origin/main lacks 'DIG-003'"])
+
+    def test_dropping_the_owner_fails(self):
+        self.build("direct-mid-stream")
+        self.edit_readme("- Owner: @alex", "- Owner: the user")
+        git(self.app, "commit", "-qam", "docs(plan): rewrite Current Work")
+        self.correct_mid_stream()
+        self.assert_failures([f"{PLAN}/README.md on origin/main lacks '- Owner: @alex'"])
+
+    def test_marking_unfinished_work_complete_fails(self):
+        self.build("direct-mid-stream")
+        self.edit_readme("- Status: In progress", "- Status: Complete")
+        git(self.app, "commit", "-qam", "docs(plan): digest complete")
+        self.correct_mid_stream()
+        self.assert_failures(
+            [f"{PLAN}/README.md on origin/main must not contain '- Status: Complete'"]
+        )
+
+    def test_completing_without_the_historical_record_line_fails(self):
+        self.build("complete-moves-plan")
+        self.finish_p1()
+        self.edit_readme("- Status: In progress", "- Status: Complete")
+        (self.app / "docs/plans/completed").mkdir()
+        git(self.app, "mv", PLAN, COMPLETED)
+        self.replace_in("AGENTS.md", f"{PLAN}/README.md", f"{COMPLETED}/README.md")
+        self.commit_plan("docs(plan): digest complete")
+        self.assert_failures(
+            [
+                f"{COMPLETED}/README.md on origin/main lacks {HISTORICAL!r}",
+                f"{COMPLETED}/README.md on origin/main lacks 'the code is the current truth'",
+            ]
+        )
+
+    def test_leaving_a_stale_link_to_the_moved_plan_fails(self):
+        self.build("complete-moves-plan")
+        self.complete_the_plan(self.finish_p1())
+        self.replace_in("AGENTS.md", f"{COMPLETED}/README.md", f"{PLAN}/README.md")
+        self.commit_plan("docs: point at the old plan path")
+        self.assert_failures(
+            [
+                f"AGENTS.md on origin/main lacks '({COMPLETED}/README.md)'",
+                f"AGENTS.md on origin/main must not contain '({PLAN}/README.md)'",
+            ]
+        )
+
+    def test_rewritten_main_fails(self):
+        self.build("near-miss-status")
         git(self.app, "commit", "-q", "--amend", "-m", "rewritten")
         git(self.app, "push", "-q", "--force", "origin", "main")
-        failures = check(self.dest)["failures"]
-        self.assertTrue(any("rewritten" in f for f in failures))
+        self.assert_failures(
+            ["origin/main was rewritten: its old tip is no longer in its history"]
+        )
 
 
 if __name__ == "__main__":

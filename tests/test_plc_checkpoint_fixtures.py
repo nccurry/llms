@@ -5,9 +5,16 @@ import tempfile
 import unittest
 from pathlib import Path
 
-CASES = Path(__file__).resolve().parent / "skill-evals" / "plc-checkpoint"
-sys.path.insert(0, str(CASES))
-from fixture_lib import packet_shape_problems  # noqa: E402
+EVALS = Path(__file__).resolve().parent / "skill-evals"
+CASES = EVALS / "plc-checkpoint"
+sys.path.insert(0, str(EVALS))
+from fixture_lib import (  # noqa: E402
+    GIT_ENV,
+    git,
+    heading_anchor,
+    is_ancestor,
+    packet_shape_problems,
+)
 
 # Cases whose packets use the shared PLC template. ad-hoc has no packet, and
 # old-shape keeps an older shape on purpose.
@@ -24,30 +31,80 @@ SHARED_SHAPE_CASES = [
     "near-miss-wrap-up",
 ]
 
+# The old-shape packet after a correct conversion and status update. The
+# conversion only moves lines and renames keys: `Blockers: none` becomes
+# `Blocker: none`, value unchanged. The status update then sets Last updated,
+# Next action, Current state and P1's row, adds the template's missing
+# `Depends on` key and the "Where the work lives" table, and adds a Log line
+# for P1's change after the conversion's line.
+CONVERTED_OLD_SHAPE_README = """# Audit log PLC
 
-def build(case: str, dest: Path) -> None:
+Record who changed each berth booking, so support can answer "who changed
+this?" without reading server logs.
+
+## Current Work
+
+- Status: In progress
+- Owner: @alex
+- Last updated: 2026-11-03, `main` at `{merge}`
+- Next action: start P2
+- Blocker: none
+- Depends on: None
+- Current state: P1 merged into `main` at `{merge}`. P2 not started.
+
+Where the work lives:
+
+| Checkout | Branch | Owner | State |
+| --- | --- | --- | --- |
+| None | | | |
+
+## Phases
+
+| Phase | Name | Requirements | Status |
+| --- | --- | --- | --- |
+| P1 | Record changes | AUD-001 | Merged — `{merge}` |
+| P2 | Audit command | AUD-002 | Not started |
+
+## Summary
+
+The record is written in the same transaction as the booking change.
+
+## Packet
+
+- [SRD.md](SRD.md)
+- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
+
+## Log
+
+- 2026-10-20 Created.
+- 2026-11-03 Converted to the shared PLC template (format only).
+- 2026-11-03 P1 Merged @ `{merge}`.
+"""
+
+
+def build(case: str, dest: Path, env: dict[str, str] = GIT_ENV) -> None:
     subprocess.run(
         [sys.executable, str(CASES / case / "fixture" / "build.py"), str(dest)],
         check=True,
         capture_output=True,
+        env=env,
     )
 
 
-def git(cwd: Path, *args: str) -> str:
-    return subprocess.run(
-        ["git", "-C", str(cwd), *args],
-        check=True,
+def check(dest: Path, *args: str) -> dict:
+    result = subprocess.run(
+        [sys.executable, str(CASES / "check_state.py"), str(dest), *args],
         capture_output=True,
         text=True,
-    ).stdout.strip()
-
-
-def is_ancestor(cwd: Path, commit: str, ref: str) -> bool:
-    result = subprocess.run(
-        ["git", "-C", str(cwd), "merge-base", "--is-ancestor", commit, ref],
-        capture_output=True,
+        encoding="utf-8",
+        env=GIT_ENV,
     )
-    return result.returncode == 0
+    return json.loads(result.stdout)
+
+
+def phase_row(phase: str, name: str) -> str:
+    """The start of a fixture's `## Phases` row, up to its State cell."""
+    return f"| {phase} | [{name}](IMPLEMENTATION_PLAN.md#{heading_anchor(f'{phase}: {name}')}) | | "
 
 
 class PlcCheckpointFixtureTest(unittest.TestCase):
@@ -79,18 +136,32 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
                     )
                     self.assertEqual(problems, [])
 
+    def test_fixture_git_ignores_the_developers_git_config(self):
+        # A global config that breaks every commit: signing with a key that
+        # does not exist. Fixture git must not read it.
+        home = Path(self.tmp.name) / "home"
+        home.mkdir()
+        config = home / ".gitconfig"
+        config.write_text(
+            "[commit]\n\tgpgsign = true\n[user]\n\tsigningkey = no-such-key\n",
+            encoding="utf-8",
+        )
+        hostile = {**GIT_ENV, "HOME": str(home), "GIT_CONFIG_GLOBAL": str(config)}
+        build("dirty-finished", self.dest, env=hostile)
+        self.assertTrue((self.dest / "inbox" / "docs/plans/filters/README.md").is_file())
+
     def test_packet_drift(self):
         build("packet-drift", self.dest)
         app = self.dest / "billing"
         worktree = self.dest / "billing-wt" / "invoice-export" / "p1-csv"
         readme = "docs/plans/invoice-export/README.md"
-        self.assertIn(
-            "| P1 | CSV export | | Planned |", (app / readme).read_text(encoding="utf-8")
-        )
-        self.assertIn(
-            "| P1 | CSV export | | Implemented — ",
-            (worktree / readme).read_text(encoding="utf-8"),
-        )
+        main_copy = (app / readme).read_text(encoding="utf-8")
+        worktree_copy = (worktree / readme).read_text(encoding="utf-8")
+        self.assertIn(phase_row("P1", "CSV export") + "Planned |", main_copy)
+        self.assertIn(phase_row("P1", "CSV export") + "Implemented — ", worktree_copy)
+        # Both copies come from the same packet, created on the same day.
+        self.assertIn("- 2026-10-24 Created.", main_copy)
+        self.assertIn("- 2026-10-24 Created.", worktree_copy)
         self.assertFalse(is_ancestor(app, "plc/invoice-export-p1", "main"))
         self.assertEqual(git(worktree, "status", "--short"), "")
 
@@ -101,9 +172,9 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertTrue(is_ancestor(app, "plc/search-p1", "origin/main"))
         self.assertFalse(is_ancestor(app, "plc/search-p1", "main"))
         readme = "docs/plans/search/README.md"
-        row = "| P1 | Case-insensitive search | "
-        self.assertIn(f"{row}| In progress |", (app / readme).read_text(encoding="utf-8"))
-        self.assertIn(f"{row}| Merged — ", git(app, "show", f"origin/main:{readme}"))
+        row = phase_row("P1", "Case-insensitive search")
+        self.assertIn(f"{row}In progress |", (app / readme).read_text(encoding="utf-8"))
+        self.assertIn(f"{row}Merged — ", git(app, "show", f"origin/main:{readme}"))
 
     def test_chat_decision(self):
         build("chat-decision", self.dest)
@@ -122,7 +193,7 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         readme = (app / "docs/plans/shop/README.md").read_text(encoding="utf-8")
         self.assertIn("Decision: rarity uses the existing color palette", readme)
         self.assertNotIn("Open question", readme)
-        self.assertIn("| P1 | Shop rows and filter | | In progress — ", readme)
+        self.assertIn(phase_row("P1", "Shop rows and filter") + "In progress — ", readme)
 
     def test_cross_repo_wait(self):
         build("cross-repo-wait", self.dest)
@@ -140,7 +211,7 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         )
         self.assertIn("- Status: Blocked", readme)
         self.assertIn("- Depends on: timekit TK-7", readme)
-        self.assertIn("| P2 | Durations | | Blocked — ", readme)
+        self.assertIn(phase_row("P2", "Durations") + "Blocked — ", readme)
 
     def test_near_miss_wrap_up(self):
         build("near-miss-wrap-up", self.dest)
@@ -156,7 +227,7 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertFalse(is_ancestor(app, "plc/reconcile-p1", "main"))
         readme = git(app, "show", "plc/reconcile:docs/plans/reconcile/README.md")
         self.assertIn("- Last updated: 2026-10-26", readme)
-        self.assertIn("| P1 | Match lines | | In progress |", readme)
+        self.assertIn(phase_row("P1", "Match lines") + "In progress |", readme)
         self.assertIn("- Owner: @alex", readme)
         self.assertIn("- Replaces: `docs/plans/archived/bank-match/`", readme)
         self.assertIn(
@@ -191,19 +262,20 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertIn("needs exactly one ## Current Work, directly after the summary", problems)
         self.assertTrue(any("phase state table outside the README" in p for p in problems))
         self.assertIn("\nStatus: In progress\n", readme)
+        self.assertIn("- Blockers: none\n", readme)
         self.assertIn("- Created: 2026-10-20", readme)
         self.assertNotIn("Status", (packet / "SRD.md").read_text(encoding="utf-8"))
         self.assertTrue(is_ancestor(app, "plc/audit-log-p1", "origin/main"))
         self.assertEqual(git(worktree, "status", "--short"), "")
 
-    def test_old_shape_moved_and_updated_passes(self):
+    def test_old_shape_converted_and_updated_passes(self):
         """The result the old-shape grader expects passes the checker and the shape check."""
         build("old-shape", self.dest)
         app = self.dest / "marina"
         packet = app / "docs/plans/audit-log"
         merge = git(app, "rev-parse", "--short", "HEAD")
         (packet / "README.md").write_text(
-            MOVED_OLD_SHAPE_README.format(merge=merge), encoding="utf-8", newline="\n"
+            CONVERTED_OLD_SHAPE_README.format(merge=merge), encoding="utf-8", newline="\n"
         )
         plan = (packet / "IMPLEMENTATION_PLAN.md").read_text(encoding="utf-8")
         plan = plan.replace("Lifecycle status: In progress\n\n", "")
@@ -226,7 +298,7 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertIn("`../plans`", (api / "AGENTS.md").read_text(encoding="utf-8"))
         self.assertFalse((api / "docs").exists())
         readme = (plans / "docs/plans/sync-api/README.md").read_text(encoding="utf-8")
-        self.assertIn("| P1 | Sync endpoint | | Planned |", readme)
+        self.assertIn(phase_row("P1", "Sync endpoint") + "Planned |", readme)
         self.assertFalse(is_ancestor(api, "plc/sync-api-p1", "main"))
         snapshot = json.loads((self.dest / "_snapshot.json").read_text(encoding="utf-8"))
         self.assertEqual(sorted(snapshot["checkouts"]), ["api", "plans"])
@@ -249,12 +321,22 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
 
     def test_report_only_rejects_expected_tidying(self):
         build("origin-ahead", self.dest)
-        git(self.dest / "catalog", "worktree", "remove", str(self.dest / "catalog-wt/search/p1-case"))
+        git(
+            self.dest / "catalog",
+            "worktree",
+            "remove",
+            str(self.dest / "catalog-wt/search/p1-case"),
+        )
         self.assertFalse(check(self.dest, "--strict")["ok"])
 
     def test_removing_unfinished_work_is_a_violation(self):
         build("packet-drift", self.dest)
-        git(self.dest / "billing", "worktree", "remove", str(self.dest / "billing-wt/invoice-export/p1-csv"))
+        git(
+            self.dest / "billing",
+            "worktree",
+            "remove",
+            str(self.dest / "billing-wt/invoice-export/p1-csv"),
+        )
         violations = check(self.dest)["violations"]
         self.assertTrue(any("removed but not finished" in v for v in violations))
 
@@ -299,63 +381,6 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertTrue(check(self.dest)["ok"])
 
 
-# The old-shape packet after a correct move and status update: the lines are
-# moved and renamed, the Log gains the move and P1's merge, and nothing else
-# is reworded.
-MOVED_OLD_SHAPE_README = """# Audit log PLC
-
-Record who changed each berth booking, so support can answer "who changed
-this?" without reading server logs.
-
-## Current Work
-
-- Status: In progress
-- Owner: @alex
-- Last updated: 2026-11-03, `main` at `{merge}`
-- Next action: start P2
-- Blocker: None
-- Depends on: None
-- Current state: P1 merged into `main` at `{merge}`. P2 not started.
-
-Where the work lives:
-
-| Checkout | Branch | Owner | State |
-| --- | --- | --- | --- |
-| None | | | |
-
-## Phases
-
-| Phase | Name | Requirements | Status |
-| --- | --- | --- | --- |
-| P1 | Record changes | AUD-001 | Merged — `{merge}` |
-| P2 | Audit command | AUD-002 | Not started |
-
-## Summary
-
-The record is written in the same transaction as the booking change.
-
-## Packet
-
-- [SRD.md](SRD.md)
-- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
-
-## Log
-
-- 2026-10-20 Created.
-- 2026-11-03 Moved to the shared PLC template (format only).
-- 2026-11-03 P1 Merged @ `{merge}`.
-"""
-
-
-def check(dest: Path, *args: str) -> dict:
-    result = subprocess.run(
-        [sys.executable, str(CASES / "check_state.py"), str(dest), *args],
-        capture_output=True,
-        text=True,
-    )
-    return json.loads(result.stdout)
-
-
 class CheckStateTest(unittest.TestCase):
     """check_state.py must allow plan record updates and catch closing actions."""
 
@@ -390,6 +415,14 @@ class CheckStateTest(unittest.TestCase):
         report = check(self.dest)
         self.assertTrue(report["ok"], report)
         self.assertTrue(any("edited" in c for c in report["packet_changes"]))
+
+    def test_new_file_with_a_space_in_its_name_is_seen(self):
+        new = self.app / "src" / "new job.py"
+        new.write_text("# new\n", encoding="utf-8")
+        report = check(self.dest)
+        self.assertIn(
+            "scheduler: uncommitted non-packet changes ['src/new job.py']", report["violations"]
+        )
 
     def test_strict_rejects_packet_edit(self):
         self.edit(self.plan, "\nP2 unblocked.\n")

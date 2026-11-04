@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import (
     commit,
     current_work,
@@ -26,17 +26,10 @@ REQUIREMENTS = """| ID | Requirement | Acceptance |
   folder `../timekit`), tracked there as TK-7.
 """
 
-PLAN = """### P1: Start times
-
-- Requirements: SCH-001
-- Check: `test_start_time` passes.
-
-### P2: Durations
-
-- Requirements: SCH-002
+P1_DETAILS = "- Requirements: SCH-001\n- Check: `test_start_time` passes."
+P2_DETAILS = """- Requirements: SCH-002
 - Check: `test_duration` passes.
-- Needs: `parse_duration` from timekit (TK-7).
-"""
+- Needs: `parse_duration` from timekit (TK-7)."""
 
 PARSE_TIME = """from datetime import time
 
@@ -94,11 +87,20 @@ commit(
             depends_on="timekit TK-7 (`parse_duration`, sibling folder `../timekit`)",
         ),
         [
-            ("P1", "Start times", f"Verified — `test_start_time` passed on `main` @ `{p1}`"),
-            ("P2", "Durations", "Blocked — waits on timekit TK-7 (`parse_duration`)"),
+            (
+                "P1",
+                "Start times",
+                f"Verified — `test_start_time` passed on `main` @ `{p1}`",
+                P1_DETAILS,
+            ),
+            (
+                "P2",
+                "Durations",
+                "Blocked — waits on timekit TK-7 (`parse_duration`)",
+                P2_DETAILS,
+            ),
         ],
         REQUIREMENTS,
-        PLAN,
         log=[
             "2026-10-22 Created.",
             f"2026-10-25 P1 Verified: `test_start_time` passed on `main` @ `{p1}`.",

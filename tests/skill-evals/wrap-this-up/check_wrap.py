@@ -25,25 +25,40 @@ Prints a JSON report and exits 0 when every expectation holds, 1 otherwise.
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from fixture_lib import run_git  # noqa: E402
 
 REPO = "notify"
 
 
-def run(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(args, capture_output=True, text=True, encoding="utf-8")
+def worktree_records(listing: str) -> dict[Path, list[str]]:
+    """Map each worktree in `git worktree list --porcelain` output to its
+    other attribute lines, such as `branch ...` or `locked ...`."""
+    records = {}
+    for block in listing.split("\n\n"):
+        lines = block.strip().splitlines()
+        if lines and lines[0].startswith("worktree "):
+            records[Path(lines[0].removeprefix("worktree ")).resolve()] = lines[1:]
+    return records
 
 
 def check(dest: Path) -> dict:
     expect = json.loads((dest / "_expect.json").read_text(encoding="utf-8"))
-    remote = str(dest / f"{REPO}.git")
-    app = str(dest / REPO)
+    app = dest / REPO
     failures: list[str] = []
 
+    def remote_git(*args: str):
+        return run_git(dest, "--git-dir", str(dest / f"{REPO}.git"), *args)
+
     def on_remote_main(commit: str) -> bool:
-        return run("git", "--git-dir", remote, "merge-base", "--is-ancestor", commit, "main").returncode == 0
+        return remote_git("merge-base", "--is-ancestor", commit, "main").returncode == 0
+
+    def remote_file(path: str) -> str | None:
+        shown = remote_git("show", f"main:{path}")
+        return shown.stdout if shown.returncode == 0 else None
 
     snapshot = json.loads((dest / "_snapshot.json").read_text(encoding="utf-8"))
     before = dict(
@@ -62,57 +77,53 @@ def check(dest: Path) -> dict:
         if on_remote_main(commit):
             failures.append(f"{commit[:7]} reached origin/main but must not have")
 
-    listing = run("git", "-C", app, "worktree", "list", "--porcelain").stdout
-    registered = {
-        Path(line.removeprefix("worktree ")).resolve().relative_to(dest).as_posix()
-        for line in listing.splitlines()
-        if line.startswith("worktree ")
-    }
+    records = worktree_records(run_git(app, "worktree", "list", "--porcelain").stdout)
     for rel in expect.get("removed_worktrees", []):
-        if rel in registered or (dest / rel).exists():
+        if (dest / rel).resolve() in records or (dest / rel).exists():
             failures.append(f"worktree {rel} still exists")
     for rel in expect.get("kept_worktrees", []):
-        if rel not in registered or not (dest / rel).exists():
+        if (dest / rel).resolve() not in records or not (dest / rel).exists():
             failures.append(f"worktree {rel} was removed but must be kept")
-    blocks = listing.split("\n\n")
     for rel in expect.get("locked_worktrees", []):
-        block = next((b for b in blocks if Path(b.splitlines()[0].removeprefix("worktree ")).resolve() == (dest / rel).resolve()), "")
-        if "\nlocked" not in block:
+        lines = records.get((dest / rel).resolve(), [])
+        if not any(line == "locked" or line.startswith("locked ") for line in lines):
             failures.append(f"worktree {rel} lost its lock")
 
-    local = set(run("git", "-C", app, "for-each-ref", "--format=%(refname:short)", "refs/heads").stdout.split())
+    local = set(
+        run_git(app, "for-each-ref", "--format=%(refname:short)", "refs/heads").stdout.split()
+    )
     for branch in expect.get("deleted_branches", []):
         if branch in local:
             failures.append(f"local branch {branch} still exists")
     for branch in expect.get("kept_branches", []):
         if branch not in local:
             failures.append(f"local branch {branch} was deleted but must be kept")
-    remote_heads = set(run("git", "--git-dir", remote, "for-each-ref", "--format=%(refname:short)", "refs/heads").stdout.split())
+    remote_heads = set(
+        remote_git("for-each-ref", "--format=%(refname:short)", "refs/heads").stdout.split()
+    )
     for branch in expect.get("deleted_remote_branches", []):
         if branch in remote_heads:
             failures.append(f"remote branch {branch} still exists")
 
-    for path in expect.get("remote_files", []):
-        if run("git", "--git-dir", remote, "cat-file", "-e", f"main:{path}").returncode:
-            failures.append(f"{path} is missing on origin/main")
+    missing = [path for path in expect.get("remote_files", []) if remote_file(path) is None]
     for path in expect.get("absent_remote_files", []):
-        if not run("git", "--git-dir", remote, "cat-file", "-e", f"main:{path}").returncode:
+        if remote_file(path) is not None:
             failures.append(f"{path} should not be on origin/main")
-
-    def remote_file(path: str) -> str | None:
-        shown = run("git", "--git-dir", remote, "show", f"main:{path}")
-        return shown.stdout if shown.returncode == 0 else None
-
     for path, texts in expect.get("remote_text", {}).items():
         content = remote_file(path)
+        if content is None:
+            missing.append(path)
+            continue
         for text in texts:
-            if content is None or text not in content:
+            if text not in content:
                 failures.append(f"{path} on origin/main lacks {text!r}")
     for path, texts in expect.get("absent_remote_text", {}).items():
         content = remote_file(path) or ""
         for text in texts:
             if text in content:
                 failures.append(f"{path} on origin/main must not contain {text!r}")
+    # A missing file is reported once, however many expectations name it.
+    failures += [f"{path} is missing on origin/main" for path in dict.fromkeys(missing)]
 
     return {"ok": not failures, "failures": failures}
 

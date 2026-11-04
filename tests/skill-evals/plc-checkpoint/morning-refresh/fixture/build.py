@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import (
     add_worktree,
     commit,
@@ -22,17 +22,9 @@ REQUIREMENTS = """| ID | Requirement | Acceptance |
 | REC-002 | `report` lists unmatched lines. | `test_report` passes. |
 """
 
-PLAN = """### P1: Match lines
-
-- Requirements: REC-001
-- Check: `test_match` passes.
-
-### P2: Unmatched report
-
-- Requirements: REC-002
-- Check: `test_report` passes.
-
-Integration: children merge into `plc/reconcile`; it merges into `main` when
+P1_DETAILS = "- Requirements: REC-001\n- Check: `test_match` passes."
+P2_DETAILS = "- Requirements: REC-002\n- Check: `test_report` passes."
+INTEGRATION = """Integration: children merge into `plc/reconcile`; it merges into `main` when
 both phases pass.
 """
 
@@ -77,14 +69,20 @@ files = packet(
     current_work(
         last_updated=f"2026-10-26, `plc/reconcile` at `{start}`",
         next_action="finish P1 and merge it into `plc/reconcile`",
-        current_state="P1 and P2 in progress in their worktrees; nothing merged into `plc/reconcile` yet.",
+        current_state=(
+            "P1 and P2 in progress in their worktrees;"
+            " nothing merged into `plc/reconcile` yet."
+        ),
         checkouts=CHECKOUTS,
         more_keys=["Replaces: `docs/plans/archived/bank-match/`"],
     ),
-    [("P1", "Match lines", "In progress"), ("P2", "Unmatched report", "In progress")],
+    [
+        ("P1", "Match lines", "In progress", P1_DETAILS),
+        ("P2", "Unmatched report", "In progress", P2_DETAILS),
+    ],
     REQUIREMENTS,
-    PLAN,
     log=["2026-10-24 Created.", "2026-10-25 P1 and P2 started in their worktrees."],
+    plan_note=INTEGRATION,
 )
 files["docs/plans/archived/bank-match/README.md"] = ARCHIVED
 commit(integration, "docs(plan): add reconcile PLC", files)

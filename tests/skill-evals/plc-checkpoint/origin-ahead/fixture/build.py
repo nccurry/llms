@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import (
     add_worktree,
     commit,
@@ -23,29 +23,23 @@ REQUIREMENTS = """| ID | Requirement | Acceptance |
 | SRCH-002 | Search results are paged 20 at a time. | `test_search_pages` passes. |
 """
 
-PLAN = """### P1: Case-insensitive search
-
-- Requirements: SRCH-001
-- Check: `test_search_case` passes.
-
-### P2: Paging
-
-- Requirements: SRCH-002
-- Check: `test_search_pages` passes.
-"""
+P1_DETAILS = "- Requirements: SRCH-001\n- Check: `test_search_case` passes."
+P2_DETAILS = "- Requirements: SRCH-002\n- Check: `test_search_pages` passes."
 
 SUMMARY = "Make catalog search forgiving about case, and page long result lists."
 
 
-def search_packet(status: str, p1_state: str, log: list[str]) -> dict[str, str]:
+def search_packet(current_work_block: str, p1_state: str, log: list[str]) -> dict[str, str]:
     return packet(
         "search",
         "Search",
         SUMMARY,
-        status,
-        [("P1", "Case-insensitive search", p1_state), ("P2", "Paging", "Planned")],
+        current_work_block,
+        [
+            ("P1", "Case-insensitive search", p1_state, P1_DETAILS),
+            ("P2", "Paging", "Planned", P2_DETAILS),
+        ],
         REQUIREMENTS,
-        PLAN,
         log=log,
     )
 
