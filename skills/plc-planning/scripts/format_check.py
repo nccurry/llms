@@ -40,6 +40,9 @@ Python API, for tools that load this file by path:
   check_packet(path, people=(), strict=False, lifecycle=None) -> list[str]
       The finding lines for one packet, exactly as printed. Raises ReadError
       when a file cannot be read.
+  is_packet(path) -> bool
+      Whether an entry of a lifecycle folder is a packet: a folder with
+      Markdown files, or a one-file plc-*.md plan that is not a side file.
   main(argv=None) -> int
       The command line. Returns the exit code.
 """
@@ -483,6 +486,7 @@ def is_side_file(entry):
 
 
 def is_packet(entry):
+    """Whether a lifecycle folder entry is a packet folder or a one-file plan."""
     if entry.is_dir():
         return any(entry.glob("*.md"))
     is_plan_file = entry.name.startswith("plc-") and entry.suffix == ".md"
