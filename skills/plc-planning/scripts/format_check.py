@@ -1,61 +1,149 @@
-"""Check PLC packets against the shared template.
+"""Check PLC packets against the shared PLC template.
 
 Usage:
   python3 format_check.py [PLANS_FOLDER ...] [--packet PATH ...]
-                          [--people NAME=HANDLE ...] [--strict]
+                          [--people NAME=HANDLE ...] [--lifecycle FOLDER]
+                          [--strict]
 
-Plans folders: checks every packet in their planned/ and in-progress/ folders.
+A plans folder: checks every packet in its planned/ and in-progress/ folders.
+  It skips flat design files, such as plc-012-retry-srd.md.
 --packet: checks one packet folder or one-file plan, in any lifecycle folder.
---people: names that must appear with their handle in Owner lines.
-Default mode checks the structure every active packet must have. --strict
-adds the content rules: evidence, reasons, blockers and folder agreement.
-Prints one line per finding. Exit 0: nothing found; 1: findings; 2: bad path
-or arguments.
+--people: NAME=HANDLE pairs. An Owner line that names NAME must also give
+  @HANDLE. Put plans folders before --people.
+--lifecycle: checks each --packet as if it were in this lifecycle folder, for
+  example `completed` before a finished packet moves there.
+
+Default mode checks the structure every active packet needs: a summary under
+the title; one ## Current Work block that starts with Status, Owner and Last
+updated, uses known words and names an @handle; a ## Log section; and phase
+state only in the README's ## Phases table. Fenced code blocks are ignored.
+
+--strict also checks the five rules across fields:
+  1. Status matches the lifecycle folder.
+  2. A Blocked packet names its Blocker.
+  3. A Verified or Live phase has evidence after " — ".
+  4. A Dropped phase, and an Archived or Superseded packet, starts its note
+     with a reason word: superseded, duplicate, obsolete or won't do.
+  5. A packet in completed/ has only Verified, Live, Deferred or Dropped
+     phases.
+
+Prints one line per finding. Exit 0: nothing found. 1: findings. 2: a bad path
+or argument, nothing to check, or a file that could not be read.
+
+Python API, for tools that load this file by path:
+  PACKET_WORDS, PHASE_WORDS
+      Each canonical word, mapped to the older spellings it accepts.
+  cells(line) -> list[str]
+      The cells of a Markdown table row.
+  lookup_word(words, text) -> str | None
+      The canonical word from PACKET_WORDS or PHASE_WORDS that starts text.
+  check_packet(path, people=(), strict=False, lifecycle=None) -> list[str]
+      The finding lines for one packet, exactly as printed. Raises ReadError
+      when a file cannot be read.
+  main(argv=None) -> int
+      The command line. Returns the exit code.
 """
-import argparse, pathlib, re, sys
 
-# The shared template's words (packet status and phase state, with the older words it accepts).
-PACKET_WORDS = {"Planned": ["Draft", "Ready", "Proposed"],
-                "In progress": ["In-progress", "Developing", "Reviewing", "Active"],
-                "Blocked": [], "Complete": ["Completed", "Closed", "Done"],
-                "Archived": [], "Superseded": []}
-PHASE_WORDS = {"Planned": ["Not started", "Pending", "Todo"], "In progress": ["Active", "Started"],
-               "Implemented": [], "Merged": ["Delivered"],
-               "Verified": ["Complete", "Completed", "Done", "Accepted", "Passed"],
-               "Live": [], "Blocked": [], "Deferred": [], "Dropped": []}
-FOLDER_STATUS = {"planned": {"Planned", "Blocked"}, "in-progress": {"In progress", "Blocked"},
-                 "completed": {"Complete"}, "archived": {"Archived", "Superseded"}}
-FINISHED = {"Verified", "Live", "Deferred", "Dropped"}
+import argparse
+import re
+import sys
+from itertools import pairwise
+from pathlib import Path
+from typing import NamedTuple
+
+# Each canonical word, mapped to the older spellings it accepts.
+PACKET_WORDS = {
+    "Planned": ["Draft", "Ready", "Proposed"],
+    "In progress": ["In-progress", "Developing", "Reviewing", "Active"],
+    "Blocked": [],
+    "Complete": ["Completed", "Closed", "Done"],
+    "Archived": [],
+    "Superseded": [],
+}
+PHASE_WORDS = {
+    "Planned": ["Not started", "Pending", "Todo"],
+    "In progress": ["Active", "Started"],
+    "Implemented": [],
+    "Merged": ["Delivered"],
+    "Verified": ["Complete", "Completed", "Done", "Accepted", "Passed"],
+    "Live": [],
+    "Blocked": [],
+    "Deferred": [],
+    "Dropped": [],
+}
+
+# The rules across fields (--strict).
+FOLDER_STATUS = {
+    "planned": ("Planned", "Blocked"),
+    "in-progress": ("In progress", "Blocked"),
+    "completed": ("Complete",),
+    "archived": ("Archived", "Superseded"),
+}
+ALLOWED_IN_COMPLETED = ("Verified", "Live", "Deferred", "Dropped")
+NEEDS_EVIDENCE = ("Verified", "Live")
+NEEDS_REASON = ("Dropped", "Archived", "Superseded")
+REASON = re.compile(r"(superseded|duplicate|obsolete|won['’]?t do)\b", re.IGNORECASE)
+
+# Structure.
+ACTIVE_FOLDERS = ("planned", "in-progress")
 FIRST_KEYS = ["status", "owner", "last updated"]
-REASONS = re.compile(r"(superseded|duplicate|obsolete|won'?t do)\b", re.I)
-FLAT = re.compile(r"-(?:srd|sadd|prd|plan|implementation-plan)\.md$")
-CURRENT = re.compile(r"## current work\s*$", re.I)
-OTHER_STATUS = re.compile(r"## (lifecycle|status)\b", re.I)
-KEY = re.compile(r"- (?:\*\*)?([A-Z][A-Za-z /-]*?):(?:\*\*)?(?:\s+(.*))?$")
-STATUS_KEYS = {"status", "state", "owner", "owners", "last updated", "updated"}
+MAX_KEYS = 12
+OLD_STATUS_KEYS = {"status", "state", "owner", "owners", "last updated", "updated"}
+STATE_COLUMNS = ("state", "status")
+OLD_STATE_COLUMNS = {"implementation", "verification", "delivery"}
+MAX_BYTES = 4 * 1024 * 1024
 
-found = 0
+# Flat design files sit beside a one-file plan, as plc-012-retry-srd.md sits
+# beside plc-012-retry.md. They are not packets, so a plans folder skips them.
+# A -plan.md file is such a side file only when a design file for the same
+# name sits beside it; on its own it is a one-file plan.
+SIDE_FILE = re.compile(r"-(?:srd|sadd|prd)\.md$")
+PLAN_SIDE_FILE = re.compile(r"-(?:implementation-)?plan\.md$")
+
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+DIVIDER = re.compile(r"^\s*\|[\s:|-]+\|\s*$")
+KEY = re.compile(r"- (?:\*\*)?([A-Z][A-Za-z /-]*?)(?:\*\*)?:(?:\*\*)?(?:\s+(.*))?$")
+OLD_KEY = re.compile(r"\s*(?:[-*+]\s+)?(?:\*\*)?([A-Z][A-Za-z /-]*?)(?:\*\*)?:(?:\*\*)?(?:\s|$)")
+OLD_STATUS_HEADING = re.compile(r"(?:lifecycle|status)\b", re.IGNORECASE)
+HANDLE = re.compile(r"(?<![\w@])@\w[\w.-]*")
+DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+EMPHASIS = re.compile(r"^[*_`\s]+")
 
 
-def report(path, line, text):
-    global found
-    found += 1
-    print(f"{path}:{line}: {text}" if line else f"{path}: {text}")
+class ReadError(Exception):
+    """A packet file that could not be read."""
 
 
-def words(table):
-    return {w.lower(): canon for canon, others in table.items() for w in [canon, *others]}
+class Section(NamedTuple):
+    name: str  # the heading text after "## "
+    start: int  # index of the heading line
+    end: int  # index of the next "## " heading, or the line count
 
 
-PACKET, PHASE = words(PACKET_WORDS), words(PHASE_WORDS)
+class Key(NamedTuple):
+    name: str  # lowercased
+    line: int  # 1-based
+    value: str
 
 
-def word(table, text):
-    """The canonical word that starts the text, ignoring case and emphasis, or None."""
-    text = re.sub(r"^[*_`\s]+", "", text).lower()
-    for w in sorted(table, key=len, reverse=True):
-        if text.startswith(w) and not re.match(r"[\w-]", text[len(w):len(w) + 1]):
-            return table[w]
+class Table(NamedTuple):
+    line: int  # 1-based line of the header row
+    header: list
+    rows: list  # (1-based line, cells)
+
+
+def lookup_word(words, text):
+    """The canonical word that starts text, ignoring case and emphasis, or None."""
+    text = EMPHASIS.sub("", text).lower()
+    spellings = {
+        spelling.lower(): canonical
+        for canonical, older in words.items()
+        for spelling in [canonical, *older]
+    }
+    for spelling in sorted(spellings, key=len, reverse=True):
+        ends_word = not re.match(r"[\w-]", text[len(spelling):])
+        if text.startswith(spelling) and ends_word:
+            return spellings[spelling]
     return None
 
 
@@ -64,182 +152,421 @@ def note(text):
     return text.split(" — ", 1)[1].strip() if " — " in text else ""
 
 
-def sections(lines):
-    """Each ## section as (heading, first line index, end index)."""
-    heads = [i for i, line in enumerate(lines) if line.startswith("## ")] + [len(lines)]
-    return [(lines[a][3:].strip(), a, b) for a, b in zip(heads, heads[1:])]
+def has_reason(text):
+    return bool(REASON.match(EMPHASIS.sub("", note(text))))
 
 
-def cells(line):
-    """The cells of a table row. An escaped pipe (\\|) stays inside its cell."""
-    line = line.strip()
-    line = line[1:] if line.startswith("|") else line
-    line = line[:-1] if line.endswith("|") and not line.endswith("\\|") else line
-    return [c.strip() for c in re.split(r"(?<!\\)\|", line)]
+def is_none(value):
+    """True when a value is empty or None, ignoring emphasis, code marks and a final period."""
+    return value.strip(" *_`").rstrip(".").strip(" *_`").lower() in ("", "none")
 
 
-def tables(lines, start=0, end=None):
-    """Each Markdown table as (header line number, header cells, [(line number, cells)])."""
-    out, i, end = [], start, len(lines) if end is None else end
-    while i < end:
-        if lines[i].lstrip().startswith("|") and i + 1 < end and re.match(r"^\s*\|[\s:|-]+\|\s*$", lines[i + 1]):
-            header = cells(lines[i])
-            rows, j = [], i + 2
-            while j < end and lines[j].lstrip().startswith("|"):
-                rows.append((j + 1, cells(lines[j])))
-                j += 1
-            out.append((i + 1, header, rows))
-            i = j
-        else:
-            i += 1
+def escape(text):
+    """Text with non-printable characters, such as terminal escapes, written as escapes."""
+    return "".join(char if char.isprintable() else repr(char)[1:-1] for char in text)
+
+
+def shown(path):
+    """A path as printed: forward slashes, non-printable characters escaped."""
+    return escape(path.as_posix())
+
+
+def finding(path, line, text):
+    where = f"{shown(path)}:{line}" if line else shown(path)
+    return f"{where}: {escape(text)}"
+
+
+def read_lines(path):
+    """The lines of a regular UTF-8 file. Raises ReadError when it cannot be read."""
+    try:
+        if not path.exists():
+            raise ReadError(f"{shown(path)}: no such file")
+        if not path.is_file():
+            raise ReadError(f"{shown(path)}: not a regular file")
+        if path.stat().st_size > MAX_BYTES:
+            raise ReadError(f"{shown(path)}: larger than {MAX_BYTES // (1024 * 1024)} MiB")
+        return path.read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeDecodeError) as error:
+        raise ReadError(f"{shown(path)}: cannot read: {escape(str(error))}") from error
+
+
+def unfenced(lines):
+    """The lines with each fenced code block, fences included, blanked out."""
+    out, fence = [], None
+    for line in lines:
+        marker = FENCE.match(line)
+        if fence is None:
+            if marker:
+                fence = marker[1]
+            out.append("" if marker else line)
+            continue
+        closes = (
+            marker is not None
+            and marker[1][0] == fence[0]
+            and len(marker[1]) >= len(fence)
+            and not line[marker.end():].strip()
+        )
+        if closes:
+            fence = None
+        out.append("")
     return out
 
 
-def state_column(header):
-    heads = [h.lower() for h in header]
-    if not heads or heads[0] != "phase":
-        return None
-    return next((heads.index(h) for h in ("state", "status") if h in heads), -1)
+def sections(lines):
+    """Each ## section, in order."""
+    heads = [i for i, line in enumerate(lines) if line.startswith("## ")]
+    return [Section(lines[a][3:].strip(), a, b) for a, b in pairwise([*heads, len(lines)])]
 
 
-def check_phases(path, lines, start, end, lifecycle, strict):
-    found_table = False
-    for n, header, rows in tables(lines, start, end):
-        column = state_column(header)
-        if column is None:
+def named(parts, name):
+    """The sections whose heading is name, ignoring case."""
+    return [part for part in parts if part.name.lower() == name]
+
+
+def cells(line):
+    """The cells of a Markdown table row. An escaped pipe (\\|) stays inside its cell."""
+    line = line.strip()
+    line = line[1:] if line.startswith("|") else line
+    line = line[:-1] if line.endswith("|") and not line.endswith("\\|") else line
+    return [cell.strip() for cell in re.split(r"(?<!\\)\|", line)]
+
+
+def tables(lines, start=0, end=None):
+    """Each Markdown table between start and end."""
+    end = len(lines) if end is None else end
+    out, i = [], start
+    while i < end:
+        is_row = lines[i].lstrip().startswith("|")
+        starts_table = is_row and i + 1 < end and DIVIDER.match(lines[i + 1])
+        if not starts_table:
+            i += 1
             continue
-        if not found_table and column < 0:
-            report(path, n, "phases: the ## Phases table has no State column")
-        found_table = True
-        if column < 0:
-            continue
-        for m, cells in rows:
-            if cells[0] in ("", "—", "-"):
-                continue
-            if len(cells) != len(header):
-                report(path, m, f"phases: row has {len(cells)} cells, header has {len(header)}")
-                continue
-            cell = cells[column]
-            state = word(PHASE, cell)
-            if state is None:
-                report(path, m, f"phase state: {cell[:60] or '(empty)'}")
-                continue
-            if not strict:
-                continue
-            if state in ("Verified", "Live") and not note(cell):
-                report(path, m, f"strict: {state} with no evidence after ' — '")
-            if state == "Dropped" and not REASONS.match(note(cell)):
-                report(path, m, "strict: Dropped with no reason word")
-            if lifecycle == "completed" and state not in FINISHED:
-                report(path, m, f"strict: {state} phase in a completed packet")
-    return found_table
+        rows, j = [], i + 2
+        while j < end and lines[j].lstrip().startswith("|"):
+            rows.append((j + 1, cells(lines[j])))
+            j += 1
+        out.append(Table(i + 1, cells(lines[i]), rows))
+        i = j
+    return out
 
 
-def check_readme(path, lifecycle, people, strict):
-    lines = path.read_text(encoding="utf-8").splitlines()
+def is_phase_table(table):
+    return bool(table.header) and table.header[0].lower() == "phase"
+
+
+def state_column(table):
+    """The index of a phase table's State or Status column, or None."""
+    heads = [head.lower() for head in table.header]
+    return next((heads.index(name) for name in STATE_COLUMNS if name in heads), None)
+
+
+def holds_phase_state(table):
+    """True for a phase table with a State, Status, Implementation, Verification or
+    Delivery column."""
+    heads = {head.lower() for head in table.header}
+    has_state = state_column(table) is not None or bool(heads & OLD_STATE_COLUMNS)
+    return is_phase_table(table) and has_state
+
+
+def check_summary(readme, raw, lines):
     title = next((i for i, line in enumerate(lines) if line.startswith("# ")), None)
-    after = next((line for line in lines[(title if title is not None else 0) + 1:] if line.strip()), "")
-    if title is None or not after or after.startswith("#"):
-        report(path, 1, "summary: no paragraph directly under the title")
-    parts = sections(lines)
-    current = [p for p in parts if CURRENT.match("## " + p[0])]
+    start = 0 if title is None else title + 1
+    after = next((line for line in raw[start:] if line.strip()), "")
+    no_paragraph = title is None or not after or after.startswith("#") or FENCE.match(after)
+    if not no_paragraph:
+        return []
+    return [finding(readme, 1, "summary: no paragraph directly under the title")]
+
+
+def current_work_keys(lines, block):
     keys = []
-    if len(current) != 1:
-        report(path, 1, f"status block: {len(current)} ## Current Work sections (needs 1)")
+    for i in range(block.start + 1, block.end):
+        match = KEY.match(lines[i])
+        if match:
+            keys.append(Key(match[1].lower(), i + 1, match[2] or ""))
+    return keys
+
+
+def check_current_work(readme, lines, parts, people, strict, lifecycle):
+    blocks = named(parts, "current work")
+    found = []
+    if len(blocks) != 1:
+        message = f"Current Work: {len(blocks)} ## Current Work sections; a packet needs exactly one"
+        found.append(finding(readme, 1, message))
+    for part in parts:
+        if not OLD_STATUS_HEADING.match(part.name):
+            continue
+        for i in range(part.start + 1, part.end):
+            key = OLD_KEY.match(lines[i])
+            if key and key[1].lower() in OLD_STATUS_KEYS:
+                message = f"Current Work: {key[1]} line belongs in ## Current Work, not ## {part.name}"
+                found.append(finding(readme, i + 1, message))
+    if len(blocks) != 1:
+        return found
+
+    heading = blocks[0].start + 1
+    keys = current_work_keys(lines, blocks[0])
+    if [key.name for key in keys[:3]] != FIRST_KEYS:
+        message = "Current Work: Status, Owner and Last updated must come first, in that order"
+        found.append(finding(readme, heading, message))
+    if len(keys) > MAX_KEYS:
+        message = f"Current Work: {len(keys)} keys; at most {MAX_KEYS} are allowed"
+        found.append(finding(readme, heading, message))
+    first = {}
+    for key in keys:
+        first.setdefault(key.name, key)
+
+    status = first.get("status")
+    status_word = lookup_word(PACKET_WORDS, status.value) if status else None
+    if status is None:
+        found.append(finding(readme, heading, "Current Work: no Status line"))
+    elif status_word is None:
+        value = status.value[:60] or "(empty)"
+        message = f"Current Work: Status does not start with a packet status word: {value}"
+        found.append(finding(readme, status.line, message))
+
+    owner = first.get("owner")
+    if owner is None:
+        found.append(finding(readme, heading, "Current Work: no Owner line"))
     else:
-        _, a, b = current[0]
-        keys = [(k[1].lower(), i + 1, k[2] or "") for i in range(a + 1, b) if (k := KEY.match(lines[i]))]
-    for heading, a, b in parts:
-        if OTHER_STATUS.match("## " + heading):
-            for i in range(a + 1, b):
-                k = KEY.match(lines[i])
-                if k and k[1].lower() in STATUS_KEYS:
-                    report(path, i + 1, f"status block: {k[1]} line outside ## Current Work")
-    if len(current) == 1:
-        names = [k[0] for k in keys]
-        if names[:3] != FIRST_KEYS:
-            report(path, current[0][1] + 1, "status block: Status, Owner and Last updated must come first, in that order")
-        if len(keys) > 12:
-            report(path, current[0][1] + 1, f"status block: {len(keys)} keys (at most 12)")
-        get = {k[0]: (k[1], k[2]) for k in reversed(keys)}
-        status = get.get("status")
-        if status is None:
-            report(path, current[0][1] + 1, "status block: no Status line")
-        elif word(PACKET, status[1]) is None:
-            report(path, status[0], f"status line: {status[1][:60] or '(empty)'}")
-        owner = get.get("owner")
-        if owner is None:
-            report(path, current[0][1] + 1, "owner: no Owner line")
-        else:
-            for name, handle in people:
-                if re.search(rf"(?<![@\w]){re.escape(name)}\b", owner[1]) and f"@{handle}" not in owner[1]:
-                    report(path, owner[0], f"owner: {name} without @{handle}")
-        updated = get.get("last updated")
-        if updated is None or not re.match(r"\d{4}-\d{2}-\d{2}", updated[1]):
-            report(path, updated[0] if updated else current[0][1] + 1, "updated: no date-first Last updated line")
-        if strict and status is not None and word(PACKET, status[1]):
-            value = word(PACKET, status[1])
-            if lifecycle in FOLDER_STATUS and value not in FOLDER_STATUS[lifecycle]:
-                report(path, status[0], f"strict: status {value} disagrees with folder {lifecycle}/")
-            blocker = get.get("blocker")
-            if value == "Blocked" and (blocker is None or blocker[1].strip().rstrip(".").lower() in ("", "none")):
-                report(path, status[0], "strict: Blocked with no Blocker")
-            if value in ("Archived", "Superseded") and not REASONS.match(note(status[1])):
-                report(path, status[0], f"strict: {value} with no reason word")
-    if not any(line.strip() == "## Log" for line in lines):
-        report(path, 1, "log: no ## Log section")
-    phases = [p for p in parts if p[0] == "Phases"]
-    has_table = phases and check_phases(path, lines, phases[0][1], phases[0][2], lifecycle, strict)
-    plan = path.with_name("IMPLEMENTATION_PLAN.md") if path.name == "README.md" else None
-    for file, text in ((path, lines), (plan, plan.read_text(encoding="utf-8").splitlines() if plan and plan.exists() else [])):
-        for n, header, _ in tables(text):
-            column = state_column(header)
-            if column is None:
-                continue
-            inside = file == path and phases and phases[0][1] < n <= phases[0][2]
-            if not inside and column >= 0:
-                report(file, n, "phases: phase state outside the README ## Phases table")
-            if not inside and not has_table and file == path:
-                report(file, n, "phases: phase table is not under ## Phases")
+        if not HANDLE.search(owner.value):
+            found.append(finding(readme, owner.line, "Current Work: Owner names no @handle"))
+        for name, handle in people:
+            names_person = re.search(rf"(?<![@\w]){re.escape(name)}\b", owner.value)
+            gives_handle = re.search(rf"(?<![\w@])@{re.escape(handle)}(?![\w-]|\.\w)", owner.value)
+            if names_person and not gives_handle:
+                message = f"Current Work: Owner names {name} without @{handle}"
+                found.append(finding(readme, owner.line, message))
+
+    updated = first.get("last updated")
+    if updated is None:
+        found.append(finding(readme, heading, "Current Work: no Last updated line"))
+    elif not DATE.match(updated.value):
+        message = "Current Work: Last updated does not start with a YYYY-MM-DD date"
+        found.append(finding(readme, updated.line, message))
+
+    if strict and status_word:
+        allowed = FOLDER_STATUS.get(lifecycle)
+        if allowed and status_word not in allowed:
+            needs = " or ".join(allowed)
+            message = (
+                f"strict: Status {status_word} does not match the {lifecycle}/ folder, "
+                f"which needs {needs}"
+            )
+            found.append(finding(readme, status.line, message))
+        blocker = first.get("blocker")
+        if status_word == "Blocked" and (blocker is None or is_none(blocker.value)):
+            message = "strict: Status is Blocked, but the Blocker line is missing or None"
+            found.append(finding(readme, status.line, message))
+        if status_word in NEEDS_REASON and not has_reason(status.value):
+            message = f"strict: {status_word} note does not start with a reason word"
+            found.append(finding(readme, status.line, message))
+    return found
 
 
-def check(target, people, strict):
+def check_phase_rows(readme, table, lifecycle, strict):
+    found = []
+    column = state_column(table)
+    for line, row in table.rows:
+        if row[0] in ("", "—", "-"):
+            continue  # a note row
+        if len(row) != len(table.header):
+            message = f"Phases: row has {len(row)} cells, but the header has {len(table.header)}"
+            found.append(finding(readme, line, message))
+            continue
+        cell = row[column]
+        state = lookup_word(PHASE_WORDS, cell)
+        if state is None:
+            value = cell[:60] or "(empty)"
+            message = f"Phases: State does not start with a phase state word: {value}"
+            found.append(finding(readme, line, message))
+            continue
+        if not strict:
+            continue
+        if state in NEEDS_EVIDENCE and not note(cell):
+            message = f"strict: {state} phase has no evidence after ' — '"
+            found.append(finding(readme, line, message))
+        if state in NEEDS_REASON and not has_reason(cell):
+            message = f"strict: {state} note does not start with a reason word"
+            found.append(finding(readme, line, message))
+        if lifecycle == "completed" and state not in ALLOWED_IN_COMPLETED:
+            allowed = ", ".join(ALLOWED_IN_COMPLETED[:-1]) + f" or {ALLOWED_IN_COMPLETED[-1]}"
+            message = f"strict: {state} phase in a completed/ packet, which allows only {allowed}"
+            found.append(finding(readme, line, message))
+    return found
+
+
+def check_phases_section(readme, lines, part, lifecycle, strict):
+    """Findings for the README's ## Phases section, and whether it has a phase table."""
+    in_section = tables(lines, part.start + 1, part.end)
+    phase_tables = [table for table in in_section if is_phase_table(table)]
+    if not phase_tables and in_section:
+        message = "Phases: the ## Phases table's first column is not Phase"
+        return [finding(readme, in_section[0].line, message)], False
+    if not phase_tables:
+        return [finding(readme, part.start + 1, "Phases: ## Phases has no table")], False
+    found = []
+    if state_column(phase_tables[0]) is None:
+        message = "Phases: the ## Phases table has no State column"
+        found.append(finding(readme, phase_tables[0].line, message))
+    for table in phase_tables:
+        if state_column(table) is not None:
+            found += check_phase_rows(readme, table, lifecycle, strict)
+    return found, True
+
+
+def check_phase_tables(readme, lines, parts, plan, plan_lines, lifecycle, strict):
+    phases = named(parts, "phases")
+    found, has_phase_table = [], False
+    if phases:
+        found, has_phase_table = check_phases_section(readme, lines, phases[0], lifecycle, strict)
+    outside = "Phases: phase state outside the README ## Phases table"
+    for table in tables(lines):
+        inside = bool(phases) and phases[0].start < table.line - 1 < phases[0].end
+        if inside or not is_phase_table(table):
+            continue
+        if holds_phase_state(table):
+            found.append(finding(readme, table.line, outside))
+        if not has_phase_table:
+            found.append(finding(readme, table.line, "Phases: phase table is not under ## Phases"))
+    for table in tables(plan_lines):
+        if holds_phase_state(table):
+            found.append(finding(plan, table.line, outside))
+    return found
+
+
+def check_packet(path, people=(), strict=False, lifecycle=None):
+    """The finding lines for one packet folder or one-file plan, exactly as printed.
+
+    people: (name, handle) pairs. lifecycle: the lifecycle folder to check
+    against; by default, the folder the packet is in. Raises ReadError when a
+    file cannot be read.
+    """
+    target = Path(path)
     if target.name == "README.md" and target.is_file():
         target = target.parent
+    found = []
+    if target.is_dir() and target.name in FOLDER_STATUS:
+        message = (
+            f"packet folder is named like the {target.name}/ lifecycle folder; "
+            "put it in a folder of its own"
+        )
+        found.append(finding(target, None, message))
     readme = target / "README.md" if target.is_dir() else target
-    lifecycle = target.resolve().parent.name
-    if not readme.exists():
-        report(target, None, "packet folder has no README.md")
-        return
-    check_readme(readme, lifecycle, people, strict)
+    if target.is_dir() and not readme.exists():
+        return [*found, finding(target, None, "packet folder has no README.md")]
+    lifecycle = lifecycle or target.resolve().parent.name
+
+    raw = read_lines(readme)
+    plan = readme.with_name("IMPLEMENTATION_PLAN.md") if readme.name == "README.md" else None
+    plan_lines = unfenced(read_lines(plan)) if plan and plan.exists() else []
+    lines = unfenced(raw)
+    parts = sections(lines)
+
+    found += check_summary(readme, raw, lines)
+    found += check_current_work(readme, lines, parts, people, strict, lifecycle)
+    if not named(parts, "log"):
+        found.append(finding(readme, 1, "Log: no ## Log section"))
+    found += check_phase_tables(readme, lines, parts, plan, plan_lines, lifecycle, strict)
+    return found
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("plans", nargs="*", help="plans folders, such as docs/plans")
-parser.add_argument("--packet", action="append", default=[], help="one packet folder or one-file plan")
-parser.add_argument("--people", nargs="*", default=[], help="NAME=HANDLE pairs: names that need their @handle in Owner lines")
-parser.add_argument("--strict", action="store_true", help="also check evidence, reasons, blockers and folders")
-args = parser.parse_args()
-for pair in args.people:
-    if "=" not in pair:
-        parser.error(f"--people takes NAME=HANDLE pairs, got {pair!r}; put plans folders before --people")
-if not args.plans and not args.packet:
-    parser.error("give at least one plans folder or --packet")
-people = [tuple(p.split("=", 1)) for p in args.people]
-for path in [*args.plans, *args.packet]:
-    if not pathlib.Path(path).exists():
-        print(f"no such path: {path}", file=sys.stderr)
-        sys.exit(2)
-for plans in args.plans:
-    for lifecycle in ("planned", "in-progress"):
-        folder = pathlib.Path(plans, lifecycle)
-        if not folder.is_dir():
+def is_side_file(entry):
+    if SIDE_FILE.search(entry.name):
+        return True
+    plan = PLAN_SIDE_FILE.search(entry.name)
+    if not plan:
+        return False
+    stem = entry.name[: plan.start()]
+    designs = [f"{stem}.md", f"{stem}-srd.md", f"{stem}-sadd.md", f"{stem}-prd.md"]
+    return any((entry.parent / name).is_file() for name in designs)
+
+
+def is_packet(entry):
+    if entry.is_dir():
+        return any(entry.glob("*.md"))
+    is_plan_file = entry.name.startswith("plc-") and entry.suffix == ".md"
+    return is_plan_file and not is_side_file(entry)
+
+
+def packets_in(plans):
+    """The packets in a plans folder's planned/ and in-progress/ folders."""
+    found = []
+    for name in ACTIVE_FOLDERS:
+        folder = plans / name
+        if folder.is_dir():
+            found += [entry for entry in sorted(folder.iterdir()) if is_packet(entry)]
+    return found
+
+
+def parse_args(argv):
+    parser = argparse.ArgumentParser(
+        prog="format_check.py",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("plans", nargs="*", help="plans folders, such as docs/plans")
+    parser.add_argument("--packet", action="append", default=[], help="one packet folder or one-file plan")
+    parser.add_argument(
+        "--people",
+        nargs="*",
+        default=[],
+        help="NAME=HANDLE pairs; an Owner line naming NAME must give @HANDLE",
+    )
+    parser.add_argument(
+        "--lifecycle",
+        choices=sorted(FOLDER_STATUS),
+        help="check --packet paths as if they were in this lifecycle folder",
+    )
+    parser.add_argument("--strict", action="store_true", help="also check the rules across fields")
+    args = parser.parse_args(argv)
+    for pair in args.people:
+        if "=" not in pair:
+            hint = "put plans folders before --people"
+            parser.error(f"--people takes NAME=HANDLE pairs, got {pair!r}; {hint}")
+    if not args.plans and not args.packet:
+        parser.error("give at least one plans folder or --packet")
+    if args.lifecycle and args.plans:
+        parser.error("--lifecycle works only with --packet")
+    return args
+
+
+def main(argv=None):
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+    args = parse_args(argv)
+    people = [tuple(pair.split("=", 1)) for pair in args.people]
+    for path in [*args.plans, *args.packet]:
+        if not Path(path).exists():
+            print(f"no such path: {escape(path)}", file=sys.stderr)
+            return 2
+
+    packets = []
+    for plans in map(Path, args.plans):
+        if not any((plans / name).is_dir() for name in ACTIVE_FOLDERS):
+            print(f"{shown(plans)}: no planned/ or in-progress/ folder", file=sys.stderr)
+            return 2
+        packets += packets_in(plans)
+    packets += [Path(path) for path in args.packet]
+    if not packets:
+        print("nothing to check: no packets found", file=sys.stderr)
+        return 2
+
+    code = 0
+    for packet in packets:
+        try:
+            found = check_packet(packet, people, args.strict, args.lifecycle)
+        except ReadError as error:
+            print(error, file=sys.stderr)
+            code = 2
             continue
-        for entry in sorted(folder.iterdir()):
-            if entry.is_dir() and any(entry.glob("*.md")):
-                check(entry, people, args.strict)
-            elif entry.name.startswith("plc-") and entry.suffix == ".md" and not FLAT.search(entry.name):
-                check(entry, people, args.strict)
-for packet in args.packet:
-    check(pathlib.Path(packet), people, args.strict)
-sys.exit(1 if found else 0)
+        for line in found:
+            print(line)
+        if found and code == 0:
+            code = 1
+    return code
+
+
+if __name__ == "__main__":
+    sys.exit(main())
