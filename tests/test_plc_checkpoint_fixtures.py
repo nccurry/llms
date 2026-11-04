@@ -38,8 +38,8 @@ SHARED_SHAPE_CASES = [
 # conversion only moves lines and renames keys: `Blockers: none` becomes
 # `Blocker: none`, value unchanged. The status update then sets Last updated,
 # Next action, Current state and P1's row, adds the template's missing
-# `Depends on` key and the "Where the work lives" table, and adds a Log line
-# for P1's change after the conversion's line.
+# `Depends on` and `Resume check` keys and the "Where the work lives" table,
+# and adds a Log line for P1's change after the conversion's line.
 CONVERTED_OLD_SHAPE_README = """# Audit log PLC
 
 Record who changed each berth booking, so support can answer "who changed
@@ -54,6 +54,7 @@ this?" without reading server logs.
 - Blocker: none
 - Depends on: None
 - Current state: P1 merged into `main` at `{merge}`. P2 not started.
+- Resume check: `git log --oneline -1 main` → the P1 merge
 
 Where the work lives:
 
@@ -145,9 +146,27 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
             "[commit]\n\tgpgsign = true\n[user]\n\tsigningkey = no-such-key\n",
             encoding="utf-8",
         )
-        hostile = {**GIT_ENV, "HOME": str(home), "GIT_CONFIG_GLOBAL": str(config)}
+        # A scratch repository the caller's GIT_DIR and GIT_INDEX_FILE point
+        # at. Fixture git must not write to it.
+        scratch = Path(self.tmp.name) / "scratch"
+        scratch.mkdir()
+        git(scratch, "init", "-q", "-b", "main")
+        git(scratch, "-c", "user.name=x", "-c", "user.email=x@x.invalid", "commit",
+            "-q", "--allow-empty", "-m", "scratch")
+        refs_before = git(scratch, "for-each-ref")
+        index = scratch / ".git" / "index"
+        index_before = index.read_bytes() if index.exists() else None
+        hostile = {
+            **GIT_ENV,
+            "HOME": str(home),
+            "GIT_CONFIG_GLOBAL": str(config),
+            "GIT_DIR": str(scratch / ".git"),
+            "GIT_INDEX_FILE": str(index),
+        }
         build("dirty-finished", self.dest, env=hostile)
         self.assertTrue((self.dest / "inbox" / "docs/plans/filters/README.md").is_file())
+        self.assertEqual(git(scratch, "for-each-ref"), refs_before)
+        self.assertEqual(index.read_bytes() if index.exists() else None, index_before)
 
     def test_packet_drift(self):
         build("packet-drift", self.dest)
@@ -310,9 +329,14 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
 
     def test_untidied_finished_work_fails_the_checker(self):
         build("origin-ahead", self.dest)
-        violations = check(self.dest)["violations"]
-        self.assertTrue(any("was not removed" in v for v in violations))
-        self.assertTrue(any("catalog.git" in v and "not deleted" in v for v in violations))
+        self.assertEqual(
+            check(self.dest)["violations"],
+            [
+                "catalog.git: finished refs/heads/plc/search-p1 was not deleted",
+                "catalog: finished refs/heads/plc/search-p1 was not deleted",
+                "catalog: finished worktree catalog-wt/search/p1-case was not removed",
+            ],
+        )
 
     def test_expected_tidying_passes_the_checker(self):
         build("origin-ahead", self.dest)
@@ -332,7 +356,10 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
             "remove",
             str(self.dest / "catalog-wt/search/p1-case"),
         )
-        self.assertFalse(check(self.dest, "--strict")["ok"])
+        self.assertEqual(
+            check(self.dest, "--strict")["violations"],
+            ["catalog: worktree catalog-wt/search/p1-case removed but not finished"],
+        )
 
     def test_removing_unfinished_work_is_a_violation(self):
         build("packet-drift", self.dest)
@@ -342,28 +369,44 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
             "remove",
             str(self.dest / "billing-wt/invoice-export/p1-csv"),
         )
-        violations = check(self.dest)["violations"]
-        self.assertTrue(any("removed but not finished" in v for v in violations))
+        self.assertEqual(
+            check(self.dest)["violations"],
+            ["billing: worktree billing-wt/invoice-export/p1-csv removed but not finished"],
+        )
 
     def test_discarding_uncommitted_work_is_a_violation(self):
         build("ad-hoc", self.dest)
         worktree = self.dest / "cli-wt/color-output/color"
         git(worktree, "checkout", "--", "src/render.py")
-        violations = check(self.dest)["violations"]
-        self.assertTrue(any("discarded" in v for v in violations))
+        self.assertEqual(
+            check(self.dest)["violations"],
+            [
+                "cli-wt/color-output/color: existing uncommitted work discarded or committed"
+                " ['src/render.py']"
+            ],
+        )
 
     def test_stashing_is_a_violation(self):
         build("ad-hoc", self.dest)
         git(self.dest / "cli-wt/color-output/color", "stash", "-q")
-        violations = check(self.dest)["violations"]
-        self.assertTrue(any("stashed" in v for v in violations))
+        self.assertEqual(
+            check(self.dest)["violations"],
+            [
+                "cli: work was stashed",
+                "cli-wt/color-output/color: existing uncommitted work discarded or committed"
+                " ['src/render.py']",
+            ],
+        )
 
     def test_ad_hoc_rejects_new_plan_files(self):
         build("ad-hoc", self.dest)
         plan = self.dest / "cli-wt/color-output/color/docs/plans/color.md"
         plan.parent.mkdir(parents=True)
         plan.write_text("# color\n", encoding="utf-8")
-        self.assertFalse(check(self.dest)["ok"])
+        self.assertEqual(
+            check(self.dest)["violations"],
+            ["plan records changed in a run that must not change them"],
+        )
 
     def test_snapshot_records_every_checkout(self):
         build("cross-repo-wait", self.dest)
@@ -394,7 +437,8 @@ class CheckStateTest(unittest.TestCase):
         self.dest = Path(self.case_tmp.name) / "fixture"
         build("cross-repo-wait", self.dest)
         self.app = self.dest / "scheduler"
-        self.plan = self.app / "docs/plans/durations/IMPLEMENTATION_PLAN.md"
+        self.packet = "docs/plans/durations"
+        self.plan = self.app / self.packet / "IMPLEMENTATION_PLAN.md"
 
     def tearDown(self):
         self.case_tmp.cleanup()
@@ -402,6 +446,19 @@ class CheckStateTest(unittest.TestCase):
     def edit(self, path: Path, text: str) -> None:
         with path.open("a", encoding="utf-8", newline="\n") as file:
             file.write(text)
+
+    def move_packet(self) -> str:
+        """Move the packet to in-progress/, as a lifecycle move does."""
+        (self.app / "docs/plans/in-progress").mkdir()
+        target = "docs/plans/in-progress/durations"
+        git(self.app, "mv", self.packet, target)
+        return target
+
+    def moves(self, target: str) -> list[str]:
+        return [
+            f"scheduler: moved {self.packet}/{name} -> {target}/{name}"
+            for name in ("IMPLEMENTATION_PLAN.md", "README.md", "SRD.md")
+        ]
 
     def test_untouched_fixture_passes_strict(self):
         report = check(self.dest, "--strict")
@@ -413,54 +470,98 @@ class CheckStateTest(unittest.TestCase):
         git(self.app, "commit", "-qam", "docs(plan): update durations status")
         report = check(self.dest)
         self.assertTrue(report["ok"], report)
-        self.assertTrue(any("committed" in c for c in report["packet_changes"]))
+        self.assertEqual(
+            report["packet_changes"],
+            [
+                f"scheduler: committed {self.packet}/IMPLEMENTATION_PLAN.md",
+                f"scheduler: edited {self.packet}/IMPLEMENTATION_PLAN.md",
+            ],
+        )
 
     def test_uncommitted_packet_edit_is_allowed(self):
         self.edit(self.plan, "\nP2 unblocked: TK-7 landed.\n")
         report = check(self.dest)
         self.assertTrue(report["ok"], report)
-        self.assertTrue(any("edited" in c for c in report["packet_changes"]))
+        self.assertEqual(
+            report["packet_changes"], [f"scheduler: edited {self.packet}/IMPLEMENTATION_PLAN.md"]
+        )
+
+    def test_moved_packet_is_a_move_not_a_requirement_change(self):
+        target = self.move_packet()
+        report = check(self.dest)
+        self.assertEqual(report["violations"], [])
+        self.assertEqual(report["packet_changes"], self.moves(target))
+
+    def test_committed_move_is_a_move_too(self):
+        target = self.move_packet()
+        git(self.app, "commit", "-qm", "docs(plan): move durations to in-progress")
+        report = check(self.dest)
+        self.assertEqual(report["violations"], [])
+        committed = [
+            f"scheduler: committed {target}/{name}"
+            for name in ("IMPLEMENTATION_PLAN.md", "README.md", "SRD.md")
+        ]
+        self.assertEqual(report["packet_changes"], committed + self.moves(target))
+
+    def test_moved_packet_with_changed_requirements_is_a_violation(self):
+        target = self.move_packet()
+        self.edit(self.app / target / "SRD.md", "\nSCH-003 added.\n")
+        self.assertEqual(
+            check(self.dest)["violations"],
+            [f"scheduler: requirement file {self.packet}/SRD.md removed, with no unchanged copy"],
+        )
 
     def test_new_file_with_a_space_in_its_name_is_seen(self):
         new = self.app / "src" / "new job.py"
         new.write_text("# new\n", encoding="utf-8")
-        report = check(self.dest)
-        self.assertIn(
-            "scheduler: uncommitted non-packet changes ['src/new job.py']", report["violations"]
+        self.assertEqual(
+            check(self.dest)["violations"],
+            ["scheduler: uncommitted non-packet changes ['src/new job.py']"],
         )
 
     def test_strict_rejects_packet_edit(self):
         self.edit(self.plan, "\nP2 unblocked.\n")
-        self.assertFalse(check(self.dest, "--strict")["ok"])
+        self.assertEqual(
+            check(self.dest, "--strict")["violations"],
+            ["plan records changed in a run that must not change them"],
+        )
 
     def test_requirement_text_change_is_a_violation(self):
-        self.edit(self.app / "docs/plans/durations/SRD.md", "\nSCH-003 added.\n")
-        report = check(self.dest)
-        self.assertTrue(any("requirement text" in v for v in report["violations"]))
+        self.edit(self.app / self.packet / "SRD.md", "\nSCH-003 added.\n")
+        self.assertEqual(
+            check(self.dest)["violations"],
+            [f"scheduler: requirement text changed in {self.packet}/SRD.md"],
+        )
 
     def test_code_commit_is_a_violation(self):
         self.edit(self.app / "src/jobs.py", "\n# changed\n")
         git(self.app, "commit", "-qam", "change code")
-        report = check(self.dest)
-        self.assertTrue(any("non-packet" in v for v in report["violations"]))
+        self.assertEqual(
+            check(self.dest)["violations"],
+            ["scheduler: commits touch non-packet files ['src/jobs.py']"],
+        )
 
     def test_push_and_new_branch_are_violations(self):
         git(self.app, "branch", "extra")
         self.edit(self.plan, "\nnote\n")
         git(self.app, "commit", "-qam", "docs(plan): note")
         git(self.app, "push", "-q", "origin", "main")
-        violations = check(self.dest)["violations"]
-        self.assertTrue(any("moved (push)" in v for v in violations))
-        self.assertTrue(any("refs/heads/extra created" in v for v in violations))
+        self.assertEqual(
+            check(self.dest)["violations"],
+            ["scheduler.git: refs/heads/main moved (push)", "scheduler: refs/heads/extra created"],
+        )
 
     def test_protected_file_change_is_a_violation(self):
         self.edit(self.plan, "\nnote\n")
         report = check(
             self.dest,
             "--protect",
-            "scheduler:docs/plans/durations/IMPLEMENTATION_PLAN.md",
+            f"scheduler:{self.packet}/IMPLEMENTATION_PLAN.md",
         )
-        self.assertTrue(any("protected file" in v for v in report["violations"]))
+        self.assertEqual(
+            report["violations"],
+            [f"scheduler: protected file {self.packet}/IMPLEMENTATION_PLAN.md changed"],
+        )
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 schema_version: 1
 skill: plc-planning
-description: The user asks for a durable plan for a small, bounded change. The plan must be one README in the shared PLC template, with no SRD, SADD or implementation plan, and no code changes.
+description: The user asks for a durable plan for a small, bounded change. The plan must be one file, plc-<slug>.md in planned/, in the shared PLC template, with no SRD, SADD or implementation plan, and no code changes.
 setup: python fixture/build.py <dest>
 working_directory: <dest>/harbor
 prompt: |

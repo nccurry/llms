@@ -1,10 +1,12 @@
 """Check what a plc-planning eval run wrote, against the fixture's _snapshot.json.
 
-A small, bounded change gets one plan file and nothing else: either
-`docs/plans/planned/<slug>/README.md` or a one-file plan
+A small, bounded change gets one plan file and nothing else: a one-file plan
 `docs/plans/planned/plc-<slug>.md`, named by the planning skill's format check
-rule for one-file plans. No `SRD.md`, `SADD.md`, `IMPLEMENTATION_PLAN.md` or
-other file may appear, no code may change, and history must not be rewritten.
+rule for one-file plans. The skill's sizing rule picks a one-file plan for
+small work that will not need SRD.md, SADD.md or IMPLEMENTATION_PLAN.md, and
+the fixture's `docs/plans/README.md` says the same. No packet folder, side
+file or other file may appear, no code may change, and history must not be
+rewritten.
 The plan must pass the shipped format check in strict mode, as a packet in
 `planned/`, and the evals' own rules for new packets, including an Owner line
 that names `@alex`, as the prompt asks.
@@ -41,13 +43,10 @@ def changed_paths(app: Path, start: str) -> list[str]:
 
 
 def is_plan_file(app: Path, path: str) -> bool:
-    """True for a packet README or a one-file plan directly under `planned/`."""
-    if not path.startswith(PLANNED):
+    """True for a one-file plan directly under `planned/`."""
+    if not path.startswith(PLANNED) or "/" in path[len(PLANNED) :]:
         return False
-    parts = path[len(PLANNED) :].split("/")
-    folder_readme = len(parts) == 2 and parts[1] == "README.md"
-    one_file_plan = len(parts) == 1 and format_check().is_packet(app / path)
-    return folder_readme or one_file_plan
+    return format_check().is_packet(app / path)
 
 
 def check(dest: Path) -> dict:

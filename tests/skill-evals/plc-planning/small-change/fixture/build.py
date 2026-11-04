@@ -2,8 +2,8 @@
 
 `harbor list --limit 0` prints nothing, and a negative limit quietly drops
 berths from the end of the list. The fix is one argument check and a test.
-The repo says where plans go, but not what shape they take, so the planning
-skill's own sizing decides that.
+The repo says where plans go and, like the planning skill's sizing rule, that
+small work gets a one-file plan.
 """
 
 import sys
@@ -65,6 +65,10 @@ PLANS_README = """# Plans
 Plans for changes to harbor live here, in lifecycle folders: `planned/`,
 `in-progress/`, `completed/` and `archived/`. A new plan starts in
 `planned/`.
+
+A plan for small work is one file, `plc-<slug>.md`. Work that needs a
+requirements, design or implementation file beside the plan gets a folder,
+`<slug>/`, with the plan as its `README.md`.
 """
 
 dest = destination()

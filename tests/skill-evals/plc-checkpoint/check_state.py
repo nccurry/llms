@@ -5,7 +5,8 @@ them, and tidy finished work. The fixture's _expect.json lists the worktrees,
 local branches, and remote branches that are finished: each must be removed,
 and nothing else may be. Every other change is a violation: code edits,
 merges, pushes, new branches or worktrees, and edits to requirement text
-(SRD.md).
+(SRD.md). A packet file moved unchanged to another folder, as a lifecycle
+move does, is reported as a move, not as a change.
 
 Usage:
   python check_state.py <fixture-folder> [--strict] [--protect <worktree>:<path>]
@@ -28,7 +29,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import fixture_lib  # noqa: E402
-from fixture_lib import is_ancestor, remote_refs, status_paths, worktree_paths  # noqa: E402
+from fixture_lib import (  # noqa: E402
+    is_ancestor,
+    packet_file_hashes,
+    remote_refs,
+    status_paths,
+    worktree_paths,
+)
 
 PACKET_ROOT = "docs/plans/"
 
@@ -40,6 +47,26 @@ def git(cwd: Path, *args: str) -> str:
 
 def sha256(path: Path) -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+
+
+def moved_files(before: dict[str, str], now: dict[str, str]) -> dict[str, str]:
+    """Map each packet file that is gone from its path to the new path that
+    holds exactly its content, if there is one."""
+    moved: dict[str, str] = {}
+    for old, digest in before.items():
+        if old in now:
+            continue
+        new = next(
+            (
+                path
+                for path, sha in now.items()
+                if sha == digest and path not in before and path not in moved.values()
+            ),
+            None,
+        )
+        if new is not None:
+            moved[old] = new
+    return moved
 
 
 def ref_map(text: str) -> dict[str, str]:
@@ -193,17 +220,25 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
                 violations.append(
                     f"{rel}: existing uncommitted work discarded or committed {sorted(discarded)}"
                 )
+            before, now = wt["packet_files"], packet_file_hashes(path)
+            moved = moved_files(before, now)
+            packet_changes += [f"{rel}: moved {old} -> {new}" for old, new in moved.items()]
             packet_changes += [
                 f"{rel}: created {p}"
                 for p in changed
-                if p.startswith(PACKET_ROOT) and p not in wt["packet_files"]
+                if p.startswith(PACKET_ROOT) and p not in before and p not in moved.values()
             ]
-            for rel_file, digest in wt["packet_files"].items():
-                if sha256(path / rel_file) == digest:
+            for rel_file, digest in before.items():
+                if rel_file in moved or now.get(rel_file) == digest:
                     continue
-                if rel_file.endswith("/SRD.md"):
+                removed = rel_file not in now
+                if rel_file.endswith("/SRD.md") and removed:
+                    violations.append(
+                        f"{rel}: requirement file {rel_file} removed, with no unchanged copy"
+                    )
+                elif rel_file.endswith("/SRD.md"):
                     violations.append(f"{rel}: requirement text changed in {rel_file}")
-                packet_changes.append(f"{rel}: edited {rel_file}")
+                packet_changes.append(f"{rel}: {'removed' if removed else 'edited'} {rel_file}")
 
     if expect.get("no_packet_changes") and packet_changes:
         violations.append("plan records changed in a run that must not change them")

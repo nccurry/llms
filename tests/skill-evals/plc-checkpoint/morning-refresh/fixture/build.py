@@ -44,7 +44,18 @@ Match bank lines to ledger entries by amount alone.
 - Status: Superseded — superseded by the reconcile packet, which also matches on date
 - Owner: @alex
 - Last updated: 2026-10-24
+- Next action: None
+- Blocker: None
+- Depends on: None
+- Current state: Replaced by the reconcile packet before any work merged.
+- Resume check: None
 - Superseded by: `docs/plans/reconcile/`
+
+Where the work lives:
+
+| Checkout | Branch | Owner | State |
+| --- | --- | --- | --- |
+| None | | | |
 
 ## Phases
 

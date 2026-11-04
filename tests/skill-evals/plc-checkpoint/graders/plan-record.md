@@ -20,12 +20,14 @@ Pass only if all of these hold:
    ```
 
    No other section holds a Status, Owner or Last updated line.
-2. **Keys kept.** Status, Owner and Last updated come first, in that order.
-   In a finished packet, the plain line "Historical record as of <commit>;
-   the code is the current truth." comes before them; that is valid. The
-   Owner line is unchanged: `- Owner: @alex`. A `Depends on`, `Replaces` or
-   `Superseded by` line in the fixture is still there. It may gain a note,
-   such as the commit where a dependency landed.
+2. **Keys kept.** Status, Owner and Last updated come first, in that order,
+   and every other template key is there: Next action, Blocker, Depends on,
+   Current state and Resume check, followed by the "Where the work lives"
+   table. In a finished packet, the line "Historical record as of <commit>;
+   the code is the current truth." comes before them, as a plain line or a
+   list item; that is valid. The Owner line is unchanged: `- Owner: @alex`. A
+   `Depends on`, `Replaces` or `Superseded by` line in the fixture is still
+   there. It may gain a note, such as the commit where a dependency landed.
 3. **Last updated** starts with the run's date, and names the branch and
    commit it describes.
 4. **Phase notes.** A phase whose state changed shows its new state in the
