@@ -51,6 +51,7 @@ beside the old one. "Convert" here means changing the format in place;
    | Old key | New key |
    | --- | --- |
    | `State` | `Status` when it starts with a packet status word; otherwise `Current state` |
+   | `Owners` | `Owner` |
    | `Updated` | `Last updated` |
    | `Next step` | `Next action` |
    | `Blockers`, `Blocker / owner` | `Blocker` |

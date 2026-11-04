@@ -65,9 +65,12 @@ sections; read those, and step 5 converts it to the shared template.
 Fetch first, then collect facts. Record the commit each fact applies to.
 
 1. **Every copy of the plan:** local `main`, `origin/main`, the integration
-   branch, and each campaign worktree. Find the newest with
-   `git log -1 --format='%h %cs' <ref> -- <plan>` for each ref, and note where
-   copies disagree.
+   branch, and each campaign worktree. A move between lifecycle folders
+   changes the path, so find each ref's copy by the packet's folder or file
+   name in any lifecycle folder:
+   `git ls-tree -r --name-only <ref> -- <plans folder>`. Then find the newest
+   with `git log -1 --format='%h %cs' <ref> -- <that path>` for each ref, and
+   note where copies disagree.
 2. **Branches and worktrees.** Start from `git worktree list --porcelain`,
    not the campaign folder alone: older checkouts live in `.claude/worktrees`,
    `~/.codex/worktrees`, or elsewhere. For each one in this campaign: branch,
@@ -156,9 +159,11 @@ Rewrite the plan's Current Work block in place with the keys of `plc-planning`'s
 Status, Owner, "Last updated" (today, the branch, and its commit), then the
 other keys and where the work lives (after tidying). Keep Owner, Depends on,
 and any `Replaces:` or `Superseded by:` line unless the evidence or the user
-changes them. Replace the old content; history goes to the Log. When the new
-Status belongs in another lifecycle folder, move the packet as `plc-planning`'s
-[lifecycle folders](../plc-planning/SKILL.md#lifecycle-folders) rule says.
+changes them. Replace the old content; history goes to the Log. When Status
+changes between Planned and In progress, follow `plc-planning`'s
+[lifecycle folders](../plc-planning/SKILL.md#lifecycle-folders) rule. Never
+set Status to Complete or move the packet to `completed/`; finishing is
+`wrap-this-up`'s job. When the work looks finished, say so and offer it.
 
 Then, in the same README:
 
