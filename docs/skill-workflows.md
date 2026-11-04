@@ -14,14 +14,17 @@ design, delivery steps, and checks.
 
 ## Write a change plan
 
-Use the project's planning format first. Otherwise, every plan starts as one
-README from the shared template: the
-[default packet](../skills/plc-planning/assets/default-packet/README.md), or the
-[compact plan](../skills/plc-planning/assets/compact-plan.md) for the same README
-as a single file. Add SRD.md, SADD.md, or IMPLEMENTATION_PLAN.md only when the
-work needs that much detail:
+Every plan uses the shared template. A project's own planning format adds its
+file names, location, and extra sections before `## Log`. A plan starts as one
+README: the [default packet](../skills/plc-planning/assets/default-packet/README.md),
+or the [compact plan](../skills/plc-planning/assets/compact-plan.md) for the same
+README as a single file. Add SRD.md, SADD.md, or IMPLEMENTATION_PLAN.md only
+when the work needs that much detail:
 
 ![PLC packet: README.md holds the summary, Current Work, the Phases table, Done when, open questions, and the Log. SRD.md defines requirements and their checks; SADD.md explains the design; IMPLEMENTATION_PLAN.md holds phase details and evidence. Add them only when needed. Optional FIXTURES.md holds stable examples and test cases.](images/plc-packet.svg)
+
+This example is trimmed: the other Current Work keys and the "Where the work
+lives" table are left out.
 
 ```text
 # Config reload
@@ -56,8 +59,9 @@ Keep requirement and phase IDs stable. Replace Current Work as work changes,
 and add a dated Log line for each change. A phase is Verified only when its
 check passed on the merged code. Record each result once and link to it. If a
 record is missing, check existing results before running checks again. A
-finished plan moves to `completed/`. The full rules and the format check are
-in [plc-planning](../skills/plc-planning/SKILL.md#shared-template).
+finished plan moves to `completed/`; plans finished earlier into another folder
+stay where they are. The full rules and the format check are in
+[plc-planning](../skills/plc-planning/SKILL.md#shared-template).
 
 ## Choose an execution model
 
@@ -82,10 +86,10 @@ phases, and how each requirement will be verified.
 
 $review-and-fix-plc Review that packet and fix supported findings.
 
-$monitored-sol-plc-execution Implement phase 1 only. Include tests and docs.
+$monitored-sol-plc-execution Implement P1 only. Include tests and docs.
 Use an isolated worktree and open a PR to main. Do not merge it.
 
-$plc-checkpoint Record phase 1's checks, PR state, and remaining work.
+$plc-checkpoint Record P1's checks, PR state, and remaining work.
 ```
 
 After approval to merge:
