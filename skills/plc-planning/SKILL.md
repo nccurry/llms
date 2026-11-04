@@ -54,8 +54,10 @@ Record the check's actual result only after running it.
      [the compact plan](assets/compact-plan.md), the same README as a single
      `plc-<slug>.md` file. Choose the one-file plan for small work that will
      not need SRD.md, SADD.md, or IMPLEMENTATION_PLAN.md; choose a folder when
-     the work may grow, since only a folder can hold those files. Small fixes
-     may need only investigation, repair, and focused checks.
+     the work may grow, since only a folder can hold those files. A one-file
+     plan that later needs one becomes a folder, as
+     [Growing a packet](#growing-a-packet) says. Small fixes may need only
+     investigation, repair, and focused checks.
    - Do not invent file names, ledgers, or approval steps when neither the
      repository nor the user asks for them. Keep the packet in the
      [lifecycle folder](#lifecycle-folders) that matches its status, so
@@ -64,26 +66,11 @@ Record the check's actual result only after running it.
      If there is no clear location, state the proposed location before writing.
 
 3. Build the selected plan or packet.
-   - Size it to the work. Start with the README alone, and add a file only
-     when the work needs that much detail:
-     - [SRD.md](assets/default-packet/SRD.md) when the requirements need public
-       contracts, risks, or more than a short `## Done when` list;
-     - [SADD.md](assets/default-packet/SADD.md) when design choices or
-       alternatives need a record;
-     - [IMPLEMENTATION_PLAN.md](assets/default-packet/IMPLEMENTATION_PLAN.md)
-       when a phase needs more detail or evidence than its row and note. It
-       keeps each phase under a `### P1: <name>` heading, with no state table;
-     - [FIXTURES.md](assets/default-packet/FIXTURES.md) only when stable
-       fixtures, example inputs, API inventories, or visual reference cases
-       will help implementation.
-
-     A packet with SRD.md, SADD.md, and IMPLEMENTATION_PLAN.md is a full
-     packet.
-   - Link each added file from the part of the packet that uses it. SRD.md:
-     from `## Done when`, which then holds only the pointer line the
-     [requirements rules](#requirements-and-checks) give.
-     IMPLEMENTATION_PLAN.md: each phase row links to its heading there.
-     SADD.md and FIXTURES.md: from the file or section that relies on them.
+   - Size it to the work. Start with the README alone, and add SRD.md,
+     SADD.md, IMPLEMENTATION_PLAN.md or FIXTURES.md only when the
+     [Adding files](#adding-files) rule calls for it, in the way
+     [Growing a packet](#growing-a-packet) says. A packet with SRD.md,
+     SADD.md, and IMPLEMENTATION_PLAN.md is a full packet.
    - Delete sections that do not apply; never leave `N/A`, `TBD`, or empty
      headings. Add repository-specific sections only when they record a real
      constraint or decision.
@@ -121,7 +108,8 @@ Record the check's actual result only after running it.
      checkpoints. Remove superseded instructions from current sections,
      keeping only useful rationale in decisions or the Log.
    - Put useful implementation notes, adopted decisions, remaining work, and
-     concise validation outcomes in the packet's existing sections. Commit
+     concise validation outcomes in the sections that own them, adding a file
+     when [Growing a packet](#growing-a-packet) calls for one. Commit
      updates with the work. Delete temporary notes when no longer useful.
      Raw receipts, logs, binaries, and caches need no archive after an MR merges
      or a checkout closes. Keeping unfinished source does not require keeping
@@ -288,6 +276,82 @@ refer to this section instead of repeating it.
   check and other tools find each line by its exact key name and read the
   value after the colon, so keep both as written here.
 
+#### Fixed fields
+
+Tools find these by their exact text, so each template keeps them as
+written here:
+
+- `README.md` and `compact-plan.md`: the section headings in
+  [Order and format](#order-and-format) and the `- Key:` lines in
+  [Current Work](#current-work), spelled as they are there, and the
+  `## Phases` table header `| Phase | Name | Owner | State |`.
+- `SRD.md`: the requirements table header
+  `| ID | Priority | Requirement | Check |`. The format check reads the IDs
+  in its first column.
+- `SADD.md`: the decisions table header
+  `| Decision or option | Status | Reason |`.
+- `IMPLEMENTATION_PLAN.md`: one `### P<n>: <name>` heading for each phase,
+  with the ID its `## Phases` row has.
+- `FIXTURES.md`: the fixture table header
+  `| ID | Area | Input and conditions | Expected result | Requirements |`.
+
+#### Adding files
+
+A plan starts as the README alone. Add a file only when one of its
+triggers holds. The triggers depend on the kind of information, not on the
+size of the work:
+
+- **SRD.md** when the work adds a public contract or changes one on
+  purpose: a CLI command or flag, an API, a configuration key, or a UI flow.
+  A bug fix inside an existing contract, such as a clear error for input
+  that never worked, does not count. Also when the work has real risks,
+  ones that need an owner and a check, or when `## Done when` would list
+  more than eight requirements.
+- **SADD.md** when a decision had other real options worth recording, or
+  when the change crosses several components, adds a dependency or a data
+  model, or affects security, performance or a migration.
+- **IMPLEMENTATION_PLAN.md** when a phase needs more than its row and a few
+  evidence bullets below the table.
+- **FIXTURES.md** when stable inputs, example data or reference cases will
+  help.
+
+A file is added only for that information, never because the work is large
+or to fill out the packet.
+
+#### Growing a packet
+
+Whenever a skill updates a plan and a trigger in
+[Adding files](#adding-files) now holds for a file the plan lacks, add the
+file in the same update:
+
+1. A one-file plan becomes a folder first:
+   `git mv plc-<slug>.md <slug>/README.md`, in the same lifecycle folder.
+   Its side files, such as `plc-<slug>-srd.md`, move into the folder too.
+   Update the links into and out of it, as
+   [Lifecycle folders](#lifecycle-folders) says for a move.
+2. Copy its template from `assets/default-packet/`, such as
+   [SRD.md](assets/default-packet/SRD.md), and delete the sections that do
+   not apply.
+3. Move the information into it, so it has one home, and link to it from
+   the part of the packet that uses it:
+   - requirements leave `## Done when`, which keeps only the pointer line
+     the [requirements rules](#requirements-and-checks) give;
+   - a decision with real alternatives goes to SADD.md's decisions table,
+     and its Log line links there;
+   - a phase's details and evidence go under its `### P<n>: <name>`
+     heading in IMPLEMENTATION_PLAN.md, and its `## Phases` row links to
+     that heading;
+   - fixtures go to FIXTURES.md, linked from the requirements or phases
+     that use them.
+4. Add one dated Log line naming the file added and why:
+   `- 2026-11-04 Added SRD.md: the new --max-age flag is a public contract.`
+
+More detail inside approved scope needs no approval. New scope, such as a
+new deliverable or a contract or architecture change nobody approved, needs
+the user's approval first, as the execution boundary in step 5 of the
+[workflow](#workflow) says. A finished packet never grows; new scope opens a
+new packet, as [Ending a packet](#ending-a-packet) says.
+
 #### Title and summary
 
 - The title is `# <ID> <name>` when the repository numbers its packets, such
@@ -363,8 +427,10 @@ refer to this section instead of repeating it.
   what it blocks and whom it waits on:
   `- Open question: Should the cap be configurable? (blocks P2; waits on @sam)`.
 - When it is answered, delete the line and add a dated `Decision:` line to
-  the Log. When SADD.md exists, also record the decision in its decisions
-  table.
+  the Log. Also record the decision in SADD.md's decisions table when
+  SADD.md exists, or when the decision had real alternatives, adding
+  SADD.md as [Growing a packet](#growing-a-packet) says if the packet has
+  none. The Log line then links to the table.
 
 #### Log
 

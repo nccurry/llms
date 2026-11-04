@@ -19,7 +19,12 @@ file names, location, and extra sections before `## Log`. A plan starts as one
 README: the [default packet](../skills/plc-planning/assets/default-packet/README.md),
 or the [compact plan](../skills/plc-planning/assets/compact-plan.md) for the same
 README as a single file. Add SRD.md, SADD.md, or IMPLEMENTATION_PLAN.md only
-when the work needs that much detail:
+when the plan has information that belongs there, such as a new public
+contract for SRD.md; the planning skill's
+[Adding files](../skills/plc-planning/SKILL.md#adding-files) rule lists the
+triggers. A one-file plan that later needs one becomes a folder, as its
+[Growing a packet](../skills/plc-planning/SKILL.md#growing-a-packet) rule
+says:
 
 ![PLC packet: README.md holds the summary, Current Work, the Phases table, Done when, open questions, and the Log. SRD.md defines requirements and their checks; SADD.md explains the design; IMPLEMENTATION_PLAN.md holds phase details and evidence. Add them only when needed. Optional FIXTURES.md holds stable examples and test cases.](images/plc-packet.svg)
 

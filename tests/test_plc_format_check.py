@@ -643,6 +643,48 @@ class TemplateTest(unittest.TestCase):
         self.assertNotEqual(compact, readme)
         self.assertEqual(without_note(compact), readme)
 
+    def test_fixed_fields_match_the_templates(self):
+        """Every template in assets/ is in the skill's Fixed fields list, and
+        holds the fields the list gives it, exactly."""
+        text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        rules = text.split("### Rules\n", 1)[1]
+
+        def rule(name):
+            return " ".join(rules.split(f"#### {name}\n", 1)[1].split("\n#### ", 1)[0].split())
+
+        assets = SKILL / "assets"
+        fields = {}
+        for item in re.findall(r"- (`[\w.-]+\.md`.+?)(?= - `[\w.-]+\.md`|$)", rule("Fixed fields")):
+            texts = [field for field in re.findall(r"`([^`]+)`", item) if field.startswith(("|", "###"))]
+            for name in re.findall(r"`([\w.-]+\.md)`", item):
+                path = assets / name if name == "compact-plan.md" else assets / "default-packet" / name
+                fields[path] = texts
+        self.assertEqual(sorted(fields), sorted(assets.rglob("*.md")))
+        self.assertEqual(sorted(path.name for path, texts in fields.items() if not texts), [])
+
+        # The README's sections and keys are the ones the rules name.
+        sections = re.findall(r"`(## [^`]+)`", rule("Order and format").split(" - ")[0])
+        keys = re.search(r"- (Status), (Owner) and (Last updated) come first.*?Then ([^.]+)\.", rule("Current Work"))
+        keys = [*keys.groups()[:3], *re.split(r", | and ", keys[4])]
+        self.assertEqual(len(sections), 5)
+        self.assertEqual(len(keys), 8)
+
+        for path, texts in fields.items():
+            lines = path.read_text(encoding="utf-8").splitlines()
+            if path.name in ("README.md", "compact-plan.md"):
+                texts = [*texts, *sections]
+                for key in keys:
+                    with self.subTest(template=path.name, key=key):
+                        self.assertTrue(any(line.startswith(f"- {key}: ") for line in lines))
+            for field in texts:
+                pattern = re.escape(field).replace("<n>", r"\d+[a-z]?").replace("<name>", ".+")
+                with self.subTest(template=path.name, field=field):
+                    self.assertTrue(any(re.fullmatch(pattern, line) for line in lines))
+
+        # The format check finds the SRD template's requirements table.
+        srd = (assets / "default-packet" / "SRD.md").read_text(encoding="utf-8").splitlines()
+        self.assertEqual([cells[0] for _, cells in fc.requirement_rows(srd)], ["REQ-001"])
+
     def test_skill_word_list_matches_the_check(self):
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         words = " ".join(text.split("### Words\n", 1)[1].split("\n### ", 1)[0].split())

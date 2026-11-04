@@ -1,9 +1,8 @@
 <!-- Compact plan: the shared PLC template as a single file. Save it as
-`plc-<slug>.md` in a lifecycle folder such as `planned/`. When the work
-needs more detail, make a `<slug>/` folder, move this file into it as
-`README.md`, and add SRD.md (requirements, contracts and risks), SADD.md
-(design and decisions) or IMPLEMENTATION_PLAN.md (phase details and
-evidence) from plc-planning's default packet. Delete this note. -->
+`plc-<slug>.md` in a lifecycle folder such as `planned/`. When one of the
+triggers in plc-planning's "Adding files" rule holds, the plan becomes a
+`<slug>/` folder with this file as its `README.md`, as its "Growing a
+packet" rule says. Delete this note. -->
 
 # <ID> <Feature name>
 
