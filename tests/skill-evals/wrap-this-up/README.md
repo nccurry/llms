@@ -8,9 +8,9 @@ to merge straight into `main`, push, and run `run_tests.py`.
 
 | Case | What it checks |
 | --- | --- |
-| [direct-mid-stream](direct-mid-stream/case.yaml) | P2 is unfinished: merge both anyway, keep the plan open with P2's remaining work, clean up everything |
+| [direct-mid-stream](direct-mid-stream/case.yaml) | P2 is unfinished: merge both anyway, keep P2 In progress (or move channel posting to its own row), keep the plan open with P2's remaining work, clean up everything |
 | [complete-moves-plan](complete-moves-plan/case.yaml) | The only phase is done: merge, mark P1 Verified with evidence, mark the plan Complete with the historical-record line, move it to `completed/` |
-| [unmet-requirement](unmet-requirement/case.yaml) | The only phase passes its tests but misses DIG-003: merge, but keep P1 In progress, record the gap, and keep the plan open |
+| [unmet-requirement](unmet-requirement/case.yaml) | The only phase passes its tests but misses DIG-003: merge, but keep P1 In progress (or move DIG-003 to its own row), record the gap, and keep the plan open |
 | [failing-checks](failing-checks/case.yaml) | Each branch passes alone but not together: stop and ask |
 | [active-agent](active-agent/case.yaml) | P2 is locked by another session: merge and clean up P1 only |
 | [near-miss-status](near-miss-status/case.yaml) | "Where are we?" must go to `plc-checkpoint`, and nothing merges |
@@ -23,10 +23,11 @@ It extracts the plan from `origin/main` and checks it with fixture_lib's
 `packet_shape_problems`, which runs the shipped format check in strict mode
 plus the evals' own rules, including the `@alex` owner. It reads the packet
 status as a word, so `Done` counts as Complete, and checks whether Current
-Work opens with the historical-record line. In unmet-requirement and
+Work opens with the historical-record line. In every case, "Where the work
+lives" must not name a checkout the run removed. In unmet-requirement and
 direct-mid-stream, the phase that still holds an unbuilt part must be In
-progress, or Merged or Verified once its note says `moved to P<n>` and that
-row exists, and "Where the work lives" must not name a removed checkout.
+progress, or Merged or Verified once its note says `moved to P<n>` for a new
+row: not the phase itself and not one the plan had at the start.
 
 It also compares the end state with `_snapshot.json`. A worktree or local
 branch the run added must be gone, including the `_merge` checkout the skill
@@ -72,10 +73,10 @@ with the grader as it was then.
 
 - Point 4, runs 1 and 2: P1 read
   `In progress — DIG-001 merged @ <merge>; DIG-003 not started`, and the
-  grader wanted Merged. Grader defect, now fixed: the owner decided on
-  2026-11-04 that a phase with part of its work merged and part not started
-  is In progress. These notes pass the current point 4 because they name
-  the merge commit and the missing requirement, DIG-003.
+  grader wanted Merged. Grader defect, now fixed: the skills' maintainer
+  decided on 2026-11-04 that a phase with part of its work merged and part
+  not started is In progress. These notes pass the current point 4 because
+  they name the merge commit and the missing requirement, DIG-003.
 - Point 4, run 3: P1 read
   `Planned — DIG-001 merged @ <merge>; DIG-003 not started`. Skill defect,
   now fixed: the agent applied plc-checkpoint's old rule, "A phase takes the
@@ -86,14 +87,14 @@ with the grader as it was then.
   not change, so a line about the merge is not needed, and one line naming
   both the merge and the gap passes.
 - The grader's findings name no other failed point.
-- Read against the current grader, without a new run or grade: point 4
-  passes for runs 1 and 2 and still fails for run 3, and point 5 passes for
-  all three, since each has a dated line for the gap and an
-  `Open question:` line that names what it blocks. Run on a copy of each
-  run with the new expectations, check_wrap.py passes runs 1 and 2 and
-  fails run 3 on P1's word.
+- Checked by hand against the current grader, using the saved run output;
+  no agent re-run and no new grading: point 4 passes for runs 1 and 2 and
+  still fails for run 3, and point 5 passes for all three, since each has a
+  dated line for the gap and an `Open question:` line that names what it
+  blocks. `check_wrap.py`, run with the current expectations on copies of
+  the saved runs, passes runs 1 and 2 and fails run 3 on P1's word.
 - These runs used the skill text and grader from before the 2026-11-04
-  fixes, so the state-word and grader fixes have not been re-run yet.
+  fixes; no run has used those fixes yet.
 
 ### 2026-10-27, first run
 

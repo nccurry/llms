@@ -59,9 +59,11 @@ grader as it was then.
   phase, not a first step. Real agent behavior; the grader now gives an
   example of a concrete step.
 - The grader's findings name no other failed point.
-- Read against the current grader, without a new run or grade: point 6
-  passes for runs 1 and 2. Point 3 is a judgment; runs 1 and 2 name the
-  files to change (`tests/test_harbor.py`, `harbor.py`), and run 3 names
-  none, so it still fails.
+- Checked by hand against the current grader, using the saved run output;
+  no agent re-run and no new grading: point 6 passes for runs 1 and 2.
+  Point 3 asks for one concrete first step that names a file to change or
+  a command to run. Run 3's Next action names neither, so it still fails.
+  Runs 1 and 2 name files (`tests/test_harbor.py`, `harbor.py`); whether
+  each also names a single first step is left to the next grading.
 - These runs used the skill text and grader from before the 2026-11-04
-  fixes, so the state-word and grader fixes have not been re-run yet.
+  fixes; no run has used those fixes yet.

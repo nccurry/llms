@@ -18,7 +18,7 @@ installer copies the whole skill folder into each agent.
 | [ad-hoc](ad-hoc/case.yaml) | No plan: report from the conversation and git, create nothing |
 | [report-only](report-only/case.yaml) | "Just tell me, don't change anything" must change nothing |
 | [active-writer](active-writer/case.yaml) | Another agent's uncommitted packet edits must be left alone |
-| [old-shape](old-shape/case.yaml) | The packet is in an older shape: convert it to the shared template first, ending with one `## Current Work`, then update it |
+| [old-shape](old-shape/case.yaml) | The packet is in an older shape: convert it to the shared template first, ending with one `## Current Work`, then update it. P1 stays In progress, because nobody built its call from `save_booking`, unless that call moves to its own row |
 | [near-miss-wrap-up](near-miss-wrap-up/case.yaml) | "Wrap this up" must go to `wrap-this-up` |
 
 `check_state.py` compares a fixture with the `_snapshot.json` and
@@ -30,6 +30,9 @@ installer copies the whole skill folder into each agent.
   is reported as a move.
 - **Violations:** removing anything else, pushes, merges, new branches or
   worktrees, code edits, and any change to `SRD.md`.
+- **Packet text**, for a case whose `_expect.json` has `packet_content`
+  (old-shape): a phase's state word, lines that must or must not be in
+  `IMPLEMENTATION_PLAN.md`, and the `## Done when` line and place.
 
 It prints JSON and exits 1 on a violation. The outcome graders then judge the
 report and the plan edits, and [plan-record.md](graders/plan-record.md) holds
@@ -104,22 +107,25 @@ grader as it was then.
   `None`.
 - Point 7, run 1: it added a `## Done when` section and, in
   `IMPLEMENTATION_PLAN.md`, a line pointing to the README's phase table. At
-  the time, no conversion step called for either line. Steps M8 and M5 now
-  call for both, so that part was a gap in the skill and grader, now fixed.
-  But run 1's Done when line was its own wording, not M8's line, so it
-  would still fail point 7 under the current grader: real agent behavior.
+  the time, no conversion step called for either line: a missing rule, now
+  added as steps M8 and M5. Run 1's Done when line was its own wording, not
+  M8's line, so run 1 still fails point 7 under the current grader: real
+  agent behavior.
 - The grader's findings name no other failed point. All three runs marked
   P1 Merged and raised the missing `save_booking` call as an
   `Open question:` line.
-- Read against the current grader, without a new run or grade: point 2 now
-  passes for all three, and point 5 passes for all three, since each has a
-  dated surprise line for the missing call. Point 6 fails for all three: P1
-  is Merged, but nobody built the `save_booking` call, so it is In
-  progress. Point 7 fails for all three: run 1 as above, and runs 2 and 3
-  have no `## Done when` and no pointer line.
+- Checked by hand against the current grader, using the saved run output;
+  no agent re-run and no new grading: point 2 passes for all three, and
+  point 5 passes for all three, since each has a dated surprise line for
+  the missing call. Point 6 fails for all three: P1 is Merged, but nobody
+  built the `save_booking` call, so it is In progress. Point 7 fails for
+  all three: run 1 as above, and runs 2 and 3 have no `## Done when` and
+  no pointer line. `check_state.py`, run with the current `packet_content`
+  on copies of the saved runs, fails all three on P1's word and the Done
+  when line, and runs 2 and 3 also on the missing pointer line.
 - These runs used the skill text and grader from before the 2026-11-04
   fixes (the rules for a phase's parts, steps M5 and M8, and the grader
-  changes above), so those fixes have not been re-run yet.
+  changes above); no run has used those fixes yet.
 
 ### 2026-10-27, first run of plc-checkpoint
 
