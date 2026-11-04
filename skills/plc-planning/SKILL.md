@@ -80,10 +80,10 @@ Record the check's actual result only after running it.
      A packet with SRD.md, SADD.md, and IMPLEMENTATION_PLAN.md is a full
      packet.
    - Link each added file from the part of the packet that uses it. SRD.md:
-     from `## Done when`, which then links to the requirements instead of
-     listing them. IMPLEMENTATION_PLAN.md: each phase row links to its
-     heading there. SADD.md and FIXTURES.md: from the file or section that
-     relies on them.
+     from `## Done when`, which then holds only the pointer line the
+     [requirements rules](#requirements-and-checks) give.
+     IMPLEMENTATION_PLAN.md: each phase row links to its heading there.
+     SADD.md and FIXTURES.md: from the file or section that relies on them.
    - Delete sections that do not apply; never leave `N/A`, `TBD`, or empty
      headings. Add repository-specific sections only when they record a real
      constraint or decision.
@@ -236,28 +236,33 @@ refer to this section instead of repeating it.
   - Live: released or deployed.
 - **Side states:** Blocked, Deferred, Dropped. Deferred and Dropped need the
   user's approval, in the plan or the conversation.
-- **Parts.** A phase's parts are the requirements or tasks its plan lists
-  for it. A part has started when it has commits or changes of its own; a
-  part whose branch or worktree has none is still Planned. Work the plan
-  lists that nobody built is a part not started, even when every branch has
-  merged.
-- **A phase whose parts differ** takes the first of their words in the
-  order above. If that is Planned and any part is In progress or later, the
-  phase is In progress. Its note names what merged and each missing part:
+- **Parts.** A phase's parts are the pieces of work its plan lists for it:
+  each requirement, and each task in its plan section. When one requirement
+  or task names work that can be built separately, such as a function and
+  the call that uses it, each piece is its own part. A part has started when
+  a commit or uncommitted change does its work; until then it is Planned,
+  even when every branch has merged.
+- **A phase whose parts differ** gets its word in these steps:
+  1. When every part has a side state, the phase is Blocked if any part is
+     Blocked, otherwise Deferred if any is Deferred, otherwise Dropped.
+  2. Otherwise, leave Deferred and Dropped parts out. Count a Blocked part
+     as Planned when none of its work has started, and as In progress when
+     some has.
+  3. The phase takes the first of the remaining parts' words in the order
+     above. If that is Planned and any part is In progress or later, the
+     phase is In progress.
+
+  Its note names each merged part with its merge request or commit, each
+  part not yet merged, and each part with a side state:
   `In progress — REQ-001 merged @ abc1234; REQ-002 not started`.
-  - Leave Deferred and Dropped parts out when choosing the word, and name
-    them in the note.
-  - A Blocked part counts as Planned when none of its work has started,
-    and as In progress otherwise. Name it in the note.
-  - A phase whose parts all have side states is Blocked if any part is
-    Blocked, otherwise Deferred, otherwise Dropped.
-- **A gap moved to its own row** leaves its old phase: write `moved to P<n>`
-  in the old phase's note, and word the old phase from the parts it still
-  holds. A gap recorded only as an `Open question:` line stays a part of its
-  phase.
+- **A part moved to its own row** leaves its old phase: write
+  `moved to P<n>` in the old phase's note, and choose the old phase's word
+  from the parts it still holds. A part recorded only as an
+  `Open question:` line stays a part of its phase.
 - **Merged is not Verified.** A phase whose parts have all merged, but whose
   checks have not passed on the merged code, stays Merged, its note naming
-  the checks still to pass.
+  the checks still to pass. A check that does not exist because its work
+  was never built marks a part not started, not a check still to pass.
 - **Older words.** Tools still accept these in older text; new text uses the
   words above.
   - For packets: Draft, Ready and Proposed (Planned); In-progress,
@@ -334,9 +339,10 @@ refer to this section instead of repeating it.
   command, a test, or a written manual procedure, with its expected result.
   EARS wording ("WHEN … the system SHALL …") is optional.
 - A README-only packet lists requirements under `## Done when`. A packet
-  with SRD.md keeps them there, and its `## Done when` holds only one line
-  pointing to SRD.md: the repository's README template's `## Done when`
-  line when that line points to SRD.md, otherwise
+  with SRD.md keeps its requirements in SRD.md, and its `## Done when` holds
+  only one line pointing there. If the repository has its own README
+  template whose `## Done when` line points to SRD.md, use that line;
+  otherwise use
   `The requirements and their checks are in [SRD.md](SRD.md).`
 - IDs are never renumbered, reused or renamed. A dropped requirement or phase
   stays where it is, marked Dropped with a [reason](#reasons), and new ones
@@ -360,7 +366,8 @@ refer to this section instead of repeating it.
 #### Log
 
 - `## Log` is only ever added to: one dated line per state change, decision
-  or surprise, newest last.
+  or surprise, newest last. A line about a merge names its merge request or
+  commit.
 - It is the packet's history; Current Work is its present.
 
 #### Lifecycle folders

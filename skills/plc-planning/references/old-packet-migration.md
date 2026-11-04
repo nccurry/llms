@@ -25,9 +25,11 @@ beside the old one. "Convert" here means changing the format in place;
   another worktree's branch or commit, or uncommitted edits you did not
   make. The packet you are updating for its own work is yours to convert.
 - Don't reword text. The only edits are moving whole lines and the format
-  edits below. Three steps change what the packet says: M1's duplicate rule
-  deletes lines, M8 adds a `## Done when` line, and E6 can add evidence.
-  List each line they touch for the owner's review.
+  edits below. Four steps change what the packet says: M1's duplicate rule
+  deletes lines, M5 adds a pointer line where a moved table was (and
+  removes a heading the move left empty), M8 adds a `## Done when` line,
+  and E6 can add evidence. List each line they touch for the owner's
+  review.
 - An owner case is a point only the packet's owner can settle. Leave the
   text as it is, and list the case in your report and as an
   `Open question:` line. Never guess one. Owner cases include a status that
@@ -69,11 +71,12 @@ beside the old one. "Convert" here means changing the format in place;
    column, whole, under a new `## Phases` heading in the README. A link in a
    moved row to a heading in the file the table came from gains that file's
    name: `[P1](#p1-parse)` becomes `[P1](IMPLEMENTATION_PLAN.md#p1-parse)`.
-   When the table came from another file, leave the line
+   When the table came from another file, write the line
    `Phase state lives in the README's [Phases](README.md#phases) table.`
-   where it was, and remove the table's heading, such as `## Phase Status`,
-   when the table was all that heading held. A table moved within the README
-   leaves no such line. A packet with two such tables is an owner case.
+   in that file where the table was, and remove the table's heading, such
+   as `## Phase Status`, when the move left it empty. A table moved within
+   the README needs no such line. A packet with two such tables is an owner
+   case.
 6. **M6. Log.** Add `## Log` at the end. Its first line comes from the
    `Created:` line, when there is one. Then add
    `- <date> Converted to the shared PLC template (format only).`
@@ -82,10 +85,10 @@ beside the old one. "Convert" here means changing the format in place;
 8. **M8. Done when.** When the README has no `## Done when` and the packet
    has SRD.md, add `## Done when` in the template's
    [section order](../SKILL.md#order-and-format), holding only the line the
-   [requirements rules](../SKILL.md#requirements-and-checks) choose. A
-   packet without SRD.md, including one that lists its requirements under
-   another heading, is an owner case: add no `## Done when`, and don't write
-   requirements for it.
+   [requirements rules](../SKILL.md#requirements-and-checks) choose. When
+   the README has no `## Done when` and the packet has no SRD.md, even if
+   its requirements sit under another heading, list it as an owner case:
+   add no `## Done when`, and don't write requirements for it.
 
 ## Format edits
 
@@ -109,16 +112,16 @@ E3 is not used.
 
 The older skill's Phase Status table has Implementation, Verification,
 Delivery and Evidence record columns, but no State or Status column. Add a
-State column at the end (E2), then move the table (M5). Its word is the
-latest one the row's own cells support:
+State column at the end (E2), then move the table (M5). Find a row's parts
+in its phase section, as the [Words](../SKILL.md#words) list defines them.
+The row's word is the latest one its own cells support:
 
 - Live when Delivery records a release or deployment;
-- Verified when the whole change is on the final target and Verification
-  records a check that passed on it;
-- Merged when the whole change is on the final target;
+- Verified when all of the phase's parts are on the final target and
+  Verification records a check that passed on them;
+- Merged when all of the phase's parts are on the final target;
 - otherwise Implemented, In progress or Planned. A row with only some of its
-  parts merged follows the [Words](../SKILL.md#words) rule for a phase whose
-  parts differ.
+  parts merged follows the Words rule for a phase whose parts differ.
 
 When the cells disagree, the row is an owner case.
 
@@ -126,5 +129,5 @@ When the cells disagree, the row is an owner case.
 
 Run the [format check](../SKILL.md#format-check) on the packet, first in
 default mode and then with `--strict`. Each finding left must be one of the
-owner cases you listed. Report those cases, and each line M1 deleted or M8
-or E6 added.
+owner cases you listed. Report those cases, and each line M1 deleted or
+M5, M8 or E6 added.
