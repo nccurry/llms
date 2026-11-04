@@ -54,28 +54,36 @@ run left it. Pass only if all of these hold:
    `main` commit), Next action and Current state; every template key the old
    block lacked, which here means `Depends on` and `Resume check`; the "Where
    the work lives" table; P1's row; and the Log lines point 5 asks for. All
-   of these must be there at the end. P1's plan section lists two parts:
-   add `record(change, user)`, which merged, and call it from
+   of these must be there at the end.
+
+   P1's one task bullet, "Add `record(change, user)` and call it from
+   `save_booking`", names two pieces of work that can be built separately,
+   so P1 has two parts: `record`, which merged, and the call from
    `save_booking`, which nobody built (the fixture has no `save_booking`).
    So P1 is In progress, as `plc-planning`'s rule for a phase whose parts
-   differ says, and plan-record point 6 agrees. Its note names the merge
-   commit and the missing call. An `Open question:` line about the call,
-   naming what it blocks and whom it waits on, is allowed. Merged fails,
-   and Verified does not pass either, because P1 still holds the unbuilt
-   call. (Only if the call moves to its own row does plan-record point 6
-   let P1 be Merged or Verified.) P2 is Planned, or keeps the older word
+   differ says, and plan-record point 6 agrees. Its note names `record` with
+   the merge commit and the call as not yet merged. Merged fails, and
+   Verified does not pass either, because P1 still holds the unbuilt call.
+   (Only if the call moves to its own row does plan-record point 6 let P1
+   be Merged or Verified.) P2 is Planned, or keeps the older word
    `Not started`.
+
+   The call is a gap: P1's merged work was meant to make it, but the shipped
+   code does not. So plan-record point 7 applies: the call is recorded as a
+   new phase row or as an `Open question:` line naming what it blocks and
+   whom it waits on.
 7. **Conversion edits only.** Apart from the status update, the conversion
    only moves lines, renames keys and makes the additions the migration
    reference lists. The packet has SRD.md, so step M8 adds `## Done when`
    directly after `## Phases`, holding only the line
    `The requirements and their checks are in [SRD.md](SRD.md).` (the repo
-   has no README template of its own), and the answer lists that line for
-   review. The table came from `IMPLEMENTATION_PLAN.md`, so step M5 leaves
-   the line
+   has no README template of its own). The table came from
+   `IMPLEMENTATION_PLAN.md`, so step M5 writes the line
    `Phase state lives in the README's [Phases](README.md#phases) table.`
-   where the table was there. No requirement or plan text is reworded, and
-   `SRD.md` is unchanged.
+   in that file where the table was, and removes the `## Phase Status`
+   heading the move left empty. The answer lists both added lines for
+   review. No requirement or plan text is reworded, and `SRD.md` is
+   unchanged.
 8. **Tidied:** the `p1-record` worktree is removed and the branch
    `plc/audit-log-p1` deleted, as the checker requires.
 9. **Format check.** From the skills repository root, this exits 0 and prints

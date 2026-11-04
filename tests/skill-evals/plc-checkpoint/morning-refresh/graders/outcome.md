@@ -11,8 +11,8 @@ and the packet on `plc/reconcile`. Pass only if all of these hold:
 3. The next step is concrete: finish P2 in `ledger-wt/reconcile/p2-report`.
 4. **Current Work rewritten:** the packet's Current Work block on
    `plc/reconcile` shows P1 merged into integration, a new "Last updated"
-   pointing at the current integration commit, and the `p1-match` row gone
-   or marked removed. The change is committed on `plc/reconcile` and touches
+   pointing at the current integration commit, and the `p1-match` row is
+   gone. The change is committed on `plc/reconcile` and touches
    only `docs/plans/`.
 5. **Owner and links survive the rewrite:** `- Owner: @alex`,
    `- Depends on: None` and the `- Replaces:` line naming

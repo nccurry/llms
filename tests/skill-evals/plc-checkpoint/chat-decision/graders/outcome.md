@@ -20,6 +20,9 @@ Read the agent's final answer, the checker's `packet_changes`, and the diff of
    line waiting on `@alex`, or as a new phase row (Planned, or Deferred only
    with the user's approval) that names SHOP-001. SHOP-001 is never marked
    met without evidence: P1 is not marked Verified. `SRD.md` is unchanged.
+   P1 stays In progress while it still holds SHOP-002 or the cost gap
+   (plan-record point 6); it is Merged or Verified only once both have
+   `moved to P<n>` rows.
 6. **Records, the filter left out:** SHOP-002 is recorded as out of this
    slice, as a new phase row or an `Open question:` line, naming SHOP-002.
    The row is Planned, or Deferred only if the answer counts "ok, merge it"
