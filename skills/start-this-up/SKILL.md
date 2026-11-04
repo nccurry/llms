@@ -100,7 +100,7 @@ git worktree list
    - If there is no test command or it needs services that aren't available, say so and continue.
 
 6. Record the worktree in the plan.
-   - If the work has a plan with a Current Work block (see `plc-planning`), add the checkout, its branch, and its state to "Where the work lives", and update the next action, in the copy the new branch carries. Commit only the plan file, as `docs(plan): start <checkout>`.
+   - If the work has a plan with a Current Work block (see `plc-planning`), update it in the copy the new branch carries, with the rewrite rules in `plc-checkpoint`'s "Rewrite Current Work" step: add the checkout, its branch, and its state to "Where the work lives"; set Last updated and the next action; change Status from Planned to In progress, moving the packet as `plc-planning`'s lifecycle folders rule says; and add a dated Log line. Commit only the plan files, as `docs(plan): start <checkout>`.
    - Skip this for work with no plan.
 
 7. Continue from the new worktree.
@@ -124,7 +124,7 @@ git worktree add <absolute-target-path> <branch-name>
    - Skip the update and report if the worktree has uncommitted changes, is locked, or another agent is using it.
    - On conflicts, stop, abort the merge or rebase, and report the conflicting files. Don't resolve them without the user.
 4. Run the tests (step 5 above) on the updated branch.
-5. Record the worktree and the update in the plan's Current Work block, as in step 6 above.
+5. Record the worktree and the update in the plan, as in step 6 above.
 6. Report the plan's Current Work in a few lines: where the work stands, what changed on main since, and the next action. For a full update, run `plc-checkpoint`.
 
 If the branch's base is ambiguous, report that before making changes.

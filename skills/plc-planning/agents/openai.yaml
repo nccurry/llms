@@ -1,4 +1,4 @@
 interface:
   display_name: "PLC Planning"
   short_description: "Create and maintain practical change plans"
-  default_prompt: "Use $plc-planning to create or update this change plan, following the repository format and choosing a compact plan or full packet as needed."
+  default_prompt: "Use $plc-planning to create or update this change plan from the shared PLC template, starting with one README and adding files only when the work needs them."

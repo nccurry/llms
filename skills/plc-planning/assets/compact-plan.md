@@ -7,8 +7,8 @@ evidence) from plc-planning's default packet. Delete this note. -->
 
 # <ID> <Feature name>
 
-<One or two sentences: what this delivers and why. Cards and lists show
-this.>
+<One or two sentences: what this delivers and why. Plan lists and status
+boards show this.>
 
 ## Current Work
 
@@ -39,7 +39,7 @@ Where the work lives:
 
 ## Open questions
 
-- Open question: <question> (waits on @<handle>)
+- Open question: <question> (blocks <phase or requirement IDs>; waits on @<handle>)
 
 ## Log
 
