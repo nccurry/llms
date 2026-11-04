@@ -21,9 +21,10 @@ state in the ## Phases table, not in IMPLEMENTATION_PLAN.md, SRD.md or
 SADD.md: not in a phase table, a `- Status:` or `- State:` line that starts
 with a packet status word or a phase state word, or a `- Lifecycle:` line
 that starts with a packet status word. When SRD.md exists, it holds the
-requirements, so the README's ## Done when holds one line or list item, which
-names SRD.md, and no requirement ID from a table in SRD.md whose first column
-is ID. HTML comments and fenced code blocks are ignored.
+requirements, so the README's ## Done when holds one paragraph or list item
+naming SRD.md (a wrapped line counts once), and no requirement ID from a table
+in SRD.md whose first column is ID. HTML comments and fenced code blocks are
+ignored.
 
 --strict also checks the five rules across fields:
   1. Status matches the lifecycle folder.
@@ -50,9 +51,11 @@ Python API, for tools that load this file by path:
   is_packet(path) -> bool
       Whether an entry of a lifecycle folder is a packet: a folder with
       Markdown files, or a one-file plc-*.md plan that is not a side file.
+  requirement_tables(lines) -> list[Table]
+      Every table in SRD.md's lines whose first column is ID, as
+      Table(line, header, rows). Fenced code and HTML comments are skipped.
   requirement_rows(lines) -> list[tuple[int, list[str]]]
-      The rows of every table in SRD.md's lines whose first column is ID, as
-      (1-based line, cells). Fenced code and HTML comments are skipped.
+      The rows of those tables, as (1-based line, cells).
   requirement_id(cells) -> str | None
       The requirement ID in a row's first cell, or None for a note row.
   uncommented(lines) -> list[str]
@@ -130,9 +133,11 @@ SIDE_FILE = re.compile(r"-(?:srd|sadd|prd)\.md$")
 PLAN_SIDE_FILE = re.compile(r"-(?:implementation-)?plan\.md$")
 
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
-COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
-# A comment that starts a line and never closes hides the rest of the file.
-OPEN_COMMENT = re.compile(r"^ {0,3}<!--", re.MULTILINE)
+# A line that opens an HTML comment block: `<!--` after at most three spaces.
+OPEN_COMMENT = re.compile(r" {0,3}<!--")
+CODE_SPAN_OR_COMMENT = re.compile(r"(`+)|<!--")
+HEADING = re.compile(r" {0,3}#{1,6}(?:\s|$)")
+THEMATIC_BREAK = re.compile(r" {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$")
 # A line that starts a new item in ## Done when: a list item or a heading.
 ITEM_START = re.compile(r" {0,3}(?:[-*+]|\d{1,9}[.)])(?:\s|$)|#")
 TAG = re.compile(r"<[^>]*>")
@@ -253,15 +258,70 @@ def unfenced(lines):
 
 
 def uncommented(lines):
-    """The lines with HTML comments removed. A comment's line breaks stay, so
-    line numbers stay the same. A comment that starts a line and never closes
-    runs to the end, as Markdown shows it."""
-    if not lines:
-        return []
-    text = COMMENT.sub(lambda match: "\n" * match[0].count("\n"), "\n".join(lines))
-    unclosed = OPEN_COMMENT.search(text)
-    if unclosed:
-        text = text[: unclosed.start()] + "\n" * text.count("\n", unclosed.start())
+    """The lines with HTML comments removed, as Markdown reads them. Line
+    breaks stay, so line numbers stay the same.
+
+    A comment that opens a line, after at most three spaces, ends at the
+    first `-->` on that line or a later one; with none, it hides the rest of
+    the file. Any other comment must close within its paragraph, outside code
+    spans, or it is plain text.
+    """
+    out, i = list(lines), 0
+    while i < len(lines):
+        opener = OPEN_COMMENT.match(lines[i])
+        if opener:
+            i = remove_comment_block(lines, out, i, opener.end() - 4)
+            continue
+        if not lines[i].strip():
+            i += 1
+            continue
+        end = i + 1
+        if not HEADING.match(lines[i]):
+            while end < len(lines) and not ends_paragraph(lines[end]):
+                end += 1
+        out[i:end] = without_inline_comments(lines[i:end])
+        i = end
+    return out
+
+
+def ends_paragraph(line):
+    """True for a line that ends the paragraph above it: a blank line, a heading,
+    or a line that opens a comment block."""
+    return not line.strip() or bool(OPEN_COMMENT.match(line) or HEADING.match(line))
+
+
+def remove_comment_block(lines, out, first, start):
+    """Blank, in out, the comment that opens lines[first] at column start, up to
+    its first `-->` or the end of the file. Returns the index of the next line."""
+    for last in range(first, len(lines)):
+        close = lines[last].find("-->", start + 4 if last == first else 0)
+        if close >= 0:
+            break
+    else:
+        out[first:] = [lines[first][:start]] + [""] * (len(lines) - first - 1)
+        return len(lines)
+    if last == first:
+        out[first] = lines[first][:start] + lines[first][close + 3 :]
+    else:
+        out[first:last + 1] = [lines[first][:start], *[""] * (last - first - 1), lines[last][close + 3 :]]
+    return last + 1
+
+
+def without_inline_comments(paragraph):
+    """A paragraph's lines without the comments that close within it. Code
+    spans keep their text, and a comment with no `-->` is plain text."""
+    text, pos = "\n".join(paragraph), 0
+    while match := CODE_SPAN_OR_COMMENT.search(text, pos):
+        if match[1]:
+            close = re.compile(rf"(?<!`){match[1]}(?!`)").search(text, match.end())
+            pos = close.end() if close else match.end()
+            continue
+        end = text.find("-->", match.end())
+        if end < 0:
+            pos = match.end()
+            continue
+        text = text[: match.start()] + "\n" * text.count("\n", match.start(), end) + text[end + 3 :]
+        pos = match.start()
     return text.split("\n")
 
 
@@ -516,15 +576,17 @@ def check_other_file(path, lines):
     return found
 
 
+def requirement_tables(lines):
+    """Every table in SRD.md's lines whose first column is ID. Fenced code and
+    HTML comments are skipped."""
+    found = tables(uncommented(unfenced(lines)))
+    return [table for table in found if table.header and table.header[0].strip("*_` ").lower() == "id"]
+
+
 def requirement_rows(lines):
     """The rows of every table in SRD.md's lines whose first column is ID, as
-    (1-based line, cells). Fenced code and HTML comments are skipped."""
-    return [
-        row
-        for table in tables(uncommented(unfenced(lines)))
-        if table.header and table.header[0].strip("*_` ").lower() == "id"
-        for row in table.rows
-    ]
+    (1-based line, cells)."""
+    return [row for table in requirement_tables(lines) for row in table.rows]
 
 
 def requirement_id(cells):
@@ -541,7 +603,7 @@ def done_when_items(body):
     first line, text). A wrapped line belongs to the item above it."""
     items, after_blank = [], True
     for i, line in enumerate(body):
-        if not line.strip():
+        if not line.strip() or THEMATIC_BREAK.match(line):
             after_blank = True
             continue
         if after_blank or ITEM_START.match(line):
@@ -554,14 +616,15 @@ def done_when_items(body):
 
 def check_done_when(readme, lines, parts, srd_lines):
     """Findings for a README ## Done when beside SRD.md, which holds the requirements."""
-    no_pointer = "Done when: no line points to SRD.md, which holds the requirements"
     done_when = named(parts, "done when")
     if not done_when:
-        return [finding(readme, 1, no_pointer)]
+        message = "Done when: no ## Done when section; with SRD.md it holds only the line pointing there"
+        return [finding(readme, 1, message)]
     heading = done_when[0].start + 1
-    # Every ## Done when section counts, as if they were one.
+    # Every ## Done when section counts; each has its own items.
     body = [(i + 1, lines[i]) for part in done_when for i in range(part.start + 1, part.end)]
-    items = done_when_items([line for _, line in body])
+    items = [item for part in done_when for item in done_when_items(lines[part.start + 1 : part.end])]
+    no_pointer = "Done when: no line points to SRD.md, which holds the requirements"
     found = []
     if not any("srd.md" in text.lower() for _, text in items):
         found.append(finding(readme, heading, no_pointer))

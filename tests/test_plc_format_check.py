@@ -43,6 +43,7 @@ NO_BLOCKER = "strict: Status is Blocked, but the Blocker line is missing or None
 NOT_FINISHED = "phase in a completed/ packet, which allows only Verified, Live, Deferred or Dropped"
 TWO_HOMES = "packets/planned/two-requirement-homes"
 NO_POINTER = "Done when: no line points to SRD.md, which holds the requirements"
+NO_DONE_WHEN = "Done when: no ## Done when section; with SRD.md it holds only the line pointing there"
 ITEMS = "Done when: {} items; with SRD.md it holds only the line pointing there"
 IN_SRD = "Done when: {} is in SRD.md's requirements table; delete it here, since SRD.md holds the requirements"
 LIFECYCLE_OUTSIDE = (
@@ -381,9 +382,11 @@ class PacketRulesTest(unittest.TestCase):
             with self.subTest(body=body):
                 found = self.check(with_done_when(body), name=name, files=srd)
                 self.assertEqual(found, [f"planned/{name}/README.md:18: {NO_POINTER}"])
-        self.assertEqual(self.check(name="missing", files=srd), [f"planned/missing/README.md:1: {NO_POINTER}"])
+        self.assertEqual(self.check(name="missing", files=srd), [f"planned/missing/README.md:1: {NO_DONE_WHEN}"])
         for name, body in [
             ("own-pointer", "Requirements: see [SRD.md](SRD.md#requirements)."),
+            ("lowercase", "The requirements are in the srd.md file."),
+            ("thematic-break", f"{POINTER}\n\n---"),
             ("wrapped", "The requirements and their checks are in\n[SRD.md](SRD.md)."),
             ("list-item", "- The requirements are in [SRD.md](SRD.md),\n  with their checks."),
         ]:
@@ -438,11 +441,53 @@ class PacketRulesTest(unittest.TestCase):
         inline = with_done_when(f"{POINTER} <!-- not closed")
         self.assertEqual(self.check(inline, name="inline", files={"SRD.md": SRD}), [])
 
+    def test_comments_follow_markdown(self):
+        srd = {"SRD.md": SRD}
+        # A `<!--` in a code span opens no comment, so a later comment does not
+        # hide the lines between them.
+        code_span = edit("- Blocker: None", "- Blocker: None\n- Next action: skip `<!--` notes", POINTED)
+        code_span = edit(f"## Done when\n\n{POINTER}", f"## Done when\n\n<!-- a note -->\n{POINTER}", code_span)
+        self.assertEqual(self.check(code_span, name="code-span", files=srd), [])
+        # A comment opens a block only at the start of the original line.
+        second = with_done_when(f"{POINTER}\n\n<!-- a --> <!-- b")
+        self.assertEqual(self.check(second, name="second", files=srd), [
+            f"planned/second/README.md:18: {ITEMS.format(2)}",
+        ])
+        # Inside a paragraph, a comment must close before the paragraph ends,
+        # at a blank line or a heading.
+        blank = with_done_when(f"{POINTER} <!-- a\n\nMore text. -->")
+        self.assertEqual(self.check(blank, name="blank", files=srd), [f"planned/blank/README.md:18: {ITEMS.format(2)}"])
+        heading = edit(f"## Done when\n\n{POINTER}\n\n## Log\n\n- 2026-11-03 Created.",
+                       f"## Done when\n\n{POINTER} <!-- a\n## Log\n- 2026-11-03 Created. -->", POINTED)
+        self.assertEqual(self.check(heading, name="heading", files=srd), [])
+        # Within a paragraph, each comment ends at its own -->, and a `<!--` in a
+        # code span opens none.
+        for name, body in [
+            ("two-inline", f"Note <!-- a --> {POINTER} <!-- b -->"),
+            ("code-span-inline", "Notes use `<!--`; see [SRD.md](SRD.md). <!-- old -->"),
+        ]:
+            with self.subTest(body=body):
+                self.assertEqual(self.check(with_done_when(body), name=name, files=srd), [])
+        # A comment block ends at its first -->, and the rest of that line stays.
+        for name, body in [("block", f"<!-- moved\nREQ-001 here --> {POINTER}"), ("one-line", f"<!-- REQ-001 --> {POINTER}")]:
+            with self.subTest(body=body):
+                self.assertEqual(self.check(with_done_when(body), name=name, files=srd), [])
+
     def test_every_done_when_section_counts(self):
         twice = edit("## Log", "## Done when\n\n- REQ-001: Stop.\n\n## Log", POINTED)
         self.assertEqual(self.check(twice, name="twice", files={"SRD.md": SRD}), [
             f"planned/twice/README.md:18: {ITEMS.format(2)}",
             f"planned/twice/README.md:24: {IN_SRD.format('REQ-001')}",
+        ])
+        # Lines under two headings are two items, even with no blank line.
+        tight = with_done_when(f"{POINTER}\n## Done when\nAll tests pass.")
+        self.assertEqual(self.check(tight, name="tight", files={"SRD.md": SRD}), [
+            f"planned/tight/README.md:18: {ITEMS.format(2)}",
+        ])
+        # A heading inside ## Done when starts an item of its own.
+        heading = with_done_when(f"{POINTER}\n### More\nAll tests pass.")
+        self.assertEqual(self.check(heading, name="heading", files={"SRD.md": SRD}), [
+            f"planned/heading/README.md:18: {ITEMS.format(2)}",
         ])
 
     def test_fenced_phase_table_in_the_plan(self):
