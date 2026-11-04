@@ -42,10 +42,14 @@ implementation choices and repairs within approved scope remain authorized.
 
 Keep planning documents coherent for the next agent. Update affected sections
 in place, preserve stable requirement IDs and decision rationale, and reconcile
-superseded or contradictory instructions across the packet. Requirements and
+superseded or contradictory instructions across the packet. On every plan
+update, apply `plc-planning`'s
+[Growing a packet](../plc-planning/SKILL.md#growing-a-packet) rule, so
+information that meets one of its triggers gets its file instead of piling up
+in Log lines or notes. Requirements and
 design describe approved behavior and adopted decisions. Keep current status,
-remaining work, and concise validation evidence in the existing work list or
-status/evidence sections. Record each result once and link to it elsewhere;
+remaining work, and concise validation evidence in the work list and the
+sections that own them. Record each result once and link to it elsewhere;
 do not restate the skill's general workflow in the packet. Keep raw logs,
 repeated handoffs, abandoned attempts, and session narration out of requirements and
 design. A new reader must be able to identify approved scope, current design,
@@ -56,7 +60,7 @@ and its `## Log` with the rewrite rules in `plc-checkpoint`'s "Rewrite
 Current Work" step. Preserve repository-specific locations. Do not append
 successive checkpoints or keep superseded instructions as current directions.
 
-Useful implementation notes belong in the existing packet and must be committed
+Useful implementation notes belong in the packet and must be committed
 with the work. Delete temporary notes when no longer useful. Keep raw receipts
 only while needed for current acceptance or recovery; after merge or checkout
 closure they may be discarded without an archive. Never use an ignored output

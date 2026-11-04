@@ -195,13 +195,24 @@ Then, in the same README:
   Never mark a requirement met without its evidence.
 - Record each decision the user approved in this conversation as a dated
   `Decision:` Log line, following `plc-planning`'s
-  [open questions](../plc-planning/SKILL.md#open-questions) rule. Record an
-  unapproved one as an `Open question:` line. Remove blockers the evidence
-  has cleared.
+  [open questions](../plc-planning/SKILL.md#open-questions) rule. When it
+  adds a requirement, also add the requirement where the plan keeps them,
+  with the next ID and a check, as the
+  [requirements rules](../plc-planning/SKILL.md#requirements-and-checks)
+  say. Record an unapproved one as an `Open question:` line. Remove blockers
+  the evidence has cleared.
 
-Don't change requirement or design text: when code and a requirement
-disagree, add an open question. Don't mark the plan Complete while a
-requirement lacks its evidence.
+Don't change existing requirement or design text: when code and a
+requirement disagree, add an open question. Don't mark the plan Complete
+while a requirement lacks its evidence.
+
+Each time this step writes to the plan, apply `plc-planning`'s
+[Growing a packet](../plc-planning/SKILL.md#growing-a-packet) rule. When
+something this update records, such as an approved requirement for a new
+CLI flag, meets a trigger in its
+[Adding files](../plc-planning/SKILL.md#adding-files) rule, add that file in
+the same update, turning a one-file plan into a folder first. Don't leave
+that information in a Log line or a README section instead.
 
 Then run `python3 <skills-dir>/plc-planning/scripts/format_check.py --packet <packet> --strict`
 and fix what it reports in the parts you changed. When a finding needs the
