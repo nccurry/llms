@@ -8,7 +8,15 @@ from pathlib import Path
 EVALS = Path(__file__).resolve().parent / "skill-evals"
 CASES = EVALS / "plc-planning"
 sys.path.insert(0, str(EVALS))
-from fixture_lib import GIT_ENV, git, packet_shape_problems, write  # noqa: E402
+from fixture_lib import (  # noqa: E402
+    GIT_ENV,
+    OWNER,
+    eval_only_problems,
+    format_check,
+    git,
+    packet_shape_problems,
+    write,
+)
 
 PLAN_PATH = "docs/plans/planned/limit-check/README.md"
 
@@ -142,6 +150,9 @@ class SmallChangeFixtureTest(unittest.TestCase):
 
     def test_readme_only_plan_passes(self):
         self.write_good_plan()
+        packet = (self.app / PLAN_PATH).parent
+        findings = format_check().check_packet(packet, strict=True, lifecycle="planned")
+        self.assertEqual(findings, [])
         report = check(self.dest)
         self.assertTrue(report["ok"], report)
         self.assertEqual(report["plan"], PLAN_PATH)
@@ -199,11 +210,25 @@ class SmallChangeFixtureTest(unittest.TestCase):
 
     def test_other_owner_fails(self):
         self.write_good_plan(owner="@sam")
-        self.assertEqual(check(self.dest)["problems"], ["Owner does not name @alex"])
+        self.assertEqual(check(self.dest)["problems"], ["eval: Owner does not name @alex"])
 
     def test_owner_with_a_longer_handle_fails(self):
         self.write_good_plan(owner="@alex-b")
-        self.assertEqual(check(self.dest)["problems"], ["Owner does not name @alex"])
+        self.assertEqual(check(self.dest)["problems"], ["eval: Owner does not name @alex"])
+
+    def test_plan_in_planned_must_say_planned(self):
+        self.write_good_plan()
+        readme = self.app / PLAN_PATH
+        text = readme.read_text(encoding="utf-8")
+        text = text.replace("- Status: Planned", "- Status: In progress")
+        readme.write_text(text, encoding="utf-8")
+        self.assertEqual(
+            check(self.dest)["problems"],
+            [
+                f"{PLAN_PATH}:8: strict: Status In progress does not match the planned/ folder,"
+                " which needs Planned or Blocked"
+            ],
+        )
 
     def test_rewritten_history_fails(self):
         self.write_good_plan()
@@ -215,102 +240,140 @@ class SmallChangeFixtureTest(unittest.TestCase):
     def test_old_compact_shape_fails(self):
         write(self.app, {PLAN_PATH: OLD_COMPACT_PLAN})
         problems = check(self.dest)["problems"]
-        self.assertIn("needs a ## Phases section", problems)
-        self.assertIn("## Log must be the last section", problems)
+        self.assertIn("eval: no ## Phases section", problems)
+        self.assertIn(f"{PLAN_PATH}:1: Log: no ## Log section", problems)
+        self.assertIn("eval: ## Log is not the last section", problems)
 
 
 class PacketShapeTest(unittest.TestCase):
-    """packet_shape_problems must report each break from the shared template."""
+    """packet_shape_problems must report each break from the shared template,
+    from the shipped format check or from the evals' own rules."""
 
     GOOD = GOOD_PLAN.format(head="abc1234")
-    ROW_PROBLEM = "phase row needs every cell and a state word"
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        # A plain folder, not a lifecycle folder, so no folder rule applies.
+        self.packet = Path(self.tmp.name) / "plans" / "limit-check"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def problems(self, readme: str, plan: str = "", owner: str | None = None) -> list[str]:
+        files = {"README.md": readme}
+        if plan:
+            files["IMPLEMENTATION_PLAN.md"] = plan
+        write(self.packet, files)
+        return packet_shape_problems(self.packet, owner=owner)
 
     def test_good_plan_has_no_problems(self):
-        self.assertEqual(packet_shape_problems(self.GOOD), [])
+        self.assertEqual(self.problems(self.GOOD, owner=OWNER), [])
 
     def test_each_break_is_reported(self):
         thirteen_keys = "".join(f"- Extra key {letter}: x\n" for letter in "ABCDE")
+        row_cells = "Phases: row has 3 cells, but the header has 4"
         cases = {
-            "no summary directly under the title": (
+            "summary: no paragraph directly under the title": (
                 "# Limit check\n",
                 "# Limit check\n\n## Note\n",
             ),
-            "needs exactly one ## Current Work": (
+            "Current Work: 2 ## Current Work sections; a packet needs exactly one": (
                 "## Log\n",
                 "## Current Work\n\n- Status: Planned\n\n## Log\n",
             ),
-            "old status section: ## Status": (
+            "Current Work: Status line belongs in ## Current Work, not ## Status": (
                 "## Log",
                 "## Status\n\n- Status: Planned\n\n## Log",
             ),
-            "old status section: ## Lifecycle": ("## Log", "## Lifecycle\n\nPlanned.\n\n## Log"),
-            "Current Work must start with Status, Owner and Last updated": (
+            "Current Work: Status line belongs in ## Current Work, not ## Lifecycle": (
+                "## Log",
+                "## Lifecycle\n\n- Status: Planned\n\n## Log",
+            ),
+            "Current Work: Status, Owner and Last updated must come first, in that order": (
                 "- Status: Planned\n- Owner: @alex\n",
                 "- Owner: @alex\n- Status: Planned\n",
             ),
-            "Current Work has 13 keys (at most 12)": (
+            "Current Work: 13 keys; at most 12 are allowed": (
                 "- Resume check:",
                 f"{thirteen_keys}- Resume check:",
             ),
-            "Status has no packet status word": ("- Status: Planned", "- Status: Waiting"),
-            "Owner names nobody by @handle": ("- Owner: @alex", "- Owner: the user"),
-            "Last updated does not start with a date": (
+            "Current Work: Status does not start with a packet status word: Waiting": (
+                "- Status: Planned",
+                "- Status: Waiting",
+            ),
+            "Current Work: Owner names no @handle": ("- Owner: @alex", "- Owner: the user"),
+            "Current Work: Last updated does not start with a YYYY-MM-DD date": (
                 "- Last updated: 2026-11-03",
                 "- Last updated: today",
             ),
-            f"{self.ROW_PROBLEM}: | P1 | Reject limits below 1 | Planned |": (
+            row_cells: (
                 "| P1 | Reject limits below 1 | | Planned |",
                 "| P1 | Reject limits below 1 | Planned |",
             ),
-            self.ROW_PROBLEM: ("| Planned |", "| Waiting |"),
-            "## Phases needs a table with Phase and State columns": (
+            "Phases: State does not start with a phase state word: Waiting": (
+                "| Planned |",
+                "| Waiting |",
+            ),
+            "Phases: the ## Phases table has no State column": (
                 "| Phase | Name | Owner | State |",
                 "| Phase | Name | Owner | Notes |",
             ),
-            "sections out of template order": (
+            "Log: no ## Log section": ("## Log\n\n- 2026-11-03 Created.\n", ""),
+            "eval: sections out of template order": (
                 "## Done when",
                 "## Notes\n\nA repository section.\n\n## Done when",
             ),
-            "empty section: ## Open questions": ("## Log", "## Open questions\n\n## Log"),
-            "## Log must be the last section": ("## Log\n\n- 2026-11-03 Created.\n", ""),
-            "Log line has no date: - Created.": ("- 2026-11-03 Created.", "- Created."),
-            "placeholder text": ("- Blocker: None", "- Blocker: TBD"),
+            "eval: empty section ## Open questions": ("## Log", "## Open questions\n\n## Log"),
+            "eval: ## Log is not the last section": (
+                "## Log\n\n- 2026-11-03 Created.\n",
+                "## Log\n\n- 2026-11-03 Created.\n\n## Notes\n\nAfter the Log.\n",
+            ),
+            "eval: Log line has no date: - Created.": ("- 2026-11-03 Created.", "- Created."),
+            "eval: placeholder text": ("- Blocker: None", "- Blocker: TBD"),
+            "eval: no ## Phases section": (
+                "## Phases\n\n| Phase | Name | Owner | State |\n| --- | --- | --- | --- |\n"
+                "| P1 | Reject limits below 1 | | Planned |\n\n",
+                "",
+            ),
         }
         for expected, (old, new) in cases.items():
             with self.subTest(expected=expected):
                 self.assertIn(old, self.GOOD)
-                problems = packet_shape_problems(self.GOOD.replace(old, new, 1))
-                self.assertTrue(any(expected in p for p in problems), problems)
+                problems = self.problems(self.GOOD.replace(old, new, 1))
+                self.assertTrue(any(expected in problem for problem in problems), problems)
 
     def test_placeholder_in_code_is_allowed(self):
         text = self.GOOD.replace(
             "Check: `python -m unittest`",
             "Check: `harbor list --limit <n>` and `python -m unittest`",
         )
-        self.assertEqual(packet_shape_problems(text), [])
+        self.assertEqual(self.problems(text), [])
         fenced = self.GOOD.replace(
             "## Log", "```sh\nharbor list --limit <n>\n## Not a heading\n```\n\n## Log"
         )
-        self.assertEqual(packet_shape_problems(fenced), [])
+        self.assertEqual(self.problems(fenced), [])
 
     def test_placeholder_outside_code_is_reported(self):
         text = self.GOOD.replace("- Blocker: None", "- Blocker: <what is needed>")
         self.assertEqual(
-            packet_shape_problems(text),
-            ["placeholder text (N/A, TBD or <...>) left in the README"],
+            self.problems(text), ["eval: placeholder text (N/A, TBD or <...>) left in the README"]
         )
 
     def test_autolink_is_not_a_placeholder(self):
         text = self.GOOD.replace(
             "- Blocker: None", "- Blocker: None, see <https://example.invalid/x>"
         )
-        self.assertEqual(packet_shape_problems(text), [])
+        self.assertEqual(self.problems(text), [])
 
     def test_phase_state_table_in_the_plan_is_reported(self):
         plan = "| Phase | Name | Status |\n| --- | --- | --- |\n| P1 | Rows | Merged |\n"
-        problems = packet_shape_problems(self.GOOD, plan)
-        self.assertEqual(
-            problems, ["phase state table outside the README: | Phase | Name | Status |"]
+        problems = self.problems(self.GOOD, plan)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertTrue(
+            problems[0].endswith(
+                "IMPLEMENTATION_PLAN.md:1: Phases: phase state outside the README ## Phases table"
+            ),
+            problems,
         )
 
     def test_phase_link_to_a_missing_plan_heading_is_reported(self):
@@ -318,13 +381,43 @@ class PacketShapeTest(unittest.TestCase):
             "| P1 | Reject limits below 1 |",
             "| P1 | [Reject limits below 1](IMPLEMENTATION_PLAN.md#p1-reject-limits-below-1) |",
         )
+        self.assertEqual(self.problems(text, "### P1: Reject limits below 1\n\n- Check: x\n"), [])
         self.assertEqual(
-            packet_shape_problems(text, "### P1: Reject limits below 1\n\n- Check: x\n"), []
+            self.problems(text, "### P1: Something else\n\n- Check: x\n"),
+            ["eval: phase row links to a missing plan heading: #p1-reject-limits-below-1"],
         )
-        self.assertEqual(
-            packet_shape_problems(text, "### P1: Something else\n\n- Check: x\n"),
-            ["phase row links to a missing plan heading: #p1-reject-limits-below-1"],
+
+    def test_bold_keys_and_escaped_pipes_get_the_same_verdict_from_both_layers(self):
+        """The evals' own rules read keys and table cells as the shipped check does."""
+        bold = (
+            self.GOOD.replace("- Status: Planned", "- **Status:** Planned")
+            .replace("- Owner: @alex", "- **Owner:** @alex")
+            .replace("- Last updated:", "- **Last updated:**")
         )
+        piped = self.GOOD.replace(
+            "| P1 | Reject limits below 1 | | Planned |",
+            "| P1 | [Limits a \\| b](IMPLEMENTATION_PLAN.md#p1-limits-a--b) | | Planned |",
+        )
+        plan = "### P1: Limits a | b\n\n- Check: x\n"
+        cases = [
+            ("bold keys", bold, "", True),
+            ("escaped pipe in a phase row", piped, plan, True),
+            (
+                "bold Owner with no handle",
+                bold.replace("**Owner:** @alex", "**Owner:** Sam"),
+                "",
+                False,
+            ),
+        ]
+        for name, readme, plan_text, good in cases:
+            with self.subTest(case=name):
+                files = {"README.md": readme}
+                if plan_text:
+                    files["IMPLEMENTATION_PLAN.md"] = plan_text
+                write(self.packet, files)
+                shipped = format_check().check_packet(self.packet, strict=True)
+                own = eval_only_problems(self.packet, owner=OWNER)
+                self.assertEqual((shipped == [], own == []), (good, good), (shipped, own))
 
 
 if __name__ == "__main__":

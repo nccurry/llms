@@ -44,10 +44,13 @@ python3 skills/plc-planning/scripts/format_check.py --packet <packet folder> --s
 
 Every fixture packet uses the shared PLC template, owned by `@alex`, except
 the old-shape case, whose packet is old on purpose. The shared
-[fixture_lib.py](../fixture_lib.py) builds the packets and checks their shape,
-for this folder and the [wrap-this-up](../wrap-this-up/README.md) and
-[plc-planning](../plc-planning/README.md) cases. Its git commands ignore your
-own git config, and each fixture repository ignores Python bytecode.
+[fixture_lib.py](../fixture_lib.py) builds the packets for this folder and the
+[wrap-this-up](../wrap-this-up/README.md) and
+[plc-planning](../plc-planning/README.md) cases. It checks a packet with the
+shipped format check in strict mode, plus the rules the evals hold only new
+packets to, such as section order and dated Log lines; its docstring lists
+them. Its git commands ignore your own git config, and each fixture
+repository ignores Python bytecode.
 
 ## Run a case
 

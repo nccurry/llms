@@ -10,10 +10,13 @@ CASES = EVALS / "plc-checkpoint"
 sys.path.insert(0, str(EVALS))
 from fixture_lib import (  # noqa: E402
     GIT_ENV,
+    OWNER,
+    eval_only_problems,
+    format_check,
     git,
-    heading_anchor,
     is_ancestor,
-    packet_shape_problems,
+    packet_status,
+    phase_state,
 )
 
 # Cases whose packets use the shared PLC template. ad-hoc has no packet, and
@@ -102,9 +105,9 @@ def check(dest: Path, *args: str) -> dict:
     return json.loads(result.stdout)
 
 
-def phase_row(phase: str, name: str) -> str:
-    """The start of a fixture's `## Phases` row, up to its State cell."""
-    return f"| {phase} | [{name}](IMPLEMENTATION_PLAN.md#{heading_anchor(f'{phase}: {name}')}) | | "
+def shipped_findings(packet: Path) -> list[str]:
+    """The planning skill's format check on a packet, in strict mode."""
+    return format_check().check_packet(packet, strict=True)
 
 
 class PlcCheckpointFixtureTest(unittest.TestCase):
@@ -129,12 +132,8 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
             self.assertTrue(readmes, case)
             for readme in readmes:
                 with self.subTest(case=case, packet=str(readme.relative_to(dest))):
-                    plan = readme.with_name("IMPLEMENTATION_PLAN.md")
-                    problems = packet_shape_problems(
-                        readme.read_text(encoding="utf-8"),
-                        plan.read_text(encoding="utf-8") if plan.is_file() else "",
-                    )
-                    self.assertEqual(problems, [])
+                    self.assertEqual(shipped_findings(readme.parent), [])
+                    self.assertEqual(eval_only_problems(readme.parent, owner=OWNER), [])
 
     def test_fixture_git_ignores_the_developers_git_config(self):
         # A global config that breaks every commit: signing with a key that
@@ -157,8 +156,9 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         readme = "docs/plans/invoice-export/README.md"
         main_copy = (app / readme).read_text(encoding="utf-8")
         worktree_copy = (worktree / readme).read_text(encoding="utf-8")
-        self.assertIn(phase_row("P1", "CSV export") + "Planned |", main_copy)
-        self.assertIn(phase_row("P1", "CSV export") + "Implemented — ", worktree_copy)
+        self.assertEqual(phase_state(main_copy, "P1"), "Planned")
+        self.assertEqual(phase_state(worktree_copy, "P1"), "Implemented")
+        self.assertIn("Implemented — ", worktree_copy)
         # Both copies come from the same packet, created on the same day.
         self.assertIn("- 2026-10-24 Created.", main_copy)
         self.assertIn("- 2026-10-24 Created.", worktree_copy)
@@ -172,9 +172,9 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertTrue(is_ancestor(app, "plc/search-p1", "origin/main"))
         self.assertFalse(is_ancestor(app, "plc/search-p1", "main"))
         readme = "docs/plans/search/README.md"
-        row = phase_row("P1", "Case-insensitive search")
-        self.assertIn(f"{row}In progress |", (app / readme).read_text(encoding="utf-8"))
-        self.assertIn(f"{row}Merged — ", git(app, "show", f"origin/main:{readme}"))
+        local_copy = (app / readme).read_text(encoding="utf-8")
+        self.assertEqual(phase_state(local_copy, "P1"), "In progress")
+        self.assertEqual(phase_state(git(app, "show", f"origin/main:{readme}"), "P1"), "Merged")
 
     def test_chat_decision(self):
         build("chat-decision", self.dest)
@@ -193,7 +193,7 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         readme = (app / "docs/plans/shop/README.md").read_text(encoding="utf-8")
         self.assertIn("Decision: rarity uses the existing color palette", readme)
         self.assertNotIn("Open question", readme)
-        self.assertIn(phase_row("P1", "Shop rows and filter") + "In progress — ", readme)
+        self.assertEqual(phase_state(readme, "P1"), "In progress")
 
     def test_cross_repo_wait(self):
         build("cross-repo-wait", self.dest)
@@ -209,9 +209,10 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         readme = (self.dest / "scheduler/docs/plans/durations/README.md").read_text(
             encoding="utf-8"
         )
-        self.assertIn("- Status: Blocked", readme)
+        self.assertEqual(packet_status(readme), "Blocked")
         self.assertIn("- Depends on: timekit TK-7", readme)
-        self.assertIn(phase_row("P2", "Durations") + "Blocked — ", readme)
+        self.assertEqual(phase_state(readme, "P1"), "Verified")
+        self.assertEqual(phase_state(readme, "P2"), "Blocked")
 
     def test_near_miss_wrap_up(self):
         build("near-miss-wrap-up", self.dest)
@@ -227,7 +228,7 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertFalse(is_ancestor(app, "plc/reconcile-p1", "main"))
         readme = git(app, "show", "plc/reconcile:docs/plans/reconcile/README.md")
         self.assertIn("- Last updated: 2026-10-26", readme)
-        self.assertIn(phase_row("P1", "Match lines") + "In progress |", readme)
+        self.assertEqual(phase_state(readme, "P1"), "In progress")
         self.assertIn("- Owner: @alex", readme)
         self.assertIn("- Replaces: `docs/plans/archived/bank-match/`", readme)
         self.assertIn(
@@ -256,11 +257,16 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         worktree = self.dest / "marina-wt" / "audit-log" / "p1-record"
         packet = app / "docs/plans/audit-log"
         readme = (packet / "README.md").read_text(encoding="utf-8")
-        plan = (packet / "IMPLEMENTATION_PLAN.md").read_text(encoding="utf-8")
-        problems = packet_shape_problems(readme, plan)
-        self.assertIn("old status section: ## Status", problems)
-        self.assertIn("needs exactly one ## Current Work, directly after the summary", problems)
-        self.assertTrue(any("phase state table outside the README" in p for p in problems))
+        # The shipped check reports the older shape.
+        findings = shipped_findings(packet)
+        for expected in [
+            "README.md:1: summary: no paragraph directly under the title",
+            "README.md:1: Current Work: 0 ## Current Work sections; a packet needs exactly one",
+            "README.md:5: Current Work: Status line belongs in ## Current Work, not ## Status",
+            "README.md:7: Current Work: Owner line belongs in ## Current Work, not ## Status",
+            "IMPLEMENTATION_PLAN.md:7: Phases: phase state outside the README ## Phases table",
+        ]:
+            self.assertTrue(any(line.endswith(expected) for line in findings), (expected, findings))
         self.assertIn("\nStatus: In progress\n", readme)
         self.assertIn("- Blockers: none\n", readme)
         self.assertIn("- Created: 2026-10-20", readme)
@@ -286,10 +292,9 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
 
         report = check(self.dest)
         self.assertTrue(report["ok"], report)
-        self.assertEqual(
-            packet_shape_problems((packet / "README.md").read_text(encoding="utf-8"), plan),
-            [],
-        )
+        self.assertEqual(shipped_findings(packet), [])
+        self.assertEqual(eval_only_problems(packet, owner=OWNER), [])
+        self.assertEqual(phase_state(CONVERTED_OLD_SHAPE_README, "P2"), "Planned")
 
     def test_plan_in_other_repo(self):
         build("plan-in-other-repo", self.dest)
@@ -298,7 +303,7 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertIn("`../plans`", (api / "AGENTS.md").read_text(encoding="utf-8"))
         self.assertFalse((api / "docs").exists())
         readme = (plans / "docs/plans/sync-api/README.md").read_text(encoding="utf-8")
-        self.assertIn(phase_row("P1", "Sync endpoint") + "Planned |", readme)
+        self.assertEqual(phase_state(readme, "P1"), "Planned")
         self.assertFalse(is_ancestor(api, "plc/sync-api-p1", "main"))
         snapshot = json.loads((self.dest / "_snapshot.json").read_text(encoding="utf-8"))
         self.assertEqual(sorted(snapshot["checkouts"]), ["api", "plans"])

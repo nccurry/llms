@@ -12,11 +12,13 @@ Markdown graders.
 `check_plan.py` compares the fixture with the `_snapshot.json` its build
 script wrote. The run must add exactly one plan under `docs/plans/planned/`,
 as `<slug>/README.md` or a one-file `plc-<slug>.md`, and change nothing else.
-The plan must have the shared template's shape, checked by
-`packet_shape_problems` in the shared [fixture_lib.py](../fixture_lib.py), and
-name `@alex` as its owner. It prints JSON and exits 1 on a problem. The
-outcome grader then judges the plan's content, and runs the planning skill's
-shipped format check on the plan in strict mode.
+The plan must pass the planning skill's shipped format check in strict mode, as
+a packet in `planned/`, and the evals' own rules for new packets, such as
+section order and no placeholders, and name `@alex` as its owner. Both checks
+come from `packet_shape_problems` in the shared
+[fixture_lib.py](../fixture_lib.py). It prints JSON and exits 1 on a problem.
+The outcome grader then judges the plan's content, and runs the shipped
+format check on the plan too.
 
 ## Run a case
 

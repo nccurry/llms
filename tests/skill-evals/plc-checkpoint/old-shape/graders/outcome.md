@@ -40,9 +40,9 @@ run left it. Pass only if all of these hold:
    with a State or Status column, or its `Lifecycle status:` line. Its P1 and
    P2 detail sections stay.
 5. **Log.** `## Log` is the last section. Its first line comes from
-   `Created: 2026-10-20`. Next is a dated line for the conversion to the
-   shared template (format only), then one dated line for P1's state change
-   that names the merge commit.
+   `Created: 2026-10-20`. Next is the conversion line the migration reference
+   gives, `- <date> Converted to the shared PLC template (format only).`, then
+   one dated line for P1's state change that names the merge commit.
 6. **Status update.** These changes count as the status update, not the
    conversion: new values for Last updated (the run's date and the current
    `main` commit), Next action and Current state; the template's missing keys

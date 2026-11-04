@@ -2,12 +2,12 @@
 
 A small, bounded change gets one plan file and nothing else: either
 `docs/plans/planned/<slug>/README.md` or a one-file plan
-`docs/plans/planned/plc-<slug>.md`. A one-file plan is named as the planning
-skill's format check reads it: `plc-*.md`, but not a side file such as
-`plc-<slug>-srd.md`. No `SRD.md`, `SADD.md`, `IMPLEMENTATION_PLAN.md` or other
-file may appear, no code may change, and history must not be rewritten. The
-plan must have the shared PLC template's shape, and name `@alex` as its owner,
-as the prompt asks.
+`docs/plans/planned/plc-<slug>.md`, named by the planning skill's format check
+rule for one-file plans. No `SRD.md`, `SADD.md`, `IMPLEMENTATION_PLAN.md` or
+other file may appear, no code may change, and history must not be rewritten.
+The plan must pass the shipped format check in strict mode, as a packet in
+`planned/`, and the evals' own rules for new packets, including an Owner line
+that names `@alex`, as the prompt asks.
 
 Usage:
   python check_plan.py <fixture-folder>
@@ -18,17 +18,20 @@ Prints a JSON report and exits 0 when the run passes, 1 otherwise.
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from fixture_lib import git, is_ancestor, packet_shape_problems, status_paths  # noqa: E402
+from fixture_lib import (  # noqa: E402
+    format_check,
+    git,
+    is_ancestor,
+    packet_shape_problems,
+    status_paths,
+)
 
 REPO = "harbor"
 PLANNED = "docs/plans/planned/"
-# Side files that sit beside a one-file plan; they are not plans themselves.
-SIDE_FILE = re.compile(r"-(?:srd|sadd|prd|implementation-plan)\.md$")
 
 
 def changed_paths(app: Path, start: str) -> list[str]:
@@ -37,18 +40,13 @@ def changed_paths(app: Path, start: str) -> list[str]:
     return sorted((set(committed) | status_paths(app)) - {""})
 
 
-def is_plan_file(path: str) -> bool:
+def is_plan_file(app: Path, path: str) -> bool:
+    """True for a packet README or a one-file plan directly under `planned/`."""
     if not path.startswith(PLANNED):
         return False
     parts = path[len(PLANNED) :].split("/")
     folder_readme = len(parts) == 2 and parts[1] == "README.md"
-    name = parts[0]
-    one_file_plan = (
-        len(parts) == 1
-        and name.startswith("plc-")
-        and name.endswith(".md")
-        and not SIDE_FILE.search(name)
-    )
+    one_file_plan = len(parts) == 1 and format_check().is_packet(app / path)
     return folder_readme or one_file_plan
 
 
@@ -61,17 +59,18 @@ def check(dest: Path) -> dict:
     if not is_ancestor(app, start, "HEAD"):
         problems.append("history rewritten or reset")
     changed = changed_paths(app, start)
-    plans = [path for path in changed if is_plan_file(path) and (app / path).is_file()]
+    plans = [path for path in changed if is_plan_file(app, path) and (app / path).is_file()]
     others = [path for path in changed if path not in plans]
     if others:
         problems.append(f"changed beyond the one plan file: {others}")
     if len(plans) != 1:
         problems.append(f"expected one new plan in {PLANNED}, found {plans or 'none'}")
     else:
-        text = (app / plans[0]).read_text(encoding="utf-8")
-        problems += packet_shape_problems(text)
-        if not re.search(r"^- Owner: .*@alex(?![\w-])", text, re.MULTILINE):
-            problems.append("Owner does not name @alex")
+        # Findings name the plan relative to the repository, as git does.
+        problems += [
+            problem.replace(f"{app.as_posix()}/", "")
+            for problem in packet_shape_problems(app / plans[0], owner="@alex")
+        ]
 
     return {
         "ok": not problems,

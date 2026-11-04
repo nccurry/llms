@@ -8,7 +8,15 @@ from pathlib import Path
 EVALS = Path(__file__).resolve().parent / "skill-evals"
 CASES = EVALS / "wrap-this-up"
 sys.path.insert(0, str(EVALS))
-from fixture_lib import GIT_ENV, git, packet_shape_problems  # noqa: E402
+from fixture_lib import (  # noqa: E402
+    GIT_ENV,
+    OWNER,
+    eval_only_problems,
+    format_check,
+    git,
+    packet_status,
+    phase_state,
+)
 
 ALL_CASES = [
     "direct-mid-stream",
@@ -157,11 +165,8 @@ class WrapThisUpFixtureTest(unittest.TestCase):
                 dest = Path(self.tmp.name) / case
                 build(case, dest)
                 packet = dest / "notify" / PLAN
-                problems = packet_shape_problems(
-                    (packet / "README.md").read_text(encoding="utf-8"),
-                    (packet / "IMPLEMENTATION_PLAN.md").read_text(encoding="utf-8"),
-                )
-                self.assertEqual(problems, [])
+                self.assertEqual(format_check().check_packet(packet, strict=True), [])
+                self.assertEqual(eval_only_problems(packet, owner=OWNER), [])
                 agents = (dest / "notify" / "AGENTS.md").read_text(encoding="utf-8")
                 self.assertIn(f"({PLAN}/README.md)", agents)
 
@@ -236,9 +241,13 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         self.build("complete-moves-plan")
         self.complete_the_plan(self.finish_p1())
         self.assertEqual(check(self.dest), OK)
-        readme = (self.app / COMPLETED / "README.md").read_text(encoding="utf-8")
-        plan = (self.app / COMPLETED / "IMPLEMENTATION_PLAN.md").read_text(encoding="utf-8")
-        self.assertEqual(packet_shape_problems(readme, plan), [])
+        packet = self.app / COMPLETED
+        findings = format_check().check_packet(packet, strict=True, lifecycle="completed")
+        self.assertEqual(findings, [])
+        self.assertEqual(eval_only_problems(packet, owner=OWNER), [])
+        readme = (packet / "README.md").read_text(encoding="utf-8")
+        self.assertEqual(packet_status(readme), "Complete")
+        self.assertEqual(phase_state(readme, "P1"), "Verified")
 
     def test_correct_active_agent_result_passes(self):
         self.build("active-agent")
@@ -259,6 +268,16 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         )
         self.commit_plan("docs(plan): P1 merged; DIG-003 open")
         self.assertEqual(check(self.dest), OK)
+        packet = self.app / PLAN
+        self.assertEqual(format_check().check_packet(packet, strict=True), [])
+        self.assertEqual(eval_only_problems(packet, owner=OWNER), [])
+        # The shipped check would refuse to complete it: P1 is only Merged.
+        as_completed = format_check().check_packet(packet, strict=True, lifecycle="completed")
+        self.assertEqual(len(as_completed), 2, as_completed)
+        self.assertIn(
+            "strict: Status In progress does not match the completed/ folder", as_completed[0]
+        )
+        self.assertIn("strict: Merged phase in a completed/ packet", as_completed[1])
 
     # One wrong result per expectation; each names exactly what it broke.
 
