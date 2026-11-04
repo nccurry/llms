@@ -45,9 +45,10 @@ run left it. Pass only if all of these hold:
    one dated line for P1's state change that names the merge commit.
 6. **Status update.** These changes count as the status update, not the
    conversion: new values for Last updated (the run's date and the current
-   `main` commit), Next action and Current state; the template's missing keys
-   added, such as `Depends on` and `Resume check`; the "Where the work lives"
-   table; P1's row; and the Log line for P1. P1's row shows it merged into
+   `main` commit), Next action and Current state; every template key the old
+   block lacked, which here means `Depends on` and `Resume check`; the "Where
+   the work lives" table; P1's row; and the Log line for P1. All of these
+   must be there at the end. P1's row shows it merged into
    `main` and names the merge commit. It is Verified only if its note names
    the check that passed and where it ran. P2 is Planned, or keeps the older
    word `Not started`.

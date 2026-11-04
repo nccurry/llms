@@ -17,9 +17,20 @@ to merge straight into `main`, push, and run `run_tests.py`.
 
 `check_wrap.py` reads the `_expect.json` each build script writes: commits that
 must or must not be on `origin/main`, worktrees and branches that must be gone
-or kept, plan paths that must or must not exist on `origin/main`, and text the
-plan there must or must not contain, such as `- Owner: @alex` or the
-historical-record line. It prints JSON and exits 1 when an expectation fails.
+or kept (with cleanup that applies only once a commit is merged), paths and
+text that must or must not be on `origin/main`, and the plan's expected state.
+It extracts the plan from `origin/main` and checks it with fixture_lib's
+`packet_shape_problems`, which runs the shipped format check in strict mode
+plus the evals' own rules, including the `@alex` owner. It reads the packet
+status as a word, so `Done` counts as Complete, and checks whether Current
+Work opens with the historical-record line.
+
+It also compares the end state with `_snapshot.json`. A worktree or local
+branch the run added must be gone, including the `_merge` checkout the skill
+merges in. The primary checkout must stay on its branch, may only
+fast-forward to `origin/main` or gain plan-only commits, and may keep
+uncommitted changes only under `docs/plans/`. It prints JSON and exits 1 when
+an expectation fails.
 The outcome graders judge the report and the plan's Current Work, and the
 cases that may edit the plan also use the shared
 [plan-record grader](../plc-checkpoint/graders/plan-record.md), which runs the

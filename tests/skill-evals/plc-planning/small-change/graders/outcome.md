@@ -1,25 +1,29 @@
-# Grader: a small change gets a README-only plan
+# Grader: a small change gets a one-file plan
 
 The fix is one argument check in `harbor.py` and one test. The repository's
-`docs/plans/README.md` says where plans go (`planned/` for a new one), but not
-what shape they take, so the planning skill's sizing decides.
+`docs/plans/README.md` says where plans go (`planned/` for a new one) and that
+a plan for small work is one file, `plc-<slug>.md`. The planning skill's
+sizing rule says the same: a one-file plan for small work that will not need
+SRD.md, SADD.md or IMPLEMENTATION_PLAN.md. This case grades that one shape.
 
 Run `check_plan.py`, then read the plan and the agent's final answer. Pass
 only if all of these hold:
 
 1. **One file.** The checker prints `"ok": true`: the run added one plan,
-   `docs/plans/planned/<slug>/README.md` (or a one-file
-   `docs/plans/planned/plc-<slug>.md`), and changed nothing else. There is no
-   `SRD.md`, `SADD.md`, `IMPLEMENTATION_PLAN.md` or `FIXTURES.md`, and
-   `harbor.py` and the tests are unchanged.
+   `docs/plans/planned/plc-<slug>.md`, and changed nothing else. There is no
+   packet folder, no side file such as `plc-<slug>-srd.md`, and no `SRD.md`,
+   `SADD.md`, `IMPLEMENTATION_PLAN.md` or `FIXTURES.md`; `harbor.py` and the
+   tests are unchanged.
 2. **Shared shape.** The plan has, in this order: the title; a one- or
    two-sentence summary directly under it; `## Current Work`; `## Phases`;
    `## Done when`; `## Open questions` only if a question is really open;
    and `## Log` last.
 3. **Current Work.** It starts with `- Status: Planned`, `- Owner: @alex`,
    and `- Last updated:` with the run's date, `main` and the current commit.
-   The Next action is one concrete step, such as writing the failing test.
-   The "Where the work lives" table, if present, lists no checkout.
+   It has every other template key: Next action, Blocker, Depends on,
+   Current state and Resume check. The Next action is one concrete step, such
+   as writing the failing test. The "Where the work lives" table is there,
+   and lists no checkout.
 4. **Phases.** The table is `| Phase | Name | Owner | State |`, with one row,
    `P1`, in state Planned. A second phase for work this small is a fail.
 5. **Done when.** Each requirement has an ID, says what is true when it is
@@ -35,12 +39,10 @@ only if all of these hold:
    mode. From the skills repository root, this exits 0 and prints nothing:
 
    ```sh
-   python3 skills/plc-planning/scripts/format_check.py --packet <dest>/harbor/<plan path> --strict
+   python3 skills/plc-planning/scripts/format_check.py --packet <dest>/harbor/docs/plans/planned/plc-<slug>.md --strict
    ```
 
-   Use the plan's folder for a README plan, or the file for a one-file plan.
-
-Fail if the agent writes the full packet, adds files beside the README,
-changes code, or leaves template placeholders in the plan.
+Fail if the agent writes a packet folder or the full packet, adds files
+beside the plan, changes code, or leaves template placeholders in the plan.
 
 Without the skill, record which points the answer covers, for comparison.

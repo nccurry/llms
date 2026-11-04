@@ -26,7 +26,8 @@ installer copies the whole skill folder into each agent.
 - **Required:** removing each finished worktree, local branch, and remote
   branch listed in `_expect.json`.
 - **Allowed:** plan record edits under `docs/plans/`, and commits that touch
-  only those files.
+  only those files. A packet file moved unchanged, as a lifecycle move does,
+  is reported as a move.
 - **Violations:** removing anything else, pushes, merges, new branches or
   worktrees, code edits, and any change to `SRD.md`.
 
