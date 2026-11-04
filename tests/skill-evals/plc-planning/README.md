@@ -35,5 +35,29 @@ shape. It does not run an agent.
 
 ## Results
 
-No runs yet. Each case is to be run three times by hand, with each run's
-checker result and grade recorded here.
+Each case is to be run three times by hand, with each run's checker result
+and grade recorded here.
+
+### 2026-11-03, small-change runs
+
+Three runs of the small-change case by Opus subagents. Each got the prompt
+and chose its own skills. The grade is the one given at the time, with the
+grader as it was then.
+
+| Run | Skills loaded | Tool uses | Tokens | Checker | Grade |
+| --- | --- | --- | --- | --- | --- |
+| 1 | plc-planning | 10 | 80336 | ok | fail: point 6 |
+| 2 | plc-planning | 12 | 82028 | ok | fail: point 6 |
+| 3 | plc-planning | 10 | 77485 | ok | fail: point 3 |
+
+- Point 6, runs 1 and 2: the Log held the Created line and one dated
+  `Decision:` line, and the grader allowed only the Created line. Grader
+  defect, now fixed: the skill's Log rule allows one dated line per state
+  change, decision or surprise.
+- Point 3, run 3: its Next action was "Implement P1 on `main`; whoever
+  picks it up adds their @handle to the P1 row", which names the whole
+  phase, not a first step. Real agent behavior; the grader now gives an
+  example of a concrete step.
+- The grader's findings name no other failed point.
+- These runs used the skill text and grader from before the 2026-11-04
+  fixes, so the state-word and grader fixes have not been re-run yet.

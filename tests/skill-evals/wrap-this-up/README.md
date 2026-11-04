@@ -10,7 +10,7 @@ to merge straight into `main`, push, and run `run_tests.py`.
 | --- | --- |
 | [direct-mid-stream](direct-mid-stream/case.yaml) | P2 is unfinished: merge both anyway, keep the plan open with P2's remaining work, clean up everything |
 | [complete-moves-plan](complete-moves-plan/case.yaml) | The only phase is done: merge, mark P1 Verified with evidence, mark the plan Complete with the historical-record line, move it to `completed/` |
-| [unmet-requirement](unmet-requirement/case.yaml) | The only phase passes its tests but misses DIG-003: merge, but keep P1 Merged, record the gap, and keep the plan open |
+| [unmet-requirement](unmet-requirement/case.yaml) | The only phase passes its tests but misses DIG-003: merge, but keep P1 In progress, record the gap, and keep the plan open |
 | [failing-checks](failing-checks/case.yaml) | Each branch passes alone but not together: stop and ask |
 | [active-agent](active-agent/case.yaml) | P2 is locked by another session: merge and clean up P1 only |
 | [near-miss-status](near-miss-status/case.yaml) | "Where are we?" must go to `plc-checkpoint`, and nothing merges |
@@ -52,7 +52,39 @@ Results before 2026-11-03 used the older packet shape: an older Current Work
 block, phase state in the implementation plan, and a folder for finished
 plans that is now `completed/`. The fixtures and graders now use the shared
 PLC template, so those results do not cover the Owner, Log, evidence, gap and
-historical-record points. The unmet-requirement case has no runs yet.
+historical-record points. The unmet-requirement case was first run on
+2026-11-03.
+
+### 2026-11-03, unmet-requirement runs
+
+Three runs of the unmet-requirement case by Opus subagents. Each got the
+prompt and chose its own skills. The grade is the one given at the time,
+with the grader as it was then.
+
+| Run | Skills loaded | Tool uses | Tokens | Checker | Grade |
+| --- | --- | --- | --- | --- | --- |
+| 1 | wrap-this-up | 24 | 106276 | ok | fail: point 4 |
+| 2 | wrap-this-up | 25 | 111724 | ok | fail: points 4 and 5 |
+| 3 | wrap-this-up | 26 | 116267 | ok | fail: point 4 |
+
+- Point 4, runs 1 and 2: P1 read
+  `In progress — DIG-001 merged @ <merge>; DIG-003 not started`, and the
+  grader wanted Merged. Grader defect, now fixed: the owner decided on
+  2026-11-04 that a phase with part of its work merged and part not started
+  is In progress.
+- Point 4, run 3: P1 read
+  `Planned — DIG-001 merged @ <merge>; DIG-003 not started`. The agent
+  applied plc-checkpoint's old rule, "A phase takes the earliest word, in
+  the list's order, among its items", as written, so this was neither a
+  grader defect nor the agent's own error. That rule has since been
+  rewritten; Planned still fails.
+- Point 5, run 2: one dated Log line named both the merge and the gap, and
+  the grader wanted a line for each. Grader defect, now fixed: P1's word did
+  not change, so the gap is the one event the Log rule asks for, and one
+  line naming both passes.
+- The grader's findings name no other failed point.
+- These runs used the skill text and grader from before the 2026-11-04
+  fixes, so the state-word and grader fixes have not been re-run yet.
 
 ### 2026-10-27, first run
 

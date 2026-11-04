@@ -84,7 +84,37 @@ Results before 2026-11-03 used the older packet shape: a `## Status` or
 older Current Work block, with phase state in the implementation plan. The
 fixtures and graders now use the shared PLC template, so those results do
 not cover the Owner, Log, evidence, gap and old-shape points. The old-shape
-case has no runs yet.
+case was first run on 2026-11-03.
+
+### 2026-11-03, old-shape runs
+
+Three runs of the old-shape case by Opus subagents. Each got the prompt and
+chose its own skills. The grade is the one given at the time, with the
+grader as it was then.
+
+| Run | Skills loaded | Tool uses | Tokens | Checker | Grade |
+| --- | --- | --- | --- | --- | --- |
+| 1 | plc-checkpoint, plain-english, verify-before-claiming | 19 | 114751 | ok | fail: points 2 and 7 |
+| 2 | plc-checkpoint | 21 | 112307 | ok | fail: point 2 |
+| 3 | plc-checkpoint | 18 | 113078 | ok | fail: point 2 |
+
+- Point 2, all three runs: each ended with `- Blocker: None`, and the grader
+  wanted the converted `none` kept. Grader defect, now fixed: converting
+  keeps the value, and the status update that follows writes the template's
+  `None`.
+- Point 7, run 1: it added a `## Done when` section, and a line in
+  `IMPLEMENTATION_PLAN.md` pointing to the README's phase table; no
+  conversion step listed either. Adding `## Done when` is now step M8, so
+  that part was a gap in the skill and grader, now fixed. But run 1 wrote
+  its own Done when line, not M8's fixed line, and the pointer line is still
+  not a listed edit: real agent behavior.
+- The grader's findings name no other failed point. All three runs marked
+  P1 Merged and raised the missing `save_booking` call as an
+  `Open question:` line.
+- These runs used the skill text and grader from before the 2026-11-04
+  fixes (the In progress rule for a partly merged phase, step M8 and the
+  grader changes above), so the state-word and grader fixes have not been
+  re-run yet.
 
 ### 2026-10-27, first run of plc-checkpoint
 
