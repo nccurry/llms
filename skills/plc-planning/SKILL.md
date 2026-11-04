@@ -236,8 +236,14 @@ refer to this section instead of repeating it.
   - Live: released or deployed.
 - **Side states:** Blocked, Deferred, Dropped. Deferred and Dropped need the
   user's approval, in the plan or the conversation.
-- **Merged is not Verified.** A phase whose checks have not passed on the
-  merged code stays Merged, with what is missing in its note.
+- **A phase whose parts differ** takes the earliest of their words, but it
+  is Planned only when none of its work has started. A phase with part of
+  its work merged and part not started is In progress, and its note names
+  what merged and what is missing:
+  `In progress — REQ-001 merged @ abc1234; REQ-002 not started`.
+- **Merged is not Verified.** A phase whose work is all merged, but whose
+  checks have not passed on the merged code, stays Merged, with what is
+  missing in its note.
 - **Older words.** Tools still accept these in older text; new text uses the
   words above.
   - For packets: Draft, Ready and Proposed (Planned); In-progress,
@@ -313,8 +319,9 @@ refer to this section instead of repeating it.
 - Each requirement says what is true when it is done, and names a check: a
   command, a test, or a written manual procedure, with its expected result.
   EARS wording ("WHEN … the system SHALL …") is optional.
-- A README-only packet lists requirements under `## Done when`; a larger one
-  keeps them in SRD.md.
+- A README-only packet lists requirements under `## Done when`. A packet
+  with SRD.md keeps them there, and its `## Done when` holds only this line:
+  `The requirements and their checks are in [SRD.md](SRD.md).`
 - IDs are never renumbered, reused or renamed. A dropped requirement or phase
   stays where it is, marked Dropped with a [reason](#reasons), and new ones
   take the next number.

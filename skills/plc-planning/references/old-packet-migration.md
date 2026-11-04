@@ -25,9 +25,9 @@ beside the old one. "Convert" here means changing the format in place;
   another worktree's branch or commit, or uncommitted edits you did not
   make. The packet you are updating for its own work is yours to convert.
 - Don't reword text. The only edits are moving whole lines and the format
-  edits below. Two steps change what the packet says: M1's duplicate rule
-  deletes lines, and E6 can add evidence. List each line they touch for the
-  owner's review.
+  edits below. Three steps change what the packet says: M1's duplicate rule
+  deletes lines, M8 adds a `## Done when` line, and E6 can add evidence.
+  List each line they touch for the owner's review.
 - An owner case is a point only the packet's owner can settle. Leave the
   text as it is, and list the case in your report and as an
   `Open question:` line. Never guess one. Owner cases include a status that
@@ -75,6 +75,12 @@ beside the old one. "Convert" here means changing the format in place;
    `- <date> Converted to the shared PLC template (format only).`
 7. **M7. Old status lines.** Remove `Folder:` lines (the path says it) and
    `Lifecycle status:` lines in other files (the README holds the status).
+8. **M8. Done when.** When the README has no `## Done when`, add one in the
+   template's [section order](../SKILL.md#order-and-format). A packet with
+   SRD.md gets the one line the
+   [requirements rules](../SKILL.md#requirements-and-checks) give, pointing
+   to SRD.md. A packet without SRD.md is an owner case: don't write
+   requirements for it.
 
 ## Format edits
 
@@ -104,8 +110,10 @@ latest one the row's own cells support:
 - Live when Delivery records a release or deployment;
 - Verified when the change is on the final target and Verification records
   a check that passed on it;
-- Merged when the change is on the final target;
-- otherwise Implemented, In progress or Planned.
+- Merged when the whole change is on the final target;
+- otherwise Implemented, In progress or Planned. A row with only part of its
+  change merged follows the [Words](../SKILL.md#words) rule for a phase
+  whose parts differ.
 
 When the cells disagree, the row is an owner case.
 
@@ -113,5 +121,5 @@ When the cells disagree, the row is an owner case.
 
 Run the [format check](../SKILL.md#format-check) on the packet, first in
 default mode and then with `--strict`. Each finding left must be one of the
-owner cases you listed. Report those cases, and each line M1 deleted or E6
-added.
+owner cases you listed. Report those cases, and each line M1 deleted or M8
+or E6 added.

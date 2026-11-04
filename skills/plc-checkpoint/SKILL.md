@@ -94,8 +94,9 @@ Fetch first, then collect facts. Record the commit each fact applies to.
 
 Give each item a phase state word from `plc-planning`'s
 [word list](../plc-planning/SKILL.md#words), quoting the plan's words when
-they differ. A phase takes the earliest word, in the list's order, among its
-items. When one of its items is Blocked, name that item in the phase's note.
+they differ. Then give each phase its word by the same list's rule for a
+phase whose parts differ. When one of its items is Blocked, name that item
+in the phase's note.
 
 If a source is unavailable (no host login, a path on another machine), say
 so under blind spots. Don't guess its state.
@@ -170,7 +171,8 @@ Then, in the same README:
 - Update the affected rows of the `## Phases` table under `plc-planning`'s
   [Phases rules](../plc-planning/SKILL.md#phases). Each changed note names the
   merge request or commit. Mark a phase Verified or Live only with its
-  evidence in the note; without it, the phase stays Merged.
+  evidence in the note; without it, a phase whose work is all merged stays
+  Merged.
 - Add one dated line to `## Log` for each state change, decision, or
   surprise since the last update. Don't change older Log lines.
 - Compare each requirement ID, in `## Done when` or SRD.md, with what
