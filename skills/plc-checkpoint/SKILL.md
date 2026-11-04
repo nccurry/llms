@@ -92,11 +92,12 @@ Fetch first, then collect facts. Record the commit each fact applies to.
    [dependency-check](references/dependency-check.md). Use one subagent per
    repo when there are several and the host supports it.
 
-Give each item a phase state word from `plc-planning`'s
+Give each part of each phase, meaning each requirement or task the plan
+lists for it, a phase state word from `plc-planning`'s
 [word list](../plc-planning/SKILL.md#words), quoting the plan's words when
-they differ. Then give each phase its word by the same list's rule for a
-phase whose parts differ. When one of its items is Blocked, name that item
-in the phase's note.
+they differ. Then give each phase the first of its parts' words in the
+list's order, as that list's rule for a phase whose parts differ says,
+including what it says about side states.
 
 If a source is unavailable (no host login, a path on another machine), say
 so under blind spots. Don't guess its state.
@@ -171,14 +172,16 @@ Then, in the same README:
 - Update the affected rows of the `## Phases` table under `plc-planning`'s
   [Phases rules](../plc-planning/SKILL.md#phases). Each changed note names the
   merge request or commit. Mark a phase Verified or Live only with its
-  evidence in the note; without it, a phase whose work is all merged stays
-  Merged.
+  evidence in the note; otherwise give it the word `plc-planning`'s
+  [Words](../plc-planning/SKILL.md#words) rules give.
 - Add one dated line to `## Log` for each state change, decision, or
   surprise since the last update. Don't change older Log lines.
 - Compare each requirement ID, in `## Done when` or SRD.md, with what
   shipped. Record each gap as a new phase row (Planned, or Deferred only
-  with the user's approval) or as an `Open question:` line naming whom it
-  waits on. Never mark a requirement met without its evidence.
+  with the user's approval), which leaves the old phase as the Words rule
+  for a gap moved to its own row says, or as an `Open question:` line
+  naming what it blocks and whom it waits on. Never mark a requirement met
+  without its evidence.
 - Record each decision the user approved in this conversation as a dated
   `Decision:` Log line, following `plc-planning`'s
   [open questions](../plc-planning/SKILL.md#open-questions) rule. Record an

@@ -69,20 +69,23 @@ beside the old one. "Convert" here means changing the format in place;
    column, whole, under a new `## Phases` heading in the README. A link in a
    moved row to a heading in the file the table came from gains that file's
    name: `[P1](#p1-parse)` becomes `[P1](IMPLEMENTATION_PLAN.md#p1-parse)`.
-   Where the table was, leave the line
-   `Phase state lives in the README's [Phases](README.md#phases) table.` A
-   packet with two such tables is an owner case.
+   When the table came from another file, leave the line
+   `Phase state lives in the README's [Phases](README.md#phases) table.`
+   where it was, and remove the table's heading, such as `## Phase Status`,
+   when the table was all that heading held. A table moved within the README
+   leaves no such line. A packet with two such tables is an owner case.
 6. **M6. Log.** Add `## Log` at the end. Its first line comes from the
    `Created:` line, when there is one. Then add
    `- <date> Converted to the shared PLC template (format only).`
 7. **M7. Old status lines.** Remove `Folder:` lines (the path says it) and
    `Lifecycle status:` lines in other files (the README holds the status).
-8. **M8. Done when.** When the README has no `## Done when`, add one in the
-   template's [section order](../SKILL.md#order-and-format). A packet with
-   SRD.md gets one fixed line pointing to it: the line the repository's own
-   README template uses, or, when it has none, the line the
-   [requirements rules](../SKILL.md#requirements-and-checks) give. A packet
-   without SRD.md is an owner case: don't write requirements for it.
+8. **M8. Done when.** When the README has no `## Done when` and the packet
+   has SRD.md, add `## Done when` in the template's
+   [section order](../SKILL.md#order-and-format), holding only the line the
+   [requirements rules](../SKILL.md#requirements-and-checks) choose. A
+   packet without SRD.md, including one that lists its requirements under
+   another heading, is an owner case: add no `## Done when`, and don't write
+   requirements for it.
 
 ## Format edits
 
@@ -110,12 +113,12 @@ State column at the end (E2), then move the table (M5). Its word is the
 latest one the row's own cells support:
 
 - Live when Delivery records a release or deployment;
-- Verified when the change is on the final target and Verification records
-  a check that passed on it;
+- Verified when the whole change is on the final target and Verification
+  records a check that passed on it;
 - Merged when the whole change is on the final target;
-- otherwise Implemented, In progress or Planned. A row with only part of its
-  change merged follows the [Words](../SKILL.md#words) rule for a phase
-  whose parts differ.
+- otherwise Implemented, In progress or Planned. A row with only some of its
+  parts merged follows the [Words](../SKILL.md#words) rule for a phase whose
+  parts differ.
 
 When the cells disagree, the row is an owner case.
 
