@@ -265,7 +265,7 @@ def open_plan_with_unbuilt_part(phase: str, phases_at_start: list[str]) -> dict:
 
     While the phase still holds that part it is In progress; once its note
     says `moved to P<n>` for a new row, one outside `phases_at_start`, it
-    may be Merged or Verified.
+    must be Merged or Verified instead.
     """
     rule = phase_rule(["In progress"], ["Merged", "Verified"], phases_at_start)
     return {**OPEN_PLAN, "phases": {phase: rule}}

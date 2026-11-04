@@ -31,10 +31,10 @@ _expect.json may list:
                     its Current Work must open with the historical-record
                     line when `historical` is true, and not have it when false.
                     `phases` maps a phase ID to a fixture_lib phase_rule:
-                    the phase's state word must be one of `states`, or one
-                    of `after_move` once its note says `moved to P<n>` for a
-                    row that is new (not the phase itself and not in
-                    `phases_at_start`). When `lists_no_removed_checkouts` is
+                    the phase's state word must be one of `states`; once
+                    its note says `moved to P<n>` for a row that is new (not
+                    the phase itself and not in `phases_at_start`), it must
+                    be one of `after_move` instead. When `lists_no_removed_checkouts` is
                     true, "Where the work lives" must not name a worktree
                     from `removed_worktrees` that is no longer registered.
 

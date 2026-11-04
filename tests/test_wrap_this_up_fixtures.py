@@ -275,13 +275,15 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         new_rows: tuple[str, ...] = (),
         merge_p2: bool = True,
         moved_to: str | None = None,
+        drop_rows: tuple[str, ...] = (P1_WORKTREE, P2_WORKTREE),
     ) -> None:
         """The direct-mid-stream result its grader expects: both branches
         merged, the plan rewritten with P2's channel posting still to do, and
         everything cleaned up. `p2_state` and `new_rows` may name `{p2}`, P2's
         merge commit. With `merge_p2` false, P2's branch is left unmerged.
         When channel posting has moved to the new row `moved_to`, P2's changed
-        word gets its own Log line."""
+        word gets its own Log line. `drop_rows` names the checkouts whose
+        "Where the work lives" rows the plan update removes."""
         p1 = self.merge("plc/digest-p1")
         p2 = self.merge("plc/digest-p2") if merge_p2 else p1
         self.set_key("Last updated", f"2026-11-03, `main` at `{p2}`")
@@ -293,7 +295,7 @@ class WrapThisUpFixtureTest(unittest.TestCase):
             "Current state",
             f"P1 merged @ `{p1}`. P2's Slack text merged @ `{p2}`; channel posting not started.",
         )
-        self.drop_checkout_rows(P1_WORKTREE, P2_WORKTREE)
+        self.drop_checkout_rows(*drop_rows)
         self.set_phase("P1", f"Merged — `{p1}`")
         self.set_phase("P2", p2_state.format(p2=p2))
         for row in new_rows:
@@ -555,13 +557,19 @@ class WrapThisUpFixtureTest(unittest.TestCase):
             [f"plan {PLAN} on origin/main: phase P2 is Merged, expected In progress"]
         )
 
-    def assert_removed_checkout_listed(self, plan: str = PLAN) -> None:
+    def assert_removed_checkout_listed(self, plan: str = PLAN, worktree: str = P1_WORKTREE) -> None:
         self.assert_failures(
             [
                 f"plan {plan} on origin/main: Where the work lives still names removed "
-                f"{P1_WORKTREE}"
+                f"{worktree}"
             ]
         )
+
+    def test_listing_p2_removed_checkout_fails_direct_mid_stream(self):
+        # Both checkouts are removed; the run drops only P1's row.
+        self.build("direct-mid-stream")
+        self.wrap_mid_stream(drop_rows=(P1_WORKTREE,))
+        self.assert_removed_checkout_listed(worktree=P2_WORKTREE)
 
     def test_listing_a_removed_checkout_fails_unmet_requirement(self):
         self.build("unmet-requirement")
@@ -873,10 +881,10 @@ class PhaseRuleTest(unittest.TestCase):
 
     RULE = phase_rule(["In progress"], ["Merged", "Verified"], ["P1", "P2"])
 
-    def problem(self, *rows: str) -> str | None:
+    def problem(self, *rows: str, rule: dict = RULE) -> str | None:
         table = "".join(f"{row}\n" for row in rows)
         readme = f"# T\n\n## Phases\n\n{PHASES_HEADER}\n| --- | --- | --- | --- |\n{table}"
-        return phase_rule_problem(readme, "P2", self.RULE)
+        return phase_rule_problem(readme, "P2", rule)
 
     def test_in_progress_passes(self):
         self.assertIsNone(self.problem("| P2 | Slack | | In progress — text merged |"))
@@ -906,6 +914,19 @@ class PhaseRuleTest(unittest.TestCase):
                 p2 = f"| P2 | Slack | | Merged — moved to {target} |"
                 problem = self.problem(p2, "| P1 | Email | | Merged |")
                 self.assertEqual(problem, "phase P2 is Merged, expected In progress")
+
+    def test_a_move_to_itself_does_not_count_with_no_starting_rows(self):
+        # With no starting rows listed, only the self check rejects this move.
+        rule = phase_rule(["In progress"], ["Merged", "Verified"], [])
+        problem = self.problem("| P2 | Slack | | Merged — moved to P2 |", rule=rule)
+        self.assertEqual(problem, "phase P2 is Merged, expected In progress")
+
+    def test_in_progress_after_a_move_fails(self):
+        # Once the unbuilt part has its own row, P2 holds only merged parts.
+        rows = ("| P2 | Slack | | In progress — moved to P3 |", "| P3 | Posting | | Planned |")
+        self.assertEqual(
+            self.problem(*rows), "phase P2 is In progress, expected Merged or Verified"
+        )
 
 
 if __name__ == "__main__":

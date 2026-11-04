@@ -386,6 +386,39 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
             "## Done when is not directly after ## Phases", change_readme=move_done_when
         )
 
+    def test_old_shape_done_when_in_other_words_fails(self):
+        def reword(text: str) -> str:
+            return text.replace(DONE_WHEN_LINE, "Each requirement in [SRD.md](SRD.md) passes.")
+
+        self.assert_old_shape_violation(
+            f"## Done when does not hold only {DONE_WHEN_LINE!r}", change_readme=reword
+        )
+
+    def test_old_shape_without_done_when_fails(self):
+        def drop_done_when(text: str) -> str:
+            return text.replace(f"## Done when\n\n{DONE_WHEN_LINE}\n\n", "")
+
+        self.assert_old_shape_violation(
+            "README has no ## Done when", change_readme=drop_done_when
+        )
+
+    def test_old_shape_without_a_readme_fails(self):
+        packet, _, _ = self.convert_old_shape()
+        (packet / "README.md").unlink()
+        expected = ["marina/docs/plans/audit-log: README.md is missing"]
+        self.assertEqual(check(self.dest)["violations"], expected)
+
+    def test_old_shape_listing_the_removed_checkout_fails(self):
+        row = "| `marina-wt/audit-log/p1-record` | `plc/audit-log-p1` | p1 child | in progress |"
+
+        def keep_row(text: str) -> str:
+            return text.replace("| None | | | |", row)
+
+        self.assert_old_shape_violation(
+            "Where the work lives still names removed marina-wt/audit-log/p1-record",
+            change_readme=keep_row,
+        )
+
     def test_plan_in_other_repo(self):
         build("plan-in-other-repo", self.dest)
         api = self.dest / "api"

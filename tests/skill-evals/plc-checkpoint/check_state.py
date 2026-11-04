@@ -15,6 +15,9 @@ after the run, read from the working copy (committed or not):
   plan_has    text IMPLEMENTATION_PLAN.md must contain
   plan_lacks  text IMPLEMENTATION_PLAN.md must not contain
   done_when   the one line `## Done when` holds, directly after `## Phases`
+  lists_no_removed_checkouts
+              when true, "Where the work lives" must not name a worktree
+              from `removed_worktrees` that is no longer registered
 
 Usage:
   python check_state.py <fixture-folder> [--strict] [--protect <worktree>:<path>]
@@ -39,6 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import fixture_lib  # noqa: E402
 from fixture_lib import (  # noqa: E402
     is_ancestor,
+    listed_checkouts,
     packet_file_hashes,
     phase_rule_problem,
     remote_refs,
@@ -66,8 +70,11 @@ def done_when_problem(readme: str, line: str) -> str | None:
     return None
 
 
-def packet_content_problems(dest: Path, content: dict) -> list[str]:
-    """Each way the packet's text breaks _expect.json's `packet_content`."""
+def packet_content_problems(
+    dest: Path, content: dict, removed_worktrees: list[str], registered: set[str]
+) -> list[str]:
+    """Each way the packet's text breaks _expect.json's `packet_content`.
+    `registered` holds the worktrees still registered, relative to `dest`."""
     label = content["path"]
     packet = dest / label
     readme_path = packet / "README.md"
@@ -92,6 +99,13 @@ def packet_content_problems(dest: Path, content: dict) -> list[str]:
     ]
     if "done_when" in content:
         problems.append(done_when_problem(readme, content["done_when"]))
+    if content.get("lists_no_removed_checkouts"):
+        listed = listed_checkouts(readme)
+        problems += [
+            f"Where the work lives still names removed {rel}"
+            for rel in removed_worktrees
+            if rel not in registered and any(Path(rel).name in cell for cell in listed)
+        ]
     return [f"{label}: {problem}" for problem in problems if problem]
 
 
@@ -298,7 +312,14 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
     if expect.get("no_packet_changes") and packet_changes:
         violations.append("plan records changed in a run that must not change them")
     if "packet_content" in expect:
-        violations += packet_content_problems(dest, expect["packet_content"])
+        registered = {
+            path.resolve().relative_to(dest).as_posix()
+            for checkout in snap["checkouts"]
+            for path in worktree_paths(dest / checkout, check=False)
+        }
+        violations += packet_content_problems(
+            dest, expect["packet_content"], expect.get("removed_worktrees", []), registered
+        )
 
     for worktree, rel_file in protected:
         snap_wt = next(

@@ -131,14 +131,16 @@ expect(
     removed_worktrees=["marina-wt/audit-log/p1-record"],
     deleted_branches={"marina": ["plc/audit-log-p1"]},
     # P1 merged `record` but nobody built the call from `save_booking`, so it
-    # stays In progress unless the call moves to a new row. Steps M5 and M8
-    # leave their lines.
+    # stays In progress unless the call moves to a new row, and then must be
+    # Merged or Verified. Steps M5 and M8 leave their lines, and the rewritten
+    # Current Work no longer lists the removed p1-record worktree.
     packet_content={
         "path": f"marina/{PACKET}",
         "phases": {"P1": phase_rule(["In progress"], ["Merged", "Verified"], ["P1", "P2"])},
         "plan_has": [POINTER_LINE],
         "plan_lacks": ["## Phase Status"],
         "done_when": DONE_WHEN_LINE,
+        "lists_no_removed_checkouts": True,
     },
 )
 print(dest)

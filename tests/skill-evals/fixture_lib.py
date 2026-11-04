@@ -439,7 +439,7 @@ def phase_rule_problem(readme: str, phase: str, rule: dict) -> str | None:
 
     The phase's word must be one of `rule["states"]`. Once its note says
     `moved to P<n>`, and P<n> is a row of its own that is not the phase itself
-    and was not in the plan at the start (`rule["phases_at_start"]`), it may
+    and was not in the plan at the start (`rule["phases_at_start"]`), it must
     instead be one of `rule["after_move"]`.
     """
     cell = phase_cell(readme, phase)
