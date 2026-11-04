@@ -18,7 +18,7 @@ installer copies the whole skill folder into each agent.
 | [ad-hoc](ad-hoc/case.yaml) | No plan: report from the conversation and git, create nothing |
 | [report-only](report-only/case.yaml) | "Just tell me, don't change anything" must change nothing |
 | [active-writer](active-writer/case.yaml) | Another agent's uncommitted packet edits must be left alone |
-| [old-shape](old-shape/case.yaml) | The packet is in an older shape: convert it to the shared template first, ending with one `## Current Work`, then update it. P1 stays In progress, because nobody built its call from `save_booking`, unless that call moves to its own row |
+| [old-shape](old-shape/case.yaml) | The packet is in an older shape: convert it to the shared template first, ending with one `## Current Work`, then update it. P1 stays In progress, because nobody built its call from `save_booking`; if that call moves to its own row, P1 must be Merged or Verified |
 | [near-miss-wrap-up](near-miss-wrap-up/case.yaml) | "Wrap this up" must go to `wrap-this-up` |
 
 `check_state.py` compares a fixture with the `_snapshot.json` and
@@ -32,7 +32,8 @@ installer copies the whole skill folder into each agent.
   worktrees, code edits, and any change to `SRD.md`.
 - **Packet text**, for a case whose `_expect.json` has `packet_content`
   (old-shape): a phase's state word, lines that must or must not be in
-  `IMPLEMENTATION_PLAN.md`, and the `## Done when` line and place.
+  `IMPLEMENTATION_PLAN.md`, the `## Done when` line and place, and no
+  removed worktree still listed in "Where the work lives".
 
 It prints JSON and exits 1 on a violation. The outcome graders then judge the
 report and the plan edits, and [plan-record.md](graders/plan-record.md) holds

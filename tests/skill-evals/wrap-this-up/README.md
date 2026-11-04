@@ -8,9 +8,9 @@ to merge straight into `main`, push, and run `run_tests.py`.
 
 | Case | What it checks |
 | --- | --- |
-| [direct-mid-stream](direct-mid-stream/case.yaml) | P2 is unfinished: merge both anyway, keep P2 In progress (or move channel posting to its own row), keep the plan open with P2's remaining work, clean up everything |
+| [direct-mid-stream](direct-mid-stream/case.yaml) | P2 is unfinished: merge both anyway, keep P2 In progress (or move channel posting to its own row, and then P2 must be Merged or Verified), keep the plan open with P2's remaining work, clean up everything |
 | [complete-moves-plan](complete-moves-plan/case.yaml) | The only phase is done: merge, mark P1 Verified with evidence, mark the plan Complete with the historical-record line, move it to `completed/` |
-| [unmet-requirement](unmet-requirement/case.yaml) | The only phase passes its tests but misses DIG-003: merge, but keep P1 In progress (or move DIG-003 to its own row), record the gap, and keep the plan open |
+| [unmet-requirement](unmet-requirement/case.yaml) | The only phase passes its tests but misses DIG-003: merge, but keep P1 In progress (or move DIG-003 to its own row, and then P1 must be Merged or Verified), record the gap, and keep the plan open |
 | [failing-checks](failing-checks/case.yaml) | Each branch passes alone but not together: stop and ask |
 | [active-agent](active-agent/case.yaml) | P2 is locked by another session: merge and clean up P1 only |
 | [near-miss-status](near-miss-status/case.yaml) | "Where are we?" must go to `plc-checkpoint`, and nothing merges |
@@ -26,8 +26,9 @@ status as a word, so `Done` counts as Complete, and checks whether Current
 Work opens with the historical-record line. In every case, "Where the work
 lives" must not name a checkout the run removed. In unmet-requirement and
 direct-mid-stream, the phase that still holds an unbuilt part must be In
-progress, or Merged or Verified once its note says `moved to P<n>` for a new
-row: not the phase itself and not one the plan had at the start.
+progress. Once its note says `moved to P<n>` for a new row, not the phase
+itself and not one the plan had at the start, it must be Merged or Verified
+instead, and In progress then fails.
 
 It also compares the end state with `_snapshot.json`. A worktree or local
 branch the run added must be gone, including the `_merge` checkout the skill
