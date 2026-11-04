@@ -96,6 +96,28 @@ fixtures and graders now use the shared PLC template, so those results do
 not cover the Owner, Log, evidence, gap and old-shape points. The old-shape
 case was first run on 2026-11-03.
 
+### 2026-11-04, grow-plan runs
+
+Three runs of the grow-plan case by Opus subagents, each told to use the
+installed `plc-checkpoint` skill. A separate Opus subagent graded them with
+the three graders below.
+
+| Run | Skills loaded | Tool uses | Tokens | Checker | Grade |
+| --- | --- | --- | --- | --- | --- |
+| 1 | plc-checkpoint, plain-english, verify-before-claiming, plc-planning | 13 | 91613 | ok | pass |
+| 2 | plc-checkpoint, plain-english, verify-before-claiming, plc-planning | 13 | 91764 | ok | pass |
+| 3 | plc-checkpoint, plain-english, verify-before-claiming, plc-planning | 13 | 91138 | ok | pass |
+
+- All three moved the one-file plan into a `tide-cache/` folder, added
+  SRD.md with TIDE-001 unchanged and the flag's requirements with checks,
+  left only the pointer line in `## Done when`, added a `Decision:` and an
+  "Added SRD.md" Log line, and asked before committing on `main`. Runs 1
+  and 3 wrote three new requirements; run 2 wrote one.
+- The grader found two things no point catches yet: run 1 added behavior
+  nobody approved (the error goes to stderr; a rejected value does not
+  fetch), though it named both as assumptions; run 2's new `Open question:`
+  blocks P2 while Current Work says `Blocker: None`.
+
 ### 2026-11-03, old-shape runs
 
 Three runs of the old-shape case by Opus subagents. Each got the prompt and
