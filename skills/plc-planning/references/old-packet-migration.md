@@ -80,8 +80,10 @@ beside the old one. "Convert" here means changing the format in place;
 6. **M6. Log.** Add `## Log` at the end. Its first line comes from the
    `Created:` line, when there is one. Then add
    `- <date> Converted to the shared PLC template (format only).`
-7. **M7. Old status lines.** Remove `Folder:` lines (the path says it) and
-   `Lifecycle status:` lines in other files (the README holds the status).
+7. **M7. Old status lines.** Remove `Folder:` lines (the path says it). In
+   other files, remove `Lifecycle status:` lines, and `- Lifecycle:` lines
+   that start with a packet status word, as the format check reports them
+   (the README holds the status).
 8. **M8. Done when.** When the README has no `## Done when` and the packet
    has SRD.md, add `## Done when` in the template's
    [section order](../SKILL.md#order-and-format), holding only the line the

@@ -42,9 +42,12 @@ NO_EVIDENCE = "strict: Verified phase has no evidence after ' — '"
 NO_BLOCKER = "strict: Status is Blocked, but the Blocker line is missing or None"
 NOT_FINISHED = "phase in a completed/ packet, which allows only Verified, Live, Deferred or Dropped"
 TWO_HOMES = "packets/planned/two-requirement-homes"
-LINES_BESIDE_SRD = "Done when: {} lines; with SRD.md it holds only the line pointing there"
-ALSO_IN_SRD = "Done when: {} is also in SRD.md's requirements table; keep each requirement in one place"
-LIFECYCLE_OUTSIDE = "Phases: Lifecycle line outside the README; status lives in its ## Current Work and ## Phases"
+NO_POINTER = "Done when: no line points to SRD.md, which holds the requirements"
+ITEMS = "Done when: {} items; with SRD.md it holds only the line pointing there"
+IN_SRD = "Done when: {} is in SRD.md's requirements table; delete it here, since SRD.md holds the requirements"
+LIFECYCLE_OUTSIDE = (
+    "Current Work: Lifecycle line outside the README; the packet's status lives in its ## Current Work"
+)
 POINTER = "The requirements and their checks are in [SRD.md](SRD.md)."
 
 DEFAULT_FINDINGS = [
@@ -57,8 +60,8 @@ DEFAULT_FINDINGS = [
     "packets/planned/plc-harbor-alerts-plan.md:1: Log: no ## Log section",
     "packets/planned/plc-harbor-cache.md:1: Log: no ## Log section",
     f"packets/planned/two-phase-tables/IMPLEMENTATION_PLAN.md:3: {OUTSIDE}",
-    f"{TWO_HOMES}/README.md:17: {LINES_BESIDE_SRD.format(2)}",
-    f"{TWO_HOMES}/README.md:20: {ALSO_IN_SRD.format('REQ-002')}",
+    f"{TWO_HOMES}/README.md:17: {ITEMS.format(2)}",
+    f"{TWO_HOMES}/README.md:20: {IN_SRD.format('REQ-002')}",
     f"{TWO_HOMES}/SRD.md:3: {LIFECYCLE_OUTSIDE}",
     f"{TWO_HOMES}/SADD.md:3: {LIFECYCLE_OUTSIDE}",
     f"{BAD}:1: summary: no paragraph directly under the title",
@@ -83,8 +86,8 @@ STRICT_FINDINGS = [
     " which needs Planned or Blocked",
     "packets/planned/superseded/README.md:7: strict: Superseded note does not start with a reason word",
     f"packets/planned/two-phase-tables/IMPLEMENTATION_PLAN.md:3: {OUTSIDE}",
-    f"{TWO_HOMES}/README.md:17: {LINES_BESIDE_SRD.format(2)}",
-    f"{TWO_HOMES}/README.md:20: {ALSO_IN_SRD.format('REQ-002')}",
+    f"{TWO_HOMES}/README.md:17: {ITEMS.format(2)}",
+    f"{TWO_HOMES}/README.md:20: {IN_SRD.format('REQ-002')}",
     f"{TWO_HOMES}/SRD.md:3: {LIFECYCLE_OUTSIDE}",
     f"{TWO_HOMES}/SADD.md:3: {LIFECYCLE_OUTSIDE}",
     f"{BAD}:1: summary: no paragraph directly under the title",
@@ -141,6 +144,16 @@ SRD = """\
 def edit(old, new, text=VALID):
     assert text.count(old) == 1, old
     return text.replace(old, new)
+
+
+def with_done_when(body, text=VALID):
+    """A README with `## Done when` holding body, just before `## Log`, so the
+    section's heading is line 18 and its body starts on line 20."""
+    return edit("## Log", f"## Done when\n\n{body}\n\n## Log", text)
+
+
+# VALID with the pointer line a packet with SRD.md needs.
+POINTED = with_done_when(POINTER)
 
 
 def run(*args, cwd=DATA, env=None):
@@ -312,58 +325,125 @@ class PacketRulesTest(unittest.TestCase):
     def test_status_lines_in_other_files(self):
         files = {
             "IMPLEMENTATION_PLAN.md": "# Plan\n\n### P1: Cap\n\n- **Status:** Verified\n",
-            "SRD.md": "# Requirements\n\n- Status: 404 when the file is missing\n- State: Proposed\n",
+            "SRD.md": "# Requirements\n\n- Status: 404 when the file is missing\n- State: Proposed\n- Status: Draft\n",
             "SADD.md": "# Design\n\n| Phase | State |\n| --- | --- |\n| P1 | Merged |\n\n```\n- Status: Merged\n```\n",
         }
         message = "line outside the README; status lives in its ## Current Work and ## Phases"
-        self.assertEqual(self.check(files=files), [
+        self.assertEqual(self.check(POINTED, files=files), [
             f"planned/sample/IMPLEMENTATION_PLAN.md:5: Phases: Status {message}",
             f"planned/sample/SRD.md:4: Phases: State {message}",
+            f"planned/sample/SRD.md:5: Phases: Status {message}",
             f"planned/sample/SADD.md:3: {OUTSIDE}",
         ])
 
     def test_lifecycle_lines_in_other_files(self):
+        # Only a packet status word makes a Lifecycle line status: Accepted is
+        # an older phase word. A line inside an HTML comment does not count.
         files = {
             "SRD.md": "# Requirements\n\n- Lifecycle: Draft\n- Status: Approved; @sam signed off on 2026-11-02.\n",
-            "SADD.md": "# Design\n\n- **Lifecycle:** In progress\n- Status: Design record for the retry cap.\n",
+            "SADD.md": (
+                "# Design\n\n- **Lifecycle:** In progress\n- Status: Design record for the retry cap.\n"
+                "- Lifecycle: Accepted by @sam\n<!--\n- Lifecycle: Draft\n-->\n"
+            ),
             "IMPLEMENTATION_PLAN.md": "# Plan\n\n- Lifecycle: see the README\n\n### P1: Cap\n",
         }
-        self.assertEqual(self.check(files=files), [
+        self.assertEqual(self.check(POINTED, files=files), [
             f"planned/sample/SRD.md:3: {LIFECYCLE_OUTSIDE}",
             f"planned/sample/SADD.md:3: {LIFECYCLE_OUTSIDE}",
         ])
 
     def test_requirements_live_in_srd(self):
-        def done_when(body):
-            return edit("## Log", f"## Done when\n\n{body}\n\n## Log")
-
         srd = {"SRD.md": SRD}
-        self.assertEqual(self.check(done_when(POINTER), name="pointer", files=srd), [])
-        listed = done_when("- REQ-001: Stop after three attempts.\n- REQ-002: Log the third failure.")
+        self.assertEqual(self.check(POINTED, name="pointer", files=srd), [])
+        listed = with_done_when("- REQ-001: Stop after three attempts.\n- REQ-002: Log the third failure.")
         self.assertEqual(self.check(listed, name="readme-only"), [])
         self.assertEqual(self.check(listed, name="both", files=srd), [
-            f"planned/both/README.md:18: {LINES_BESIDE_SRD.format(2)}",
-            f"planned/both/README.md:20: {ALSO_IN_SRD.format('REQ-001')}",
-            f"planned/both/README.md:21: {ALSO_IN_SRD.format('REQ-002')}",
+            f"planned/both/README.md:18: {NO_POINTER}",
+            f"planned/both/README.md:18: {ITEMS.format(2)}",
+            f"planned/both/README.md:20: {IN_SRD.format('REQ-001')}",
+            f"planned/both/README.md:21: {IN_SRD.format('REQ-002')}",
         ])
-        one_line = done_when("REQ-001 and REQ-002 pass; see [SRD.md](SRD.md).")
-        self.assertEqual(self.check(one_line, name="one-line", files=srd), [
-            f"planned/one-line/README.md:20: {ALSO_IN_SRD.format('REQ-001')}",
-            f"planned/one-line/README.md:20: {ALSO_IN_SRD.format('REQ-002')}",
+        # One item, wrapped onto a second line; each ID is reported once.
+        one_item = with_done_when("REQ-001 and REQ-002 pass; see [SRD.md](SRD.md).\nREQ-001 again.")
+        self.assertEqual(self.check(one_item, name="one-item", files=srd), [
+            f"planned/one-item/README.md:20: {IN_SRD.format('REQ-001')}",
+            f"planned/one-item/README.md:20: {IN_SRD.format('REQ-002')}",
         ])
+
+    def test_done_when_beside_srd_names_srd(self):
+        srd = {"SRD.md": SRD}
+        for name, body in [
+            ("empty", ""),
+            ("comment-only", "<!-- moved to SRD.md -->"),
+            ("tbd", "TBD"),
+            ("requirement-text", "- Retries stop after three attempts."),
+        ]:
+            with self.subTest(body=body):
+                found = self.check(with_done_when(body), name=name, files=srd)
+                self.assertEqual(found, [f"planned/{name}/README.md:18: {NO_POINTER}"])
+        self.assertEqual(self.check(name="missing", files=srd), [f"planned/missing/README.md:1: {NO_POINTER}"])
+        for name, body in [
+            ("own-pointer", "Requirements: see [SRD.md](SRD.md#requirements)."),
+            ("wrapped", "The requirements and their checks are in\n[SRD.md](SRD.md)."),
+            ("list-item", "- The requirements are in [SRD.md](SRD.md),\n  with their checks."),
+        ]:
+            with self.subTest(body=body):
+                self.assertEqual(self.check(with_done_when(body), name=name, files=srd), [])
 
     def test_done_when_beside_srd_ignores_comments_and_other_ids(self):
-        def done_when(body):
-            return edit("## Log", f"## Done when\n\n{body}\n\n## Log")
-
         srd = {"SRD.md": SRD}
-        comment = done_when(f"<!-- REQ-001 and REQ-002 moved to SRD.md\n     on 2026-11-03. -->\n{POINTER}")
+        comment = with_done_when(f"<!-- REQ-001 and REQ-002 moved to SRD.md\n     on 2026-11-03. -->\n{POINTER}")
         self.assertEqual(self.check(comment, name="comment", files=srd), [])
-        other_ids = done_when("Unlike XREQ-001 and REQ-0010, these are in [SRD.md](SRD.md).")
+        # Each comment ends at its own -->, so the requirement between two is seen.
+        two_comments = with_done_when(f"<!-- a -->\n- REQ-001: Stop.\n<!-- b -->\n{POINTER}")
+        self.assertEqual(self.check(two_comments, name="two-comments", files=srd), [
+            f"planned/two-comments/README.md:18: {ITEMS.format(2)}",
+            f"planned/two-comments/README.md:21: {IN_SRD.format('REQ-001')}",
+        ])
+        other_ids = with_done_when("Unlike XREQ-001 and REQ-0010, these are in [SRD.md](SRD.md).")
         self.assertEqual(self.check(other_ids, name="other-ids", files=srd), [])
-        traceability = {"SRD.md": "# Requirements\n\n| Requirement | Phase |\n| --- | --- |\n| REQ-001 | P1 |\n"}
-        listed = done_when("- REQ-001: Stop after three attempts.")
-        self.assertEqual(self.check(listed, name="traceability", files=traceability), [])
+        in_srd = with_done_when("REQ-001 is in [SRD.md](SRD.md).")
+        for name, text in [
+            ("traceability", "| Requirement | Phase |\n| --- | --- |\n| REQ-001 | P1 |\n"),
+            ("fenced", "```\n| ID | Requirement |\n| --- | --- |\n| REQ-001 | Stop. |\n```\n"),
+            ("commented", "<!--\n| ID | Requirement |\n| --- | --- |\n| REQ-001 | Stop. |\n-->\n"),
+        ]:
+            with self.subTest(srd=name):
+                self.assertEqual(self.check(in_srd, name=name, files={"SRD.md": f"# Requirements\n\n{text}"}), [])
+        notes = "| ID | Requirement |\n| --- | --- |\n| REQ-001 | Stop. |\n| — | REQ-003 was merged into REQ-001. |\n"
+        notes += "| – | An en dash note. |\n| Note | A row with no ID. |\n"
+        dashes = with_done_when("Note: the requirements — all of them – are in [SRD.md](SRD.md).")
+        self.assertEqual(self.check(dashes, name="notes", files={"SRD.md": f"# Requirements\n\n{notes}"}), [])
+
+    def test_requirement_id_forms(self):
+        table = (
+            "| **ID** | Requirement |\n| --- | --- |\n| [REQ-001](#req-001) | Stop. |\n"
+            '| <a id="req-002"></a>**REQ-002**: | Log. |\n'
+        )
+        both = with_done_when("REQ-001 and REQ-002 are in [SRD.md](SRD.md).")
+        self.assertEqual(self.check(both, name="forms", files={"SRD.md": f"# Requirements\n\n{table}"}), [
+            f"planned/forms/README.md:20: {IN_SRD.format('REQ-001')}",
+            f"planned/forms/README.md:20: {IN_SRD.format('REQ-002')}",
+        ])
+
+    def test_html_comments_hide_readme_text(self):
+        hidden = edit("## Log", "<!--\n## Done when\n\n- REQ-001: Stop.\n-->\n\n## Log", POINTED)
+        self.assertEqual(self.check(hidden, name="hidden", files={"SRD.md": SRD}), [])
+        # A comment that starts a line and never closes hides the rest of the file.
+        unclosed = with_done_when(f"<!-- note\n{POINTER}")
+        self.assertEqual(self.check(unclosed, name="unclosed", files={"SRD.md": SRD}), [
+            "planned/unclosed/README.md:1: Log: no ## Log section",
+            f"planned/unclosed/README.md:18: {NO_POINTER}",
+        ])
+        inline = with_done_when(f"{POINTER} <!-- not closed")
+        self.assertEqual(self.check(inline, name="inline", files={"SRD.md": SRD}), [])
+
+    def test_every_done_when_section_counts(self):
+        twice = edit("## Log", "## Done when\n\n- REQ-001: Stop.\n\n## Log", POINTED)
+        self.assertEqual(self.check(twice, name="twice", files={"SRD.md": SRD}), [
+            f"planned/twice/README.md:18: {ITEMS.format(2)}",
+            f"planned/twice/README.md:24: {IN_SRD.format('REQ-001')}",
+        ])
 
     def test_fenced_phase_table_in_the_plan(self):
         plan = "# Plan\n\n```\n| Phase | State |\n| --- | --- |\n| P1 | Planned |\n```\n"
@@ -473,6 +553,28 @@ class HelpersTest(unittest.TestCase):
     def test_cells_keep_escaped_pipes(self):
         self.assertEqual(fc.cells("| P1 | `a \\| b` | Planned |"), ["P1", "`a \\| b`", "Planned"])
         self.assertEqual(fc.cells("| P1 | Planned"), ["P1", "Planned"])
+
+    def test_requirement_rows_skip_fences_and_comments(self):
+        lines = [
+            "| ID | Requirement |", "| --- | --- |", "| REQ-001 | Stop. |", "",
+            "```", "| ID | Requirement |", "| --- | --- |", "| REQ-009 | Fenced. |", "```", "",
+            "<!--", "| ID | Requirement |", "| --- | --- |", "| REQ-010 | Hidden. |", "-->",
+        ]
+        self.assertEqual(fc.requirement_rows(lines), [(3, ["REQ-001", "Stop."])])
+
+    def test_requirement_id(self):
+        for cell, expected in [
+            ("REQ-001", "REQ-001"),
+            ("**REQ-002**:", "REQ-002"),
+            ("[REQ-003](#req-003)", "REQ-003"),
+            ('<a id="req-004"></a>REQ-004', "REQ-004"),
+            ("_REQ-005_", "REQ-005"),
+            ("—", None),
+            ("Note", None),
+            ("", None),
+        ]:
+            with self.subTest(cell=cell):
+                self.assertEqual(fc.requirement_id([cell, "text"]), expected)
 
     def test_lookup_word(self):
         self.assertEqual(fc.lookup_word(fc.PHASE_WORDS, "**Merged** — !12"), "Merged")
@@ -670,7 +772,7 @@ class TemplateTest(unittest.TestCase):
         self.assertEqual(len(keys), 8)
 
         for path, texts in fields.items():
-            lines = path.read_text(encoding="utf-8").splitlines()
+            lines = fc.unfenced(path.read_text(encoding="utf-8").splitlines())
             if path.name in ("README.md", "compact-plan.md"):
                 texts = [*texts, *sections]
                 for key in keys:

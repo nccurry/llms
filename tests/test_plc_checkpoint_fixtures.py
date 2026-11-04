@@ -589,8 +589,8 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
             return text.replace("requirements\n\n", "requirements\n\n- Lifecycle: Draft\n\n", 1)
 
         self.assert_grow_plan_violation(
-            f"format check: {GROWN}/SRD.md:3: Phases: Lifecycle line outside the README;"
-            " status lives in its ## Current Work and ## Phases",
+            f"format check: {GROWN}/SRD.md:3: Current Work: Lifecycle line outside the README;"
+            " the packet's status lives in its ## Current Work",
             change_srd=add_lifecycle,
         )
 

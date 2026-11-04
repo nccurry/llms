@@ -28,6 +28,8 @@ Where the work lives:
 
 ## Done when
 
+<!-- When the plan has SRD.md, this section holds only the line
+`The requirements and their checks are in [SRD.md](SRD.md).` Delete this note. -->
 - REQ-001: <observable behavior>. Check: `<command or test>` → <expected result>
 
 ## Open questions

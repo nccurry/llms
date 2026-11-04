@@ -505,12 +505,14 @@ python3 <skill-dir>/scripts/format_check.py <plans folder> --people "Alex Kim=al
   first keys, known words and an Owner `@handle`, a Log, and status only in
   the README. In IMPLEMENTATION_PLAN.md, SRD.md or SADD.md, a phase table
   with state is a finding, and so is a `- Status:` or `- State:` line that
-  starts with a status or phase state word, or a `- Lifecycle:` line that
-  starts with a status word. A line such as `- Status: Approved; …` is not
-  status. When SRD.md exists, `## Done when` holding more than one line, or
-  a requirement ID from SRD.md's requirements table, is a finding too; HTML
-  comments there do not count. It ignores fenced code blocks. `--strict`
-  adds the rules across fields.
+  starts with a packet status word or a phase state word, or a
+  `- Lifecycle:` line that starts with a packet status word. A line such as
+  `- Status: Approved; …` is not status. When SRD.md exists, these are
+  findings too: a `## Done when` that is missing or has no line naming
+  SRD.md, one that holds more than one paragraph or list item (a wrapped
+  line counts once), and a requirement ID there from any table in SRD.md
+  whose first column is `ID`. It ignores HTML comments and fenced code
+  blocks. `--strict` adds the rules across fields.
 - `--lifecycle <folder>` checks a packet as if it were in that lifecycle
   folder, for example before a finished packet moves to `completed/`.
 - `--people` takes `NAME=HANDLE` pairs (HANDLE may start with `@`) and
