@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from digest_fixture import build, expect  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plc-checkpoint"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import destination  # noqa: E402
 
 dest = destination()

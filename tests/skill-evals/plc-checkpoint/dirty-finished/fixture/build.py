@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import (
     add_worktree,
     commit,
@@ -23,16 +23,8 @@ REQUIREMENTS = """| ID | Requirement | Acceptance |
 | FLT-002 | Filters can be combined with AND. | `test_and_filter` passes. |
 """
 
-PLAN = """### P1: Sender filter
-
-- Requirements: FLT-001
-- Check: `test_sender_filter` passes.
-
-### P2: Combined filters
-
-- Requirements: FLT-002
-- Check: `test_and_filter` passes.
-"""
+P1_DETAILS = "- Requirements: FLT-001\n- Check: `test_sender_filter` passes."
+P2_DETAILS = "- Requirements: FLT-002\n- Check: `test_and_filter` passes."
 
 dest = destination()
 app = make_repo(dest, "inbox", {"README.md": "# inbox\n"})
@@ -50,9 +42,11 @@ commit(
             current_state="P1 in progress in its worktree. P2 not started.",
             checkouts=[("inbox-wt/filters/p1-sender", "plc/filters-p1", "p1 child", "in progress")],
         ),
-        [("P1", "Sender filter", "In progress"), ("P2", "Combined filters", "Planned")],
+        [
+            ("P1", "Sender filter", "In progress", P1_DETAILS),
+            ("P2", "Combined filters", "Planned", P2_DETAILS),
+        ],
         REQUIREMENTS,
-        PLAN,
         log=["2026-10-25 Created."],
     ),
 )
@@ -62,7 +56,10 @@ commit(
     p1,
     "feat(filters): filter by sender (FLT-001)",
     {
-        "src/filters.py": "def by_sender(messages, sender):\n    return [m for m in messages if m['from'] == sender]\n",
+        "src/filters.py": (
+            "def by_sender(messages, sender):\n"
+            "    return [m for m in messages if m['from'] == sender]\n"
+        ),
         "tests/test_filters.py": (
             "from src.filters import by_sender\n\n\n"
             "def test_sender_filter():\n"

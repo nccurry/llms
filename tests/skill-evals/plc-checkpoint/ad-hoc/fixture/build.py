@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import add_worktree, commit, destination, expect, make_repo, snapshot, write
 
 dest = destination()

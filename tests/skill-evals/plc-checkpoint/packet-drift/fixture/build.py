@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import (
     add_worktree,
     commit,
@@ -25,18 +25,12 @@ SUMMARY = "Export invoices as CSV and JSON, so accounts can load them into a spr
 BRANCH = "plc/invoice-export-p1"
 
 
-def plan(evidence: str) -> str:
-    return f"""### P1: CSV export
+CREATED = "2026-10-24 Created."
+P2_DETAILS = "- Requirements: EXP-002\n- Check: `test_export_json` passes."
 
-- Requirements: EXP-001
-- Check: `test_export_csv` passes.
-- Evidence: {evidence}
 
-### P2: JSON export
-
-- Requirements: EXP-002
-- Check: `test_export_json` passes.
-"""
+def p1_details(evidence: str) -> str:
+    return f"- Requirements: EXP-001\n- Check: `test_export_csv` passes.\n- Evidence: {evidence}"
 
 
 def planned_packet(start: str) -> dict[str, str]:
@@ -51,14 +45,19 @@ def planned_packet(start: str) -> dict[str, str]:
             current_state="Nothing started.",
             status="Planned",
         ),
-        [("P1", "CSV export", "Planned"), ("P2", "JSON export", "Planned")],
+        [
+            ("P1", "CSV export", "Planned", p1_details("none yet.")),
+            ("P2", "JSON export", "Planned", P2_DETAILS),
+        ],
         REQUIREMENTS,
-        plan("none yet."),
+        log=[CREATED],
     )
 
 
 def implemented_packet(feature: str) -> dict[str, str]:
     """The worktree's copy, after P1 was implemented on its branch."""
+    p1_state = f"Implemented — `{feature}` on `{BRANCH}`; `test_export_csv` passed locally"
+    p1_evidence = f"`test_export_csv` passed locally on `{BRANCH}` at `{feature}`."
     return packet(
         "invoice-export",
         "Invoice export",
@@ -73,16 +72,11 @@ def implemented_packet(feature: str) -> dict[str, str]:
             checkouts=[("billing-wt/invoice-export/p1-csv", BRANCH, "p1 child", "in progress")],
         ),
         [
-            (
-                "P1",
-                "CSV export",
-                f"Implemented — `{feature}` on `{BRANCH}`; `test_export_csv` passed locally",
-            ),
-            ("P2", "JSON export", "Planned"),
+            ("P1", "CSV export", p1_state, p1_details(p1_evidence)),
+            ("P2", "JSON export", "Planned", P2_DETAILS),
         ],
         REQUIREMENTS,
-        plan(f"`test_export_csv` passed locally on `{BRANCH}` at `{feature}`."),
-        log=["2026-10-24 Created.", f"2026-10-25 P1 Implemented on `{BRANCH}` @ `{feature}`."],
+        log=[CREATED, f"2026-10-25 P1 Implemented on `{BRANCH}` @ `{feature}`."],
     )
 
 

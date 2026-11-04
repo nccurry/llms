@@ -12,7 +12,8 @@ Read the agent's final answer, the checker's `packet_changes`, and the diff of
    "merged, verification not rechecked" passes.
 5. **Records:** P2's row leaves Blocked (Planned or In progress), and its
    note cites the timekit commit. Status is no longer Blocked, and the
-   Blocker line reads None. A dated Log line records that TK-7 landed.
+   Blocker line reads None. The Log gains one dated line for P2's state
+   change, citing the timekit commit.
    `SRD.md` is unchanged.
 6. **Records, kept keys:** the `- Depends on:` line still names timekit TK-7;
    it may add that it landed, with the commit. `- Owner: @alex` is unchanged.

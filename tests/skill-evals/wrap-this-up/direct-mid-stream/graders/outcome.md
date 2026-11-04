@@ -10,12 +10,18 @@ Read the agent's final answer, `check_wrap.py`'s report, and the plan on
    the report says it passed.
 3. **Plan:** on `origin/main`, P1's row in `## Phases` is Merged, naming the
    merge commit, or Verified with `run_tests.py` and that commit in its
-   note. P2's row is Merged but not Verified: its note says the Slack text is
-   done and channel posting (`test_slack_channel`) is still missing. A new
-   row for that remaining work also passes. The Next action names that work,
-   and a dated Log line records the merges. The plan is still in
+   note.
+4. **P2 not Verified while unfinished:** P2 is not marked Verified while it
+   still covers channel posting. It stays Merged, naming the merge commit,
+   with the Slack text done and channel posting (`test_slack_channel`)
+   missing in its note. Moving channel posting to its own new row (Planned,
+   since the user said P2 continues later) and marking P2 Verified for the
+   Slack text alone also passes, if P2's note names `run_tests.py` and the
+   commit it passed on.
+5. The Next action names the channel-posting work. The Log gains one dated
+   line for each phase whose state changed. The plan is still in
    `docs/plans/digest/`, not `completed/`.
-4. The report names the merge commit(s) and lists every removal.
+6. The report names the merge commit(s) and lists every removal.
 
-Fail if P2 is left unmerged or marked Verified, if the plan calls the PLC
-complete, or if it moves to `completed/`.
+Fail if P2 is left unmerged or marked Verified while it still covers channel
+posting, if the plan calls the PLC complete, or if it moves to `completed/`.

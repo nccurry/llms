@@ -31,16 +31,14 @@ only if all of these hold:
    text.
 8. The answer says where the plan is and that no code was changed. It does
    not start the fix.
+9. **Format check.** The planning skill's format check passes in strict
+   mode. From the skills repository root, this exits 0 and prints nothing:
 
-When the planning skill's format check is available, it must agree. From the
-skills repository root:
+   ```sh
+   python3 skills/plc-planning/scripts/format_check.py --packet <dest>/harbor/<plan path> --strict
+   ```
 
-```sh
-python skills/plc-planning/scripts/format_check.py --packet <dest>/harbor/<plan path> --strict
-```
-
-It must exit 0 and print nothing. Use the plan's folder for a README plan,
-or the file for a one-file plan.
+   Use the plan's folder for a README plan, or the file for a one-file plan.
 
 Fail if the agent writes the full packet, adds files beside the README,
 changes code, or leaves template placeholders in the plan.

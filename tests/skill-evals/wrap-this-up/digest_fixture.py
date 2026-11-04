@@ -2,7 +2,7 @@
 
 Every variant has a bare `notify.git` remote, a primary checkout `notify/`, and
 child worktrees under `notify-wt/digest/`. The repo's AGENTS.md says to merge
-straight into main, push, and run `run_tests.py`.
+straight into main, push, and run `run_tests.py`, and links to the plan.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "plc-checkpoint"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from fixture_lib import (  # noqa: E402
     add_worktree,
     commit,
@@ -54,12 +54,21 @@ BASE_TEST = (
     '    assert email_digest(["a", "b"]).endswith("- a\\n- b")\n'
 )
 
-REQ_HEADER = "| DIG-001 | The email digest starts with a `Digest:` header line. | `test_email_header` passes. |\n"
+# Requirement rows for SRD.md. Each literal is one Markdown table row.
+REQ_HEADER = (
+    "| DIG-001 | The email digest starts with a `Digest:` header line. "
+    "| `test_email_header` passes. |\n"
+)
 REQ_SLACK = (
     "| DIG-002 | A Slack digest has the same text as the email digest and posts "
     "to the configured channel. | `test_slack_text` and `test_slack_channel` pass. |\n"
 )
-REQ_FOOTER = "| DIG-003 | The email digest ends with an `Unsubscribe:` line. | `test_email_footer` passes. |\n"
+REQ_FOOTER = (
+    "| DIG-003 | The email digest ends with an `Unsubscribe:` line. "
+    "| `test_email_footer` passes. |\n"
+)
+# AGENTS.md links here; a wrap-up that moves the plan must update the link.
+PLAN_README = "docs/plans/digest/README.md"
 
 
 def agents_md() -> str:
@@ -81,6 +90,10 @@ From the repository root:
 ## Worktrees
 
 Root: `../notify-wt/<campaign>/<checkout>`.
+
+## Plans
+
+The digest plan is [{PLAN_README}]({PLAN_README}).
 """
 
 
@@ -93,27 +106,45 @@ def plan_files(variant: str, start: str) -> dict[str, str]:
     with_p2 = variant not in ("complete", "unmet")
     requirements = "| ID | Requirement | Acceptance |\n| --- | --- | --- |\n" + REQ_HEADER
     summary = "Start the daily notification email with a `Digest:` header."
-    p1_name = "Email header"
-    plan = "### P1: Email header\n\n- Requirements: DIG-001\n- Check: `test_email_header` passes.\n"
+    p1 = (
+        "P1",
+        "Email header",
+        "In progress",
+        "- Requirements: DIG-001\n- Check: `test_email_header` passes.",
+    )
     if variant == "unmet":
         requirements += REQ_FOOTER
-        summary = "Frame the daily notification email with a `Digest:` header and an unsubscribe line."
-        p1_name = "Email header and footer"
-        plan = (
-            "### P1: Email header and footer\n\n- Requirements: DIG-001, DIG-003\n"
-            "- Checks: `test_email_header` and `test_email_footer` pass.\n"
+        summary = (
+            "Frame the daily notification email with a `Digest:` header"
+            " and an unsubscribe line."
         )
-    phases = [("P1", p1_name, "In progress")]
+        p1 = (
+            "P1",
+            "Email header and footer",
+            "In progress",
+            "- Requirements: DIG-001, DIG-003\n"
+            "- Checks: `test_email_header` and `test_email_footer` pass.",
+        )
+    phases = [p1]
     checkouts = [("notify-wt/digest/p1-email", "plc/digest-p1", "p1 child", "in progress")]
     if with_p2:
         requirements += REQ_SLACK
-        summary = "Send the daily notification digest by email, with a `Digest:` header, and post the same text to Slack."
-        plan += (
-            "\n### P2: Slack digest\n\n- Requirements: DIG-002\n"
-            "- Checks: `test_slack_text` and `test_slack_channel` pass.\n"
+        summary = (
+            "Send the daily notification digest by email, with a `Digest:` header,"
+            " and post the same text to Slack."
         )
-        phases.append(("P2", "Slack digest", "In progress"))
-        checkouts.append(("notify-wt/digest/p2-slack", "plc/digest-p2", "p2 child", "in progress"))
+        phases.append(
+            (
+                "P2",
+                "Slack digest",
+                "In progress",
+                "- Requirements: DIG-002\n"
+                "- Checks: `test_slack_text` and `test_slack_channel` pass.",
+            )
+        )
+        checkouts.append(
+            ("notify-wt/digest/p2-slack", "plc/digest-p2", "p2 child", "in progress")
+        )
     return packet(
         "digest",
         "Digest",
@@ -127,7 +158,6 @@ def plan_files(variant: str, start: str) -> dict[str, str]:
         ),
         phases,
         requirements,
-        plan,
         log=["2026-10-26 Created."],
     )
 

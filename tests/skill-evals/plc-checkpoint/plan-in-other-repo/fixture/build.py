@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import (
     add_worktree,
     commit,
@@ -22,16 +22,8 @@ REQUIREMENTS = """| ID | Requirement | Acceptance |
 | SYN-002 | The cursor expires after 24 hours. | `test_cursor_expiry` passes. |
 """
 
-PLAN = """### P1: Sync endpoint
-
-- Requirements: SYN-001
-- Check: `test_sync_since` passes.
-
-### P2: Cursor expiry
-
-- Requirements: SYN-002
-- Check: `test_cursor_expiry` passes.
-"""
+P1_DETAILS = "- Requirements: SYN-001\n- Check: `test_sync_since` passes."
+P2_DETAILS = "- Requirements: SYN-002\n- Check: `test_cursor_expiry` passes."
 
 AGENTS = """# api
 
@@ -56,16 +48,19 @@ commit(
     packet(
         "sync-api",
         "Sync API",
-        "Let clients fetch only the changes since their last sync, with a cursor that expires.",
+        "Let clients fetch only the changes since their last sync,"
+        " with a cursor that expires.",
         current_work(
             last_updated=f"2026-10-24, api `main` at `{api_start}`",
             next_action="start P1 in an api worktree",
             current_state="Nothing started.",
             status="Planned",
         ),
-        [("P1", "Sync endpoint", "Planned"), ("P2", "Cursor expiry", "Planned")],
+        [
+            ("P1", "Sync endpoint", "Planned", P1_DETAILS),
+            ("P2", "Cursor expiry", "Planned", P2_DETAILS),
+        ],
         REQUIREMENTS,
-        PLAN,
         log=["2026-10-24 Created."],
     ),
 )

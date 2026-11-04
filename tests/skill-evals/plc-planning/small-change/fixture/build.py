@@ -9,7 +9,7 @@ skill's own sizing decides that.
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plc-checkpoint"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import destination, make_repo, snapshot  # noqa: E402
 
 HARBOR = '''"""harbor: list free berths at the marina."""
@@ -53,6 +53,13 @@ if __name__ == "__main__":
     unittest.main()
 '''
 
+README = """# harbor
+
+List free berths at the marina: `python harbor.py list`.
+
+Tests: `python -m unittest`.
+"""
+
 PLANS_README = """# Plans
 
 Plans for changes to harbor live here, in lifecycle folders: `planned/`,
@@ -65,7 +72,7 @@ app = make_repo(
     dest,
     "harbor",
     {
-        "README.md": "# harbor\n\nList free berths at the marina: `python harbor.py list`.\n\nTests: `python -m unittest`.\n",
+        "README.md": README,
         "harbor.py": HARBOR,
         "tests/__init__.py": "",
         "tests/test_harbor.py": TESTS,

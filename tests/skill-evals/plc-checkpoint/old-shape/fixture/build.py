@@ -4,14 +4,14 @@ was written.
 The README has a `## Status` section with a bare `Status:` paragraph and older
 key names, and the summary sits under `## Summary`. Phase state lives in a
 Phase Status table in the implementation plan. There is no `## Log`. This
-fixture keeps that shape on purpose: the case checks that the packet is moved
-to the shared template before its status is updated.
+fixture keeps that shape on purpose: the case checks that the packet is
+converted to the shared template before its status is updated.
 """
 
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import (
     add_worktree,
     commit,

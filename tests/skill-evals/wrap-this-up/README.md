@@ -22,9 +22,11 @@ plan there must or must not contain, such as `- Owner: @alex` or the
 historical-record line. It prints JSON and exits 1 when an expectation fails.
 The outcome graders judge the report and the plan's Current Work, and the
 cases that may edit the plan also use the shared
-[plan-record grader](../plc-checkpoint/graders/plan-record.md).
+[plan-record grader](../plc-checkpoint/graders/plan-record.md), which runs the
+planning skill's shipped format check on the plan in strict mode.
 
-The digest packet uses the shared PLC template, owned by `@alex`.
+The digest packet uses the shared PLC template, owned by `@alex`, and is built
+with the shared [fixture_lib.py](../fixture_lib.py).
 
 The PR/MR route needs a host login, so it has no runnable case yet.
 
