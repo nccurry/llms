@@ -7,12 +7,15 @@ access or a PR host. Every git command runs without the developer's own git
 config, so fixtures build the same way on every machine.
 
 The checkers and fixture tests use the git helpers and `packet_shape_problems`,
-which checks a packet against the shared PLC template.
+which checks a packet against the shared PLC template: the planning skill's
+shipped format check, plus the rules only the evals hold new packets to.
 """
 
 from __future__ import annotations
 
+import functools
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -20,6 +23,7 @@ import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from types import ModuleType
 
 # Every fixture packet's owner. An invented handle: fixtures never name real people.
 OWNER = "@alex"
@@ -27,20 +31,10 @@ OWNER = "@alex"
 # Each fixture repository ignores the bytecode its tests write.
 GITIGNORE = "__pycache__/\n*.py[co]\n.pytest_cache/\n"
 
-# The shared template's packet status and phase state words. The older
-# variants after them are accepted too, because a converted packet keeps its
-# words.
-PACKET_STATUS_WORDS = (
-    *("Planned", "In progress", "Blocked", "Complete", "Archived", "Superseded"),
-    *("Draft", "Ready", "Proposed", "In-progress", "Developing", "Reviewing", "Active"),
-    *("Completed", "Closed", "Done"),
-)
-PHASE_STATE_WORDS = (
-    *("Planned", "In progress", "Implemented", "Merged", "Verified", "Live"),
-    *("Blocked", "Deferred", "Dropped"),
-    *("Not started", "Pending", "Todo", "Active", "Started", "Delivered"),
-    *("Complete", "Completed", "Done", "Accepted", "Passed"),
-)
+# The planning skill's format check, which owns the template's words and
+# structure rules.
+FORMAT_CHECK = Path(__file__).resolve().parents[2] / "skills/plc-planning/scripts/format_check.py"
+
 PHASES_HEADER = "| Phase | Name | Owner | State |"
 # The shared sections, in template order. Other sections go after them and
 # before `## Log`, which is last.
@@ -342,121 +336,160 @@ def destination() -> Path:
     return dest
 
 
+@functools.cache
+def format_check() -> ModuleType:
+    """The planning skill's shipped format check, loaded by file path.
+
+    It loads on first use, so building a fixture does not need it, and it
+    writes no bytecode into the skills folder.
+    """
+    spec = importlib.util.spec_from_file_location("format_check", FORMAT_CHECK)
+    module = importlib.util.module_from_spec(spec)
+    saved = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = saved
+    return module
+
+
 def _without_fences(lines: list[str]) -> list[str]:
     """Drop fenced code blocks, so their contents are not read as structure."""
-    kept, fenced = [], False
+    kept, fence = [], None
     for line in lines:
-        if line.lstrip().startswith("```"):
-            fenced = not fenced
-        elif not fenced:
+        marker = re.match(r" {0,3}(`{3,}|~{3,})", line)
+        if fence is None and marker:
+            fence = marker[1]
+        elif fence is not None:
+            if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence):
+                fence = None
+        else:
             kept.append(line)
     return kept
 
 
-def _starts_with_word(text: str, words: Sequence[str]) -> bool:
-    text = text.strip().strip("*_`").lower()
-    return any(
-        text.startswith(word.lower()) and not text[len(word) : len(word) + 1].isalnum()
-        for word in words
-    )
+def _sections(text: str) -> dict[str, list[str]]:
+    """Each `## ` section of Markdown text, outside code, mapped to its lines."""
+    lines = _without_fences(text.splitlines())
+    heads = [i for i, line in enumerate(lines) if line.startswith("## ")]
+    return {
+        lines[a][3:].strip(): lines[a + 1 : b]
+        for a, b in zip(heads, heads[1:] + [len(lines)])
+    }
 
 
-def cells(row: str) -> list[str]:
-    """The trimmed cells of a Markdown table row."""
-    return [cell.strip() for cell in row.strip().strip("|").split("|")]
+def _key_value(lines: Sequence[str], key: str) -> str | None:
+    """The value of the first `- Key: value` line, allowing bold keys."""
+    pattern = re.compile(rf"- (?:\*\*)?{re.escape(key)}(?:\*\*)?:(?:\*\*)?\s+(.*)$")
+    return next((match[1] for line in lines if (match := pattern.match(line))), None)
 
 
+def _phase_rows(readme: str) -> list[list[str]]:
+    """The cells of each line of the `## Phases` table, header and divider included."""
+    rows = _sections(readme).get("Phases", [])
+    return [format_check().cells(line) for line in rows if line.lstrip().startswith("|")]
+
+
+def phase_state(readme: str, phase: str) -> str | None:
+    """The canonical state word of `phase`'s row in a README's `## Phases` table."""
+    rows = _phase_rows(readme)
+    header = [cell.lower() for cell in rows[0]] if rows else []
+    column = next((header.index(name) for name in ("state", "status") if name in header), None)
+    row = next((row for row in rows[2:] if row[0] == phase), None)
+    if column is None or row is None or column >= len(row):
+        return None
+    fc = format_check()
+    return fc.lookup_word(fc.PHASE_WORDS, row[column])
+
+
+def packet_status(readme: str) -> str | None:
+    """The canonical packet status word of a README's Current Work block."""
+    value = _key_value(_sections(readme).get("Current Work", []), "Status")
+    fc = format_check()
+    return fc.lookup_word(fc.PACKET_WORDS, value) if value is not None else None
+
+
+def _readme_and_plan(packet: Path) -> tuple[str, str]:
+    """The README text of a packet folder or one-file plan, and its plan text."""
+    readme = packet / "README.md" if packet.is_dir() else packet
+    plan = readme.with_name("IMPLEMENTATION_PLAN.md")
+    has_plan = readme.name == "README.md" and plan.is_file()
+    plan_text = plan.read_text(encoding="utf-8") if has_plan else ""
+    return readme.read_text(encoding="utf-8"), plan_text
+
+
+# The shared sections, in template order. Other sections go after them and
+# before `## Log`, which is last.
+SECTION_ORDER = ("Current Work", "Phases", "Done when", "Open questions")
 # Placeholder text a template leaves behind: N/A, TBD, or `<Something ...>`.
 # Autolinks such as <https://...> are not placeholders.
 PLACEHOLDER = re.compile(r"\bN/A\b|\bTBD\b|<(?![A-Za-z][\w+.-]*:)[A-Za-z][^<>\n]*>")
 
 
-def packet_shape_problems(readme: str, plan: str = "") -> list[str]:
-    """List the ways a packet README, and its plan, differ from the shared template.
+def eval_only_problems(packet: Path, owner: str | None = None) -> list[str]:
+    """The template rules the shipped format check leaves out, as `eval:` lines.
 
-    It covers the structure the evals rely on, not every rule: a summary under
-    the title; one `## Current Work` first, starting with Status, Owner (by
-    @handle) and a date-first Last updated, with at most 12 keys; `## Phases`
-    with a Phase table whose State (or, in a converted packet, Status) column
-    starts with a state word; the shared sections in template order; `## Log`
-    last, with every item dated; no empty sections; no placeholders outside
-    code; and, in the plan, no phase table with a State or Status column and
-    a heading for every phase row that links to one. Fenced code blocks are
-    skipped. An empty list means the shape is right.
+    The shipped check stays structural, so that converted packets, which keep
+    their own sections and older words, pass it. The evals' packets are new:
+    fixture packets and the plans an eval asks an agent to write. So these
+    rules hold for them too:
+
+    - the shared sections come first, in template order, and `## Log` is last;
+    - there is a `## Phases` section;
+    - every Log item is dated;
+    - no section is empty, and no placeholder (N/A, TBD, `<...>`) is left
+      outside code;
+    - each phase row's link to IMPLEMENTATION_PLAN.md finds its heading;
+    - when `owner` is given, the Owner line names that handle, as a case's
+      prompt asks.
+
+    Fenced code blocks are skipped.
     """
+    readme, plan = _readme_and_plan(Path(packet))
+    sections = _sections(readme)
+    names = list(sections)
     problems = []
-    lines = _without_fences(readme.splitlines())
-    heads = [i for i, line in enumerate(lines) if line.startswith("## ")]
-    names = [lines[i][3:].strip() for i in heads]
-    bodies = {
-        name: [line for line in lines[a + 1 : b] if line.strip()]
-        for name, a, b in zip(names, heads, heads[1:] + [len(lines)])
-    }
-    title = next((i for i, line in enumerate(lines) if line.startswith("# ")), None)
-    first = next((line for line in lines[(title or 0) + 1 :] if line.strip()), "")
-    if title is None or first.startswith("#"):
-        problems.append("no summary directly under the title")
-    if names.count("Current Work") != 1 or names[:1] != ["Current Work"]:
-        problems.append("needs exactly one ## Current Work, directly after the summary")
-    if "Phases" not in names:
-        problems.append("needs a ## Phases section")
     before_log = names[:-1] if names[-1:] == ["Log"] else names
     shared = [name for name in before_log if name in SECTION_ORDER]
-    if before_log[: len(shared)] != shared or shared != sorted(shared, key=SECTION_ORDER.index):
-        problems.append(f"sections out of template order: {names}")
+    in_order = shared == sorted(shared, key=SECTION_ORDER.index)
+    if before_log[: len(shared)] != shared or not in_order:
+        problems.append(f"eval: sections out of template order: {names}")
     if names[-1:] != ["Log"]:
-        problems.append("## Log must be the last section")
-    for name in names:
-        if name.lower().startswith(("status", "lifecycle")):
-            problems.append(f"old status section: ## {name}")
-        if not bodies.get(name):
-            problems.append(f"empty section: ## {name}")
-    keys = [
-        (match[1], match[2])
-        for line in bodies.get("Current Work", [])
-        if (match := re.match(r"- ([A-Z][A-Za-z ]*?): (.*)", line))
-    ]
-    values = dict(keys)
-    if [key for key, _ in keys[:3]] != ["Status", "Owner", "Last updated"]:
-        problems.append("Current Work must start with Status, Owner and Last updated")
-    if len(keys) > 12:
-        problems.append(f"Current Work has {len(keys)} keys (at most 12)")
-    if not _starts_with_word(values.get("Status", ""), PACKET_STATUS_WORDS):
-        problems.append(f"Status has no packet status word: {values.get('Status')!r}")
-    if "@" not in values.get("Owner", ""):
-        problems.append("Owner names nobody by @handle")
-    if not re.match(r"\d{4}-\d{2}-\d{2}", values.get("Last updated", "")):
-        problems.append("Last updated does not start with a date")
-    phase_lines = [line for line in bodies.get("Phases", []) if line.startswith("|")]
-    header = [cell.lower() for cell in cells(phase_lines[0])] if phase_lines else []
-    column = next((header.index(name) for name in ("state", "status") if name in header), None)
-    if "Phases" in names and (header[:1] != ["phase"] or column is None):
-        problems.append("## Phases needs a table with Phase and State columns")
-    elif column is not None:
-        for row in phase_lines[2:]:
-            row_cells = cells(row)
-            if len(row_cells) != len(header) or not _starts_with_word(
-                row_cells[column], PHASE_STATE_WORDS
-            ):
-                problems.append(f"phase row needs every cell and a state word: {row}")
-    log_items = [line for line in bodies.get("Log", []) if line.startswith("- ")]
-    dated = [line for line in log_items if re.match(r"- \d{4}-\d{2}-\d{2} ", line)]
-    if not dated:
-        problems.append("## Log has no dated line")
-    for line in log_items:
-        if line not in dated:
-            problems.append(f"Log line has no date: {line}")
-    outside_code = re.sub(r"`[^`\n]*`", "", "\n".join(lines))
+        problems.append("eval: ## Log is not the last section")
+    if "Phases" not in names:
+        problems.append("eval: no ## Phases section")
+    for name, lines in sections.items():
+        if not any(line.strip() for line in lines):
+            problems.append(f"eval: empty section ## {name}")
+    for line in sections.get("Log", []):
+        if line.startswith("- ") and not re.match(r"- \d{4}-\d{2}-\d{2} ", line):
+            problems.append(f"eval: Log line has no date: {line}")
+    outside_code = re.sub(r"`[^`\n]*`", "", "\n".join(_without_fences(readme.splitlines())))
     if PLACEHOLDER.search(outside_code):
-        problems.append("placeholder text (N/A, TBD or <...>) left in the README")
-    plan_lines = _without_fences(plan.splitlines())
-    anchors = {heading_anchor(line[4:]) for line in plan_lines if line.startswith("### ")}
-    for line in plan_lines:
-        plan_cells = [cell.lower() for cell in cells(line)] if line.startswith("|") else []
-        if plan_cells[:1] == ["phase"] and ("state" in plan_cells or "status" in plan_cells):
-            problems.append(f"phase state table outside the README: {line}")
+        problems.append("eval: placeholder text (N/A, TBD or <...>) left in the README")
     if plan:
-        for anchor in re.findall(r"\(IMPLEMENTATION_PLAN\.md#([^)]+)\)", "\n".join(phase_lines)):
-            if anchor not in anchors:
-                problems.append(f"phase row links to a missing plan heading: #{anchor}")
+        plan_lines = _without_fences(plan.splitlines())
+        anchors = {heading_anchor(line[4:]) for line in plan_lines if line.startswith("### ")}
+        for row in _phase_rows(readme)[2:]:
+            for anchor in re.findall(r"\(IMPLEMENTATION_PLAN\.md#([^)]+)\)", " ".join(row)):
+                if anchor not in anchors:
+                    problems.append(f"eval: phase row links to a missing plan heading: #{anchor}")
+    if owner is not None:
+        value = _key_value(sections.get("Current Work", []), "Owner") or ""
+        if not re.search(rf"(?<![\w@]){re.escape(owner)}(?![\w-]|\.\w)", value):
+            problems.append(f"eval: Owner does not name {owner}")
     return problems
+
+
+def packet_shape_problems(
+    packet: Path, lifecycle: str | None = None, owner: str | None = None
+) -> list[str]:
+    """Every way a packet folder or one-file plan breaks the shared template.
+
+    The shipped format check's findings in strict mode, checked against
+    `lifecycle` when given, then `eval_only_problems`. An empty list means the
+    packet is right.
+    """
+    shipped = format_check().check_packet(Path(packet), strict=True, lifecycle=lifecycle)
+    return [*shipped, *eval_only_problems(packet, owner)]
