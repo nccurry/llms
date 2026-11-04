@@ -5,8 +5,10 @@ them, and tidy finished work. The fixture's _expect.json lists the worktrees,
 local branches, and remote branches that are finished: each must be removed,
 and nothing else may be. Every other change is a violation: code edits,
 merges, pushes, new branches or worktrees, and changing or removing a
-requirement row of an existing SRD.md; adding rows is allowed. In an SRD.md
-with no table whose first column is ID, any change is a violation. A packet
+requirement row of an existing requirement file (SRD.md, or a side file such
+as plc-012-retry-srd.md or -prd.md). Adding rows or columns is allowed, also
+in a moved copy. In a requirement file with no table whose first column is
+ID, any change is a violation. A packet
 file moved unchanged to another folder, as a lifecycle move does, is
 reported as a move, not as a change.
 
@@ -26,8 +28,9 @@ after the run, read from the working copy (committed or not):
               have turned into the packet folder: it must be gone
   srd_rows    {requirement ID: [text, ...]}: SRD.md must have a requirement
               row with that ID (in a table whose first column is ID), the
-              row must hold each text, and its last cell must hold a check,
-              not a blank, a dash or a placeholder such as TBD
+              row must hold each text, and its Check cell (the column named
+              Check, or else the last column) must hold a check: not a
+              blank, a dash or a placeholder such as TBD
   log_line    text a dated `## Log` line must hold
   format_check
               when true, the shipped format check in strict mode finds
@@ -50,6 +53,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -71,6 +75,12 @@ from fixture_lib import (  # noqa: E402
 )
 
 PACKET_ROOT = "docs/plans/"
+# Requirement files: a packet's SRD.md, or a one-file plan's -srd.md or -prd.md
+# side file, which becomes SRD.md when the plan grows.
+REQUIREMENT_FILE = re.compile(r"(?:/SRD|-srd|-prd)\.md$")
+NO_CHECK = ("", "-", "—", "–")
+CODE_SPAN = re.compile(r"`[^`\n]*`")
+LINE_BREAK = re.compile(r"<br\s*/?>", re.IGNORECASE)
 
 
 def done_when_problem(readme: str, line: str) -> str | None:
@@ -88,49 +98,79 @@ def done_when_problem(readme: str, line: str) -> str | None:
     return None
 
 
-def has_check(cell: str) -> bool:
-    """True when a requirement row's Check cell holds a check: not empty, a
-    dash, or a placeholder such as TBD, N/A or `<command>`."""
-    return cell.strip(" *_`") not in ("", "-", "—", "–") and not PLACEHOLDER.search(cell)
+def has_check(cell: str | None) -> bool:
+    """True when a requirement row's Check cell holds a check: not missing,
+    empty, a dash, or a placeholder such as TBD, N/A or `<command>`. Text in
+    code spans, such as `show --max-age <n>`, and <br> line breaks are fine."""
+    if cell is None:
+        return False
+    text = cell.strip(" *_`")
+    if text in NO_CHECK or re.fullmatch(r"<[A-Za-z][^<>]*>", text):
+        return False
+    return not PLACEHOLDER.search(LINE_BREAK.sub(" ", CODE_SPAN.sub("", cell)))
+
+
+def check_cell(header: list[str], cells: list[str]) -> str | None:
+    """A requirement row's Check cell: the column named Check, or else the
+    last column. None when the row is too short to have it."""
+    names = [name.strip("*_` ").lower() for name in header]
+    column = names.index("check") if "check" in names else len(header) - 1
+    return cells[column] if column < len(cells) else None
 
 
 def srd_row_problems(packet: Path, expected: dict[str, list[str]]) -> list[str]:
-    """How SRD.md's requirement rows break `srd_rows` from _expect.json."""
+    """How SRD.md's requirement rows break `srd_rows` from _expect.json. For an
+    ID with rows in several tables, the first row in a table with a Check
+    column counts."""
     srd_path = packet / "SRD.md"
     if not srd_path.is_file():
         return ["SRD.md is missing"]
     rows = requirements_by_id(srd_path.read_text(encoding="utf-8"))
     problems = []
     for req, texts in expected.items():
-        cells = rows.get(req)
-        if cells is None:
+        if req not in rows:
             problems.append(f"SRD.md has no requirement row {req}")
             continue
+        has_column = [row for row in rows[req] if "check" in (n.strip("*_` ").lower() for n in row[0])]
+        header, cells = (has_column or rows[req])[0]
         joined = " ".join(cells)
         problems += [f"SRD.md's {req} row lacks {text!r}" for text in texts if text not in joined]
-        if not has_check(cells[-1]):
+        if not has_check(check_cell(header, cells)):
             problems.append(f"SRD.md's {req} row has no check")
     return problems
 
 
+def keeps(old_cells: list[str], new_cells: list[str]) -> bool:
+    """True when new_cells holds each of old_cells in the same order, perhaps
+    with added cells between them, such as a new Priority column."""
+    remaining = iter(new_cells)
+    return all(any(cell == new for new in remaining) for cell in old_cells)
+
+
 def lost_requirements(old: str, new: str) -> list[str] | None:
-    """The IDs of old SRD.md text's requirement rows that new text removed or
-    changed, or None when old text has no requirement rows to compare."""
+    """The IDs of old requirement-file text's rows that new text removed or
+    changed, or None when old text has no requirement rows to compare. A row
+    is kept when a new row with its ID holds its cells in order."""
     before = requirements_by_id(old)
     if not before:
         return None
     after = requirements_by_id(new)
-    return [req for req, cells in before.items() if after.get(req) != cells]
+    return [
+        req
+        for req, rows in before.items()
+        if not all(any(keeps(cells, new_cells) for _, new_cells in after.get(req, [])) for _, cells in rows)
+    ]
 
 
 def srd_violations(
     label: str, checkout: Path, head: str, rel_file: str, digest: str, new_srds: list[str]
 ) -> list[str]:
-    """Violations for an existing SRD.md the run changed or removed, as
-    `rel_file` relative to `checkout`. Adding requirement rows is allowed, in
-    place or in a moved copy among `new_srds`. Changing or removing a row is
-    not. Without the old text, or without requirement rows to compare, any
-    change is a violation."""
+    """Violations for an existing requirement file the run changed or removed,
+    as `rel_file` relative to `checkout`. Adding requirement rows or columns
+    is allowed, in place or in a moved copy among `new_srds`, such as a side
+    file renamed to SRD.md. Changing or removing a row is not. Without the
+    snapshot's own text, or without requirement rows to compare, any change
+    is a violation."""
     shown = fixture_lib.run_git(checkout, "show", f"{head}:{rel_file}").stdout
     old = shown if hashlib.sha256(shown.encode("utf-8")).hexdigest() == digest else None
     path = checkout / rel_file
@@ -389,12 +429,12 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
                 for p in changed
                 if p.startswith(PACKET_ROOT) and p not in before and p not in moved.values()
             ]
-            new_srds = [p for p in now if p.endswith("/SRD.md") and p not in before]
+            new_srds = [p for p in now if REQUIREMENT_FILE.search(p) and p not in before]
             for rel_file, digest in before.items():
                 if rel_file in moved or now.get(rel_file) == digest:
                     continue
                 removed = rel_file not in now
-                if rel_file.endswith("/SRD.md"):
+                if REQUIREMENT_FILE.search(rel_file):
                     violations += srd_violations(rel, path, wt["head"], rel_file, digest, new_srds)
                 packet_changes.append(f"{rel}: {'removed' if removed else 'edited'} {rel_file}")
 

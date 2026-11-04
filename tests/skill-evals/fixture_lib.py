@@ -467,13 +467,18 @@ def phase_rule_problem(readme: str, phase: str, rule: dict) -> str | None:
     return None
 
 
-def requirements_by_id(srd: str) -> dict[str, list[str]]:
-    """The cells of each requirement row in SRD.md's text, by requirement ID,
-    as the shipped format check reads them: rows of a table whose first
-    column is ID, outside fenced code and HTML comments."""
+def requirements_by_id(srd: str) -> dict[str, list[tuple[list[str], list[str]]]]:
+    """Each requirement row in SRD.md's text, by requirement ID, as (its
+    table's header cells, its cells), as the shipped format check reads them:
+    rows of a table whose first column is ID, outside fenced code and HTML
+    comments. An ID can have rows in several such tables, in file order."""
     fc = format_check()
-    rows = (cells for _, cells in fc.requirement_rows(srd.splitlines()))
-    return {req: cells for cells in rows if (req := fc.requirement_id(cells))}
+    rows: dict[str, list[tuple[list[str], list[str]]]] = {}
+    for table in fc.requirement_tables(srd.splitlines()):
+        for _, cells in table.rows:
+            if req := fc.requirement_id(cells):
+                rows.setdefault(req, []).append((table.header, cells))
+    return rows
 
 
 def listed_checkouts(readme: str) -> list[str]:

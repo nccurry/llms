@@ -19,13 +19,14 @@ agent's final answer. Pass only if all of these hold:
    with the sections that do not apply deleted. Its requirements table,
    `| ID | Priority | Requirement | Check |`, holds TIDE-001 moved with its
    ID, text and check unchanged, with Priority `Must`. The flag is in one or
-   more new requirements with the next IDs, starting at TIDE-002: together
-   they say the default is 60 seconds, `--max-age 0` turns the cache off,
-   and a bad value exits with status 2 and
-   `tides: --max-age must be 0 or more seconds`. Each new requirement has
-   its own check, a command or test with its expected result. The flag is
-   also in SRD.md's User Experience And Public Surface or Expected
-   Experience section.
+   more new requirements with the next IDs, starting at TIDE-002, whose
+   row names `--max-age`: together they say the default is 60 seconds,
+   `--max-age 0` turns the cache off, and a bad value exits with status 2
+   and `tides: --max-age must be 0 or more seconds`. Each new requirement
+   has its own check, a command or test with its expected result. As a
+   public contract, the flag also has its definition, including the error
+   for a bad value, in Public Contracts; a row in User Experience And
+   Public Surface; and examples in Expected Experience.
 3. **Done when.** `## Done when` sits directly after `## Phases` and holds
    only `The requirements and their checks are in [SRD.md](SRD.md).` No
    requirement is left there.

@@ -9,6 +9,7 @@ from pathlib import Path
 EVALS = Path(__file__).resolve().parent / "skill-evals"
 CASES = EVALS / "plc-checkpoint"
 sys.path.insert(0, str(EVALS))
+import fixture_lib  # noqa: E402
 from fixture_lib import (  # noqa: E402
     GIT_ENV,
     OWNER,
@@ -594,7 +595,8 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         )
 
     def test_grow_plan_new_requirement_without_a_check_fails(self):
-        for check_cell in ("| |", "| TBD |", "| — |", "| `<command>` |"):
+        # The last case drops the Check cell, so the row is one cell short.
+        for check_cell in ("| |", "| TBD |", "| — |", "| `<command>` |", ""):
             with self.subTest(check=check_cell):
                 self.tearDown()
                 self.setUp()
@@ -603,6 +605,16 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
                     return text.replace("| `python -m unittest tests.test_cli` → passes |", check_cell)
 
                 self.assert_grow_plan_violation("SRD.md's TIDE-002 row has no check", change_srd=drop_check)
+
+    def test_grow_plan_check_forms_pass(self):
+        check_cell = "| `python -m unittest tests.test_cli` → passes<br>`tides show --max-age <n>` exits 2 |"
+
+        def two_checks(text: str) -> str:
+            return text.replace("| `python -m unittest tests.test_cli` → passes |", check_cell)
+
+        self.grow_plan(change_srd=two_checks)
+        report = check(self.dest)
+        self.assertTrue(report["ok"], report)
 
     def test_grow_plan_without_srd_fails(self):
         packet = self.grow_plan()
@@ -935,6 +947,37 @@ class CheckStateTest(unittest.TestCase):
         self.assertEqual(check_state.lost_requirements(srd, srd + "| A-2 | Two. |\n"), [])
         self.assertEqual(check_state.lost_requirements(srd, srd.replace("One.", "Uno.")), ["A-1"])
         self.assertEqual(check_state.lost_requirements(srd, "# Gone\n"), ["A-1"])
+        # A new Priority column, as the template has, keeps the row.
+        template = "| ID | Priority | Requirement |\n| --- | --- | --- |\n| A-1 | Must | One. |\n"
+        self.assertEqual(check_state.lost_requirements(srd, template), [])
+        # With the ID in a second table too, each of its rows must stay.
+        traced = srd + "\n| ID | Phase |\n| --- | --- |\n| A-1 | P1 |\n"
+        self.assertEqual(check_state.lost_requirements(traced, traced.replace("One.", "Uno.")), ["A-1"])
+
+    def test_srd_rows_read_the_requirements_table(self):
+        """An ID that is also in an earlier table without a Check column is
+        read from the table that has one."""
+        packet = Path(self.case_tmp.name) / "packet"
+        packet.mkdir()
+        (packet / "SRD.md").write_text(
+            "| ID | Phase |\n| --- | --- |\n| A-1 | P1 |\n\n"
+            "| ID | Requirement | Check |\n| --- | --- | --- |\n| A-1 | One. | `t` passes |\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(check_state.srd_row_problems(packet, {"A-1": ["One."]}), [])
+
+    def test_snapshot_must_match_committed_text(self):
+        """Without the snapshot's own SRD.md text to compare, any change to it fails."""
+        srd = self.app / self.packet / "SRD.md"
+        committed = srd.read_text(encoding="utf-8")
+        srd.write_text(committed.replace("start time.", "start date."), encoding="utf-8", newline="\n")
+        fixture_lib.snapshot(self.dest, [self.app, self.dest / "timekit"])
+        srd.write_text(committed, encoding="utf-8", newline="\n")
+        self.assertEqual(
+            check(self.dest)["violations"],
+            [f"scheduler: requirement text changed in {self.packet}/SRD.md"],
+        )
+
 
     def test_code_commit_is_a_violation(self):
         self.edit(self.app / "src/jobs.py", "\n# changed\n")
@@ -965,6 +1008,45 @@ class CheckStateTest(unittest.TestCase):
             report["violations"],
             [f"scheduler: protected file {self.packet}/IMPLEMENTATION_PLAN.md changed"],
         )
+
+
+class SideFileRequirementsTest(unittest.TestCase):
+    """A one-file plan's -srd.md side file holds requirements too, also once
+    it moves into the packet as SRD.md."""
+
+    PLAN = "docs/plans/in-progress/plc-tide-cache.md"
+    SIDE = "docs/plans/in-progress/plc-tide-cache-srd.md"
+    SRD = "docs/plans/in-progress/tide-cache/SRD.md"
+    ROWS = "| ID | Requirement | Check |\n| --- | --- | --- |\n| TIDE-001 | Read the feed once a minute. | `t` passes |\n"
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dest = Path(self.tmp.name)
+        files = {self.PLAN: "# Tide cache\n\nCache the feed.\n", self.SIDE: f"# Requirements\n\n{self.ROWS}"}
+        self.app = fixture_lib.make_repo(self.dest, "app", files)
+        fixture_lib.snapshot(self.dest, [self.app])
+        (self.app / "docs/plans/in-progress/tide-cache").mkdir()
+        git(self.app, "mv", self.PLAN, "docs/plans/in-progress/tide-cache/README.md")
+        git(self.app, "mv", self.SIDE, self.SRD)
+
+    def rewrite_srd(self, old: str, new: str) -> None:
+        path = self.app / self.SRD
+        text = path.read_text(encoding="utf-8")
+        self.assertEqual(text.count(old), 1)
+        path.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
+
+    def test_renamed_side_file_with_a_reworded_row_fails(self):
+        self.rewrite_srd("once a minute", "once an hour")
+        self.assertEqual(
+            check(self.dest)["violations"],
+            [f"app: requirement file {self.SIDE} removed, with no copy that keeps its requirements"],
+        )
+
+    def test_renamed_side_file_in_the_template_table_passes(self):
+        self.rewrite_srd("| ID | Requirement | Check |\n| --- | --- | --- |\n| TIDE-001 |",
+                         "| ID | Priority | Requirement | Check |\n| --- | --- | --- | --- |\n| TIDE-001 | Must |")
+        self.assertEqual(check(self.dest)["violations"], [])
 
 
 if __name__ == "__main__":

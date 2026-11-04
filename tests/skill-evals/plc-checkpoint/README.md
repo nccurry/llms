@@ -19,7 +19,7 @@ installer copies the whole skill folder into each agent.
 | [report-only](report-only/case.yaml) | "Just tell me, don't change anything" must change nothing |
 | [active-writer](active-writer/case.yaml) | Another agent's uncommitted packet edits must be left alone |
 | [old-shape](old-shape/case.yaml) | The packet is in an older shape: convert it to the shared template first, ending with one `## Current Work`, then update it. P1 stays In progress, because nobody built its call from `save_booking`; if that call moves to its own row, P1 must be Merged or Verified |
-| [grow-plan](grow-plan/case.yaml) | The user approved a new `--max-age` CLI flag for an in-progress one-file plan. The flag is a public contract, so the plan becomes a `tide-cache/` folder whose `SRD.md` holds the new requirement with its check, `## Done when` keeps only the pointer line, and a dated Log line names `SRD.md` |
+| [grow-plan](grow-plan/case.yaml) | The user approved a new `--max-age` CLI flag for an in-progress one-file plan. The flag is a public contract, so the plan becomes a `tide-cache/` folder whose `SRD.md` holds TIDE-001, moved unchanged, and the new flag's requirements with their checks, `## Done when` keeps only the pointer line, and a dated Log line names `SRD.md` |
 | [near-miss-wrap-up](near-miss-wrap-up/case.yaml) | "Wrap this up" must go to `wrap-this-up` |
 
 `check_state.py` compares a fixture with the `_snapshot.json` and
@@ -31,7 +31,8 @@ installer copies the whole skill folder into each agent.
   is reported as a move.
 - **Violations:** removing anything else, pushes, merges, new branches or
   worktrees, code edits, and a changed or removed requirement row in an
-  existing `SRD.md`. Added rows are allowed, also in a moved copy.
+  existing `SRD.md` or `-srd.md` or `-prd.md` side file. Added rows and
+  columns are allowed, also in a moved or renamed copy.
 - **Packet text**, for a case whose `_expect.json` has `packet_content`
   (old-shape and grow-plan): a phase's state word, lines that must or must
   not be in `IMPLEMENTATION_PLAN.md`, the `## Done when` line and place,

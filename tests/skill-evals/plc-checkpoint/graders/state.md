@@ -19,9 +19,11 @@ Pass when it prints `"ok": true`. It fails on:
 - any other change to a remote's refs (a push)
 - a merge commit, a reset, or rewritten history
 - a commit or uncommitted change outside `docs/plans/`
-- a changed or removed requirement row in an existing `SRD.md` (adding
-  rows is allowed; in an `SRD.md` with no table whose first column is `ID`,
-  any change fails)
+- a changed or removed requirement row in an existing requirement file:
+  `SRD.md`, or a one-file plan's `-srd.md` or `-prd.md` side file, also
+  after it moves into the packet as `SRD.md`. Adding rows or columns is
+  allowed; in a requirement file with no table whose first column is `ID`,
+  any change fails
 - any plan change in a case that forbids one (ad-hoc and report-only)
 - in a case whose `_expect.json` has `packet_content` (old-shape and
   grow-plan), packet text that breaks it: a phase's state word, lines that
