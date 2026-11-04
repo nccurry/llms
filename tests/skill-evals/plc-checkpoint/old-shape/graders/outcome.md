@@ -46,7 +46,8 @@ run left it. Pass only if all of these hold:
    `Created: 2026-10-20`. Next is the conversion line the migration reference
    gives, `- <date> Converted to the shared PLC template (format only).`
    After that, by plan-record's Log rule: the missing `save_booking` call
-   (point 6) is a surprise, so it needs a dated line. P1 stays In progress,
+   (point 6) is a gap nobody had named before, so it is a surprise and
+   needs a dated line. P1 stays In progress,
    so a line about its merge may be there but is not needed; when there is
    one, it names the merge commit.
 6. **Status update.** These changes count as the status update, not the
@@ -54,22 +55,25 @@ run left it. Pass only if all of these hold:
    `main` commit), Next action and Current state; every template key the old
    block lacked, which here means `Depends on` and `Resume check`; the "Where
    the work lives" table; P1's row; and the Log lines point 5 asks for. All
-   of these must be there at the end.
+   of these must be there at the end. The "Where the work lives" table no
+   longer lists the removed `p1-record` worktree; `check_state.py` checks
+   this.
 
-   P1's one task bullet, "Add `record(change, user)` and call it from
-   `save_booking`", names two pieces of work that can be built separately,
-   so P1 has two parts: `record`, which merged, and the call from
+   P1's plan section has one task, "Add `record(change, user)` and call it
+   from `save_booking`", and that task builds AUD-001. The task names two
+   pieces of work that can be built separately, so by `plc-planning`'s
+   Parts rule P1 has two parts: `record`, which merged, and the call from
    `save_booking`, which nobody built (the fixture has no `save_booking`).
    So P1 is In progress, as `plc-planning`'s rule for a phase whose parts
    differ says, and plan-record point 6 agrees. Its note names `record` with
    the merge commit and the call as not yet merged. Merged fails, and
    Verified does not pass either, because P1 still holds the unbuilt call.
-   (Only if the call moves to its own row does plan-record point 6 let P1
-   be Merged or Verified.) P2 is Planned, or keeps the older word
-   `Not started`.
+   If the call moves to its own row, P1 must instead be Merged or Verified,
+   as plan-record point 6 says, and In progress then fails. P2 is Planned,
+   or keeps the older word `Not started`.
 
-   The call is a gap: P1's merged work was meant to make it, but the shipped
-   code does not. So plan-record point 7 applies: the call is recorded as a
+   The call is a gap: P1's work has merged, but the shipped code does not
+   make the call. So plan-record point 7 applies: the call is recorded as a
    new phase row or as an `Open question:` line naming what it blocks and
    whom it waits on.
 7. **Conversion edits only.** Apart from the status update, the conversion
@@ -78,10 +82,11 @@ run left it. Pass only if all of these hold:
    directly after `## Phases`, holding only the line
    `The requirements and their checks are in [SRD.md](SRD.md).` (the repo
    has no README template of its own). The table came from
-   `IMPLEMENTATION_PLAN.md`, so step M5 writes the line
+   `IMPLEMENTATION_PLAN.md`, so step M5 removes its `## Phase Status`
+   heading, since the table was the only thing under it, and writes the
+   line
    `Phase state lives in the README's [Phases](README.md#phases) table.`
-   in that file where the table was, and removes the `## Phase Status`
-   heading the move left empty. The answer lists both added lines for
+   in that file where the table was. The answer lists both added lines for
    review. No requirement or plan text is reworded, and `SRD.md` is
    unchanged.
 8. **Tidied:** the `p1-record` worktree is removed and the branch

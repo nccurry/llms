@@ -11,8 +11,9 @@ Read the agent's final answer, `check_wrap.py`'s report, and the plan on
 3. **Plan:** on `origin/main`, P1's row in `## Phases` is Merged, naming the
    merge commit, or Verified with `run_tests.py` and that commit in its
    note.
-4. **P2's word:** P2's one requirement, DIG-002, names two pieces of work
-   that can be built separately, so P2 has two parts: the Slack text, which
+4. **P2's word:** P2's plan section lists no tasks, only DIG-002, which
+   names two pieces of work that can be built separately, so by
+   `plc-planning`'s Parts rule P2 has two parts: the Slack text, which
    merged, and channel posting, which never started. While P2 still holds
    channel posting (it was not moved to its own row), P2 is In progress, as
    `plc-planning`'s rule for a phase whose parts differ says. Its note names
@@ -20,13 +21,15 @@ Read the agent's final answer, `check_wrap.py`'s report, and the plan on
    merged; naming `test_slack_channel` is optional. Merged, Planned or
    Verified fails. If channel posting moves to its own new row (Planned,
    since the user said P2 continues later), P2's note says `moved to P<n>`
-   for that row, and P2's word then comes from the Slack text alone: Merged
-   naming the merge commit passes, and so does Verified naming
-   `run_tests.py` and the commit it passed on.
-5. The Next action names the channel-posting work. Channel posting is known
-   unfinished work in a phase that stays In progress, not a gap, so
-   plan-record point 7 does not apply: P2's note names it, and an
-   `Open question:` line about it is allowed but not required. **Log**, by
+   for that row, and P2's word then comes from the Slack text alone: it
+   must be Merged, naming the merge commit, or Verified, naming
+   `run_tests.py` and the commit it passed on. In progress then fails.
+5. The Next action names the channel-posting work. Channel posting is
+   unfinished work that is not a gap: the user and P2's commit message
+   ("channel posting still to do") already said it is still to be built,
+   and P2 stays In progress. So plan-record point 7 does not apply: P2's
+   note names it, and an `Open question:` line about it is allowed but not
+   required. **Log**, by
    plan-record's Log rule: P1's state change needs a dated line. When P2
    stays In progress, a line about its merge may be there but is not
    needed. When channel posting moves to its own row, P2's changed word

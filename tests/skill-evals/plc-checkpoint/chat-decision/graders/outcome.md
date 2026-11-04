@@ -15,14 +15,18 @@ Read the agent's final answer, the checker's `packet_changes`, and the diff of
    said "ok, merge it", or an `Open question:` line waiting on `@alex`, as
    proposed because the user only approved the merge. Either passes if the
    answer says which and why. The palette decision's Log line is unchanged.
-5. **Records, the unmet requirement:** the gap between SHOP-001's text and
-   the merged code (no cost on the row) is recorded as an `Open question:`
-   line waiting on `@alex`, or as a new phase row (Planned, or Deferred only
-   with the user's approval) that names SHOP-001. SHOP-001 is never marked
-   met without evidence: P1 is not marked Verified. `SRD.md` is unchanged.
-   P1 stays In progress while it still holds SHOP-002 or the cost gap
-   (plan-record point 6); it is Merged or Verified only once both have
-   `moved to P<n>` rows.
+5. **Records, the unmet requirement:** the missing cost on each row is a
+   gap: P1's work has merged, and the conversation dropped the cost rather
+   than leaving it to build, but SHOP-001 still asks for it. So plan-record
+   point 7 applies: the gap is recorded as an `Open question:` line waiting
+   on `@alex`, or as a new phase row (Planned, or Deferred only with the
+   user's approval) that names SHOP-001. SHOP-001 is never marked met
+   without evidence: P1 is not marked Verified. `SRD.md` is unchanged.
+   P1 stays In progress while it still holds SHOP-002 or the cost part (not
+   moved to its own row, and not Deferred or Dropped with the user's
+   approval). Once both are moved or left out, P1 may be Merged, naming the
+   merge commit; it is still not Verified, because `test_shop_row` does not
+   check cost as SHOP-001 asks.
 6. **Records, the filter left out:** SHOP-002 is recorded as out of this
    slice, as a new phase row or an `Open question:` line, naming SHOP-002.
    The row is Planned, or Deferred only if the answer counts "ok, merge it"
