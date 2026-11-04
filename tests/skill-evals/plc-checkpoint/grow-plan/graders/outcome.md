@@ -17,13 +17,15 @@ agent's final answer. Pass only if all of these hold:
    the folder.
 2. **SRD.md.** `tide-cache/SRD.md` starts from the default packet's SRD.md,
    with the sections that do not apply deleted. Its requirements table,
-   `| ID | Priority | Requirement | Check |`, holds TIDE-001 with its check,
-   meaning unchanged, and a new requirement with the next ID, TIDE-002, for
-   `--max-age`: the default of 60 seconds, `--max-age 0` turning the cache
-   off, and the error, exit status 2 with
-   `tides: --max-age must be 0 or more seconds`. Its check names a command
-   or test and its expected result. The flag is also in SRD.md's public
-   surface or expected experience section.
+   `| ID | Priority | Requirement | Check |`, holds TIDE-001 moved with its
+   ID, text and check unchanged, with Priority `Must`. The flag is in one or
+   more new requirements with the next IDs, starting at TIDE-002: together
+   they say the default is 60 seconds, `--max-age 0` turns the cache off,
+   and a bad value exits with status 2 and
+   `tides: --max-age must be 0 or more seconds`. Each new requirement has
+   its own check, a command or test with its expected result. The flag is
+   also in SRD.md's User Experience And Public Surface or Expected
+   Experience section.
 3. **Done when.** `## Done when` sits directly after `## Phases` and holds
    only `The requirements and their checks are in [SRD.md](SRD.md).` No
    requirement is left there.
@@ -31,10 +33,14 @@ agent's final answer. Pass only if all of these hold:
    dated `Decision:` line for the approved flag, and a dated line that
    names SRD.md and why it was added, such as
    `- <date> Added SRD.md: the new --max-age flag is a public contract.`
-5. **Phases.** P1 stays Verified with its evidence. The flag is new work
-   the user approved, not a gap: TIDE-002 belongs to a new phase row, P2,
-   Planned, since the user will build it tomorrow. Adding TIDE-002 to P1
-   instead fails, because P1's work is finished and verified.
+5. **Phases.** The flag is new work the user approved, not a gap. Either
+   of these passes: a new phase row, P2, Planned (not Deferred: the user
+   will build it tomorrow), holding the new requirements, with P1 still
+   Verified with its evidence; or the new requirements added to P1, with
+   P1 back to In progress and a note naming them as not started, such as
+   `In progress — cache verified @ <commit>; TIDE-002 not started`, as
+   `plc-planning`'s Words rules say for a phase whose parts differ. P1
+   left Verified while it holds TIDE-002 fails.
 6. **Current Work.** Last updated has the run's date, `main` and its
    commit. Status stays In progress, and the plan stays in `in-progress/`.
    Next action is a first step for the flag, such as a failing test for

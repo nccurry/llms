@@ -19,15 +19,17 @@ Pass when it prints `"ok": true`. It fails on:
 - any other change to a remote's refs (a push)
 - a merge commit, a reset, or rewritten history
 - a commit or uncommitted change outside `docs/plans/`
-- any change to an existing `SRD.md`
+- a changed or removed requirement row in an existing `SRD.md` (adding
+  rows is allowed; in an `SRD.md` with no table whose first column is `ID`,
+  any change fails)
 - any plan change in a case that forbids one (ad-hoc and report-only)
 - in a case whose `_expect.json` has `packet_content` (old-shape and
   grow-plan), packet text that breaks it: a phase's state word, lines that
   must or must not be in `IMPLEMENTATION_PLAN.md`, the `## Done when` line
   and place, a removed worktree still listed in "Where the work lives", a
-  one-file plan that should have become a folder, a missing requirement
-  row or check in `SRD.md`, a missing dated Log line, or a format check
-  finding
+  one-file plan that should have become a folder, a missing `SRD.md`, a
+  missing or reworded requirement row or a row with no check in `SRD.md`,
+  a missing dated Log line, or a format check finding
 
 `git fetch` is allowed: remote-tracking refs are not checked.
 

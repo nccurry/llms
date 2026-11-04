@@ -1,3 +1,4 @@
+import importlib.util
 import json
 import subprocess
 import sys
@@ -171,6 +172,22 @@ TIDE_REQUIREMENTS = (
 )
 GROWN = "tides/docs/plans/in-progress/tide-cache"
 ONE_FILE_PLAN = "docs/plans/in-progress/plc-tide-cache.md"
+
+
+def load_check_state():
+    """Import check_state.py by path without writing a bytecode cache."""
+    spec = importlib.util.spec_from_file_location("check_state", CASES / "check_state.py")
+    module = importlib.util.module_from_spec(spec)
+    saved = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = saved
+    return module
+
+
+check_state = load_check_state()
 
 
 def build(case: str, dest: Path, env: dict[str, str] = GIT_ENV) -> None:
@@ -577,12 +594,78 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         )
 
     def test_grow_plan_new_requirement_without_a_check_fails(self):
-        def drop_check(text: str) -> str:
-            return text.replace("| `python -m unittest tests.test_cli` → passes |", "| |")
+        for check_cell in ("| |", "| TBD |", "| — |", "| `<command>` |"):
+            with self.subTest(check=check_cell):
+                self.tearDown()
+                self.setUp()
+
+                def drop_check(text: str) -> str:
+                    return text.replace("| `python -m unittest tests.test_cli` → passes |", check_cell)
+
+                self.assert_grow_plan_violation("SRD.md's TIDE-002 row has no check", change_srd=drop_check)
+
+    def test_grow_plan_without_srd_fails(self):
+        packet = self.grow_plan()
+        (packet / "SRD.md").unlink()
+        self.assertEqual(check(self.dest)["violations"], [f"{GROWN}: SRD.md is missing"])
+
+    def test_grow_plan_without_the_moved_requirement_fails(self):
+        def drop_tide_001(text: str) -> str:
+            return "".join(line for line in text.splitlines(True) if not line.startswith("| TIDE-001"))
 
         self.assert_grow_plan_violation(
-            "no requirement row with a check in SRD.md holds '--max-age'", change_srd=drop_check
+            "SRD.md has no requirement row TIDE-001", change_srd=drop_tide_001
         )
+
+    def test_grow_plan_moved_requirement_reworded_fails(self):
+        # TIDE-002's row quotes the old text, but only TIDE-001's own row counts.
+        def reword(text: str) -> str:
+            text = text.replace("within a minute reads the feed once", "within `--max-age` seconds reads it once")
+            return text.replace(
+                "turns the cache off.",
+                "turns the cache off, unlike TIDE-001's A second `tides show` within a minute reads the feed once.",
+            )
+
+        self.assert_grow_plan_violation(
+            "SRD.md's TIDE-001 row lacks 'A second `tides show` within a minute reads the feed once'",
+            change_srd=reword,
+        )
+
+    def test_grow_plan_log_line_in_another_section_fails(self):
+        line = "- 2026-11-04 Added SRD.md: the `--max-age` flag is a public contract.\n"
+
+        def move_line(text: str) -> str:
+            return text.replace(line, "").replace("| Planned |\n", f"| Planned |\n\n{line}")
+
+        self.assert_grow_plan_violation("no dated ## Log line holds 'SRD.md'", change_readme=move_line)
+
+    def test_grow_plan_undated_log_line_fails(self):
+        def undate(text: str) -> str:
+            return text.replace("- 2026-11-04 Added SRD.md", "- Added SRD.md")
+
+        self.assert_grow_plan_violation("no dated ## Log line holds 'SRD.md'", change_readme=undate)
+
+    def test_grow_plan_strict_finding_fails(self):
+        def planned(text: str) -> str:
+            return text.replace("- Status: In progress", "- Status: Planned")
+
+        self.assert_grow_plan_violation(
+            f"format check: {GROWN}/README.md:7: strict: Status Planned does not match the"
+            " in-progress/ folder, which needs In progress or Blocked",
+            change_readme=planned,
+        )
+
+    def test_grow_plan_done_when_with_a_comment_or_wrapped_passes(self):
+        for done_when in (
+            f"<!-- TIDE-001 moved to SRD.md. -->\n{DONE_WHEN_LINE}",
+            DONE_WHEN_LINE.replace(" in ", " in\n", 1),
+        ):
+            with self.subTest(done_when=done_when):
+                self.tearDown()
+                self.setUp()
+                self.grow_plan(done_when=done_when)
+                report = check(self.dest)
+                self.assertTrue(report["ok"], report)
 
     def test_grow_plan_format_finding_fails(self):
         def add_lifecycle(text: str) -> str:
@@ -784,11 +867,23 @@ class CheckStateTest(unittest.TestCase):
 
     def test_moved_packet_with_changed_requirements_is_a_violation(self):
         target = self.move_packet()
-        self.edit(self.app / target / "SRD.md", "\nSCH-003 added.\n")
+        self.replace_in_srd("Jobs accept a start time.", "Jobs accept a start date.", f"{target}/SRD.md")
         self.assertEqual(
             check(self.dest)["violations"],
-            [f"scheduler: requirement file {self.packet}/SRD.md removed, with no unchanged copy"],
+            [
+                f"scheduler: requirement file {self.packet}/SRD.md removed,"
+                " with no copy that keeps its requirements"
+            ],
         )
+
+    def test_moved_packet_with_an_added_requirement_is_allowed(self):
+        target = self.move_packet()
+        self.replace_in_srd(
+            "`test_duration` passes. |\n",
+            "`test_duration` passes. |\n| SCH-003 | Jobs accept an end time. | `test_end_time` passes. |\n",
+            f"{target}/SRD.md",
+        )
+        self.assertEqual(check(self.dest)["violations"], [])
 
     def test_new_file_with_a_space_in_its_name_is_seen(self):
         new = self.app / "src" / "new job.py"
@@ -805,12 +900,41 @@ class CheckStateTest(unittest.TestCase):
             ["plan records changed in a run that must not change them"],
         )
 
+    def replace_in_srd(self, old: str, new: str, srd: str | None = None) -> None:
+        path = self.app / (srd or f"{self.packet}/SRD.md")
+        text = path.read_text(encoding="utf-8")
+        self.assertEqual(text.count(old), 1)
+        path.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
+
     def test_requirement_text_change_is_a_violation(self):
-        self.edit(self.app / self.packet / "SRD.md", "\nSCH-003 added.\n")
+        self.replace_in_srd("Jobs accept a start time.", "Jobs accept a start date.")
         self.assertEqual(
             check(self.dest)["violations"],
-            [f"scheduler: requirement text changed in {self.packet}/SRD.md"],
+            [f"scheduler: requirement text changed in {self.packet}/SRD.md: SCH-001"],
         )
+
+    def test_removed_requirement_row_is_a_violation(self):
+        self.replace_in_srd("| SCH-001 | Jobs accept a start time. | `test_start_time` passes. |\n", "")
+        self.assertEqual(
+            check(self.dest)["violations"],
+            [f"scheduler: requirement text changed in {self.packet}/SRD.md: SCH-001"],
+        )
+
+    def test_added_requirement_row_is_allowed(self):
+        self.replace_in_srd(
+            "`test_duration` passes. |\n",
+            "`test_duration` passes. |\n| SCH-003 | Jobs accept an end time. | `test_end_time` passes. |\n",
+        )
+        report = check(self.dest)
+        self.assertEqual(report["violations"], [])
+        self.assertEqual(report["packet_changes"], [f"scheduler: edited {self.packet}/SRD.md"])
+
+    def test_requirement_rows_compare(self):
+        srd = "| ID | Requirement |\n| --- | --- |\n| A-1 | One. |\n"
+        self.assertIsNone(check_state.lost_requirements("# No table\n", srd))
+        self.assertEqual(check_state.lost_requirements(srd, srd + "| A-2 | Two. |\n"), [])
+        self.assertEqual(check_state.lost_requirements(srd, srd.replace("One.", "Uno.")), ["A-1"])
+        self.assertEqual(check_state.lost_requirements(srd, "# Gone\n"), ["A-1"])
 
     def test_code_commit_is_a_violation(self):
         self.edit(self.app / "src/jobs.py", "\n# changed\n")

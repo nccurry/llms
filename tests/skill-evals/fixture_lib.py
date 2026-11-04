@@ -368,11 +368,13 @@ def format_check() -> ModuleType:
 def _sections(text: str) -> list[tuple[str, list[str], list[str]]]:
     """Each `## ` section of Markdown text: (heading, lines, raw lines).
 
-    Headings inside fenced code blocks don't count. `lines` has fenced lines
-    blanked out, as the shipped check reads them; `raw lines` keeps them.
+    Headings inside fenced code blocks or HTML comments don't count. `lines`
+    has those blanked out, as the shipped check reads them; `raw lines` keeps
+    them.
     """
     raw = text.splitlines()
-    lines = format_check().unfenced(raw)
+    fc = format_check()
+    lines = fc.uncommented(fc.unfenced(raw))
     heads = [i for i, line in enumerate(lines) if line.startswith("## ")]
     return [
         (lines[a][3:].strip(), lines[a + 1 : b], raw[a + 1 : b])
@@ -381,7 +383,8 @@ def _sections(text: str) -> list[tuple[str, list[str], list[str]]]:
 
 
 def section_lines(text: str, name: str) -> list[str]:
-    """The lines of the first `## <name>` section, with fenced lines blanked."""
+    """The lines of the first `## <name>` section, with fenced lines and HTML
+    comments blanked."""
     return next((lines for heading, lines, _ in _sections(text) if heading == name), [])
 
 
@@ -464,11 +467,13 @@ def phase_rule_problem(readme: str, phase: str, rule: dict) -> str | None:
     return None
 
 
-def requirement_rows(srd: str) -> list[list[str]]:
-    """The cells of each row of SRD.md's requirements table, the table whose
-    first column is ID, as the shipped format check reads it."""
+def requirements_by_id(srd: str) -> dict[str, list[str]]:
+    """The cells of each requirement row in SRD.md's text, by requirement ID,
+    as the shipped format check reads them: rows of a table whose first
+    column is ID, outside fenced code and HTML comments."""
     fc = format_check()
-    return [cells for _, cells in fc.requirement_rows(fc.unfenced(srd.splitlines()))]
+    rows = (cells for _, cells in fc.requirement_rows(srd.splitlines()))
+    return {req: cells for cells in rows if (req := fc.requirement_id(cells))}
 
 
 def listed_checkouts(readme: str) -> list[str]:

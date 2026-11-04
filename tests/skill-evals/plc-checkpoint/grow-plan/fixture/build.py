@@ -228,15 +228,22 @@ commit(
 git(app, "push", "-q", "origin", "main")
 snapshot(dest, [app])
 # Nothing to tidy. The approved --max-age flag is a public contract, so the
-# plan must become a folder whose SRD.md holds the new requirement, with
-# only the pointer line left in ## Done when, a dated Log line naming
-# SRD.md, and no findings from the shipped format check.
+# plan must become a folder whose SRD.md holds TIDE-001, moved with its text
+# and check unchanged, and the new TIDE-002 with a check. Only the pointer
+# line stays in ## Done when, a dated Log line names SRD.md, and the shipped
+# format check finds nothing.
 expect(
     dest,
     packet_content={
         "path": f"tides/{PACKET}",
         "one_file_plan": f"tides/{ONE_FILE_PLAN}",
-        "srd_rows": ["TIDE-001", "--max-age"],
+        "srd_rows": {
+            "TIDE-001": [
+                "A second `tides show` within a minute reads the feed once",
+                "`python -m unittest tests.test_cache`",
+            ],
+            "TIDE-002": ["--max-age"],
+        },
         "done_when": DONE_WHEN_LINE,
         "log_line": "SRD.md",
         "format_check": True,

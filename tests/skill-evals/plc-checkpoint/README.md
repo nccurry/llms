@@ -30,14 +30,15 @@ installer copies the whole skill folder into each agent.
   only those files. A packet file moved unchanged, as a lifecycle move does,
   is reported as a move.
 - **Violations:** removing anything else, pushes, merges, new branches or
-  worktrees, code edits, and any change to an existing `SRD.md`.
+  worktrees, code edits, and a changed or removed requirement row in an
+  existing `SRD.md`. Added rows are allowed, also in a moved copy.
 - **Packet text**, for a case whose `_expect.json` has `packet_content`
   (old-shape and grow-plan): a phase's state word, lines that must or must
   not be in `IMPLEMENTATION_PLAN.md`, the `## Done when` line and place,
   and no removed worktree still listed in "Where the work lives". For
-  grow-plan: the one-file plan gone, rows of `SRD.md`'s requirements table
-  with their checks, a dated Log line, and, once those pass, the shipped
-  format check in strict mode.
+  grow-plan: the one-file plan gone, the requirement rows `SRD.md` must
+  hold by ID, each with its text and a check, a dated Log line, and, once
+  those pass, the shipped format check in strict mode.
 
 It prints JSON and exits 1 on a violation. The outcome graders then judge the
 report and the plan edits, and [plan-record.md](graders/plan-record.md) holds
