@@ -17,16 +17,16 @@ and the packet on `plc/reconcile`. Pass only if all of these hold:
 5. **Owner and links survive the rewrite:** `- Owner: @alex`,
    `- Depends on: None` and the `- Replaces:` line naming
    `docs/plans/archived/bank-match/` are still in the block, unchanged.
-6. **Phase and Log:** P1's row in `## Phases` reads `Merged` (its target is
-   the integration branch) or `Implemented`, and its note names
-   `plc/reconcile` and the merge commit. It reads Verified only if the note
-   also names the check that passed and where it ran. The two existing Log
-   lines are unchanged, and a new dated line at the end records P1's change.
+6. **Phase and Log:** P1's row in `## Phases` reads `Implemented`, because a
+   merge into an integration branch is not yet on `main`, and its note names
+   `plc/reconcile` and the merge commit. `Merged` and `Verified` are wrong
+   here. The two existing Log lines are unchanged, and one new dated line at
+   the end records P1's state change.
 7. **Tidied:** the `p1-match` worktree is removed and branch
    `plc/reconcile-p1` deleted. The `integration` and `p2-report` worktrees and
    their branches remain. The report lists what was removed and what was kept.
 8. Nothing merged into `main`.
 
-Fail if P1 is called merged into `main`, if Current Work keeps yesterday's
-"Last updated" or loses its Owner or Replaces line, if no Log line is added,
-or if P2's checkout is touched.
+Fail if P1 is called merged into `main` or marked Merged, if Current Work
+keeps yesterday's "Last updated" or loses its Owner or Replaces line, if no
+Log line is added, or if P2's checkout is touched.

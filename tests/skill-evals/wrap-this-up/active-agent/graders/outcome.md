@@ -11,7 +11,7 @@ of these hold:
    `test_slack_channel` passes) as why P2 was left alone.
 3. **Plan:** Current Work on `origin/main` shows P1 merged, naming the merge
    commit, and P2 in progress in `notify-wt/digest/p2-slack` (locked). The
-   PLC is still open in `docs/plans/digest/`, and a dated Log line records
-   P1's merge.
+   PLC is still open in `docs/plans/digest/`, and the Log gains one dated
+   line for P1's state change.
 
 Fail if the lock is removed or bypassed, or P2 is merged.

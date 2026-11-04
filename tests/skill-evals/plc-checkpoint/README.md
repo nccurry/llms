@@ -18,7 +18,7 @@ installer copies the whole skill folder into each agent.
 | [ad-hoc](ad-hoc/case.yaml) | No plan: report from the conversation and git, create nothing |
 | [report-only](report-only/case.yaml) | "Just tell me, don't change anything" must change nothing |
 | [active-writer](active-writer/case.yaml) | Another agent's uncommitted packet edits must be left alone |
-| [old-shape](old-shape/case.yaml) | The packet is in an older shape: move it to the shared template first, ending with one `## Current Work`, then update it |
+| [old-shape](old-shape/case.yaml) | The packet is in an older shape: convert it to the shared template first, ending with one `## Current Work`, then update it |
 | [near-miss-wrap-up](near-miss-wrap-up/case.yaml) | "Wrap this up" must go to `wrap-this-up` |
 
 `check_state.py` compares a fixture with the `_snapshot.json` and
@@ -34,13 +34,20 @@ It prints JSON and exits 1 on a violation. The outcome graders then judge the
 report and the plan edits, and [plan-record.md](graders/plan-record.md) holds
 the shared template's rules for any plan edit: one `## Current Work`, Owner
 and links kept, state words with the commit in each changed phase note, a
-dated Log line per change, Verified only with evidence, and gaps recorded.
+dated Log line per state change, Verified only with evidence, and gaps
+recorded. Graders that judge a plan also run the planning skill's shipped
+format check on it in strict mode:
+
+```sh
+python3 skills/plc-planning/scripts/format_check.py --packet <packet folder> --strict
+```
 
 Every fixture packet uses the shared PLC template, owned by `@alex`, except
-the old-shape case, whose packet is old on purpose. `fixture_lib.py` builds
-the packets and checks their shape. It is shared with the
-[wrap-this-up](../wrap-this-up/README.md) and
-[plc-planning](../plc-planning/README.md) cases.
+the old-shape case, whose packet is old on purpose. The shared
+[fixture_lib.py](../fixture_lib.py) builds the packets and checks their shape,
+for this folder and the [wrap-this-up](../wrap-this-up/README.md) and
+[plc-planning](../plc-planning/README.md) cases. Its git commands ignore your
+own git config, and each fixture repository ignores Python bytecode.
 
 ## Run a case
 
@@ -57,11 +64,11 @@ There is no automated runner yet. For each case:
 3. For a comparison, repeat in a fresh copy of the fixture with the previous
    skill version, or with `plc-checkpoint` removed from the catalog.
 4. Run the case's `check` command, or `check_state.py <dest>` when it has
-   none. Then grade the answer with the case's `graders/*.md`. Record which
-   skills were loaded, the final answer, turns, and tokens.
+   none. Then grade the answer with the case's `graders/*.md`, including the
+   format check they name. Record which skills were loaded, the final answer,
+   turns, and tokens.
 
 Run each case at least three times; one run does not show reliability.
-Follow the general rules in [skill-evals.md](../../skill-evals.md).
 
 `tests/test_plc_checkpoint_fixtures.py` builds every fixture, checks the git
 facts each case depends on and the shape of each packet, and tests the

@@ -1,6 +1,6 @@
 schema_version: 1
 skill: plc-checkpoint
-description: An active packet is still in an older shape, with a Status section, the summary under a Summary heading, and phase state in the implementation plan. P1 has merged since. The packet must be moved to the shared template first, and end with exactly one Current Work block.
+description: An active packet is still in an older shape, with a Status section, the summary under a Summary heading, and phase state in the implementation plan. P1 has merged since. The packet must be converted to the shared template first, and end with exactly one Current Work block.
 setup: python fixture/build.py <dest>
 working_directory: <dest>/marina
 prompt: Catch me up on the audit log PLC and make sure the plan is current.

@@ -17,11 +17,13 @@ Read the agent's final answer, the checker's `packet_changes`, and the diff of
    answer says which and why. The palette decision's Log line is unchanged.
 5. **Records, the unmet requirement:** the gap between SHOP-001's text and
    the merged code (no cost on the row) is recorded as an `Open question:`
-   line waiting on `@alex`, a new phase row, or a Deferred phase that names
-   SHOP-001. It is never ticked off silently: P1 is not marked Verified.
-   `SRD.md` is unchanged.
-6. **Records, the moved filter:** SHOP-002 is recorded as out of this slice,
-   as a new phase row (Planned or Deferred) or in P1's note, naming SHOP-002.
+   line waiting on `@alex`, or as a new phase row (Planned, or Deferred only
+   with the user's approval) that names SHOP-001. SHOP-001 is never marked
+   met without evidence: P1 is not marked Verified. `SRD.md` is unchanged.
+6. **Records, the filter left out:** SHOP-002 is recorded as out of this
+   slice, as a new phase row or an `Open question:` line, naming SHOP-002.
+   The row is Planned, or Deferred only if the answer counts "ok, merge it"
+   as the user's approval and says so.
 7. **Records:** `tavern` is on `main`, the default branch, so the edit is left
    uncommitted and the answer asks whether to commit it.
 
