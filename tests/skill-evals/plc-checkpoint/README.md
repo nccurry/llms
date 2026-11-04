@@ -105,9 +105,9 @@ grader as it was then.
 - Point 7, run 1: it added a `## Done when` section, and a line in
   `IMPLEMENTATION_PLAN.md` pointing to the README's phase table; no
   conversion step listed either. Adding `## Done when` is now step M8, so
-  that part was a gap in the skill and grader, now fixed. But run 1 wrote
-  its own Done when line, not M8's fixed line, and the pointer line is still
-  not a listed edit: real agent behavior.
+  that part was a gap in the skill and grader, now fixed, and step M5 now
+  leaves that pointer line where the table was. But run 1 wrote its own Done
+  when line, not M8's fixed line: real agent behavior.
 - The grader's findings name no other failed point. All three runs marked
   P1 Merged and raised the missing `save_booking` call as an
   `Open question:` line.

@@ -68,7 +68,9 @@ beside the old one. "Convert" here means changing the format in place;
 5. **M5. Phases.** Move the packet's phase table that has a State or Status
    column, whole, under a new `## Phases` heading in the README. A link in a
    moved row to a heading in the file the table came from gains that file's
-   name: `[P1](#p1-parse)` becomes `[P1](IMPLEMENTATION_PLAN.md#p1-parse)`. A
+   name: `[P1](#p1-parse)` becomes `[P1](IMPLEMENTATION_PLAN.md#p1-parse)`.
+   Where the table was, leave the line
+   `Phase state lives in the README's [Phases](README.md#phases) table.` A
    packet with two such tables is an owner case.
 6. **M6. Log.** Add `## Log` at the end. Its first line comes from the
    `Created:` line, when there is one. Then add
@@ -77,10 +79,10 @@ beside the old one. "Convert" here means changing the format in place;
    `Lifecycle status:` lines in other files (the README holds the status).
 8. **M8. Done when.** When the README has no `## Done when`, add one in the
    template's [section order](../SKILL.md#order-and-format). A packet with
-   SRD.md gets the one line the
-   [requirements rules](../SKILL.md#requirements-and-checks) give, pointing
-   to SRD.md. A packet without SRD.md is an owner case: don't write
-   requirements for it.
+   SRD.md gets one fixed line pointing to it: the line the repository's own
+   README template uses, or, when it has none, the line the
+   [requirements rules](../SKILL.md#requirements-and-checks) give. A packet
+   without SRD.md is an owner case: don't write requirements for it.
 
 ## Format edits
 

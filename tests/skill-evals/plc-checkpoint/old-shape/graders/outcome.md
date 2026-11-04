@@ -65,9 +65,12 @@ run left it. Pass only if all of these hold:
    only moves lines, renames keys and makes the additions the migration
    reference lists. The packet has SRD.md, so step M8 adds `## Done when`
    after `## Phases`, holding only the line
-   `The requirements and their checks are in [SRD.md](SRD.md).`, and the
-   answer lists that line for review. No requirement or plan text is
-   reworded, and `SRD.md` is unchanged.
+   `The requirements and their checks are in [SRD.md](SRD.md).` (the repo
+   has no README template of its own), and the answer lists that line for
+   review. Step M5 leaves the line
+   `Phase state lives in the README's [Phases](README.md#phases) table.`
+   where the table was in `IMPLEMENTATION_PLAN.md`. No requirement or plan
+   text is reworded, and `SRD.md` is unchanged.
 8. **Tidied:** the `p1-record` worktree is removed and the branch
    `plc/audit-log-p1` deleted, as the checker requires.
 9. **Format check.** From the skills repository root, this exits 0 and prints
