@@ -52,9 +52,9 @@ Record the check's actual result only after running it.
    - Otherwise, start from [the default packet](assets/default-packet/README.md),
      a packet folder whose README holds the shared template, or from
      [the compact plan](assets/compact-plan.md), the same README as a single
-     `plc-<slug>.md` file. Choose the one-file plan when no trigger in
-     [Adding files](#adding-files) holds yet, unless the repository keeps
-     every plan in a folder; choose a folder when one does. A one-file plan
+     `plc-<slug>.md` file. Choose a folder when a trigger in
+     [Adding files](#adding-files) holds or the repository keeps every plan
+     in a folder; otherwise choose the one-file plan. A one-file plan
      becomes a folder when a trigger holds later, as
      [Growing a packet](#growing-a-packet) says. Small fixes may need only
      investigation, repair, and focused checks.
@@ -77,8 +77,8 @@ Record the check's actual result only after running it.
      headings. Add repository-specific sections only when they record a real
      constraint or decision.
    - Give each kind of information one home. The README owns the summary,
-     status, phase state, open questions, the Log, and a README-only
-     packet's requirements; SRD owns requirements with their checks, public
+     status, phase state, open questions, the Log, and the requirements of a
+     packet without SRD.md; SRD owns requirements with their checks, public
      contracts, and risks; SADD owns design and decisions; the implementation
      plan owns phase details and evidence. Link to existing schemas or
      evidence stores instead of copying their contents. Fixtures hold stable
@@ -87,13 +87,17 @@ Record the check's actual result only after running it.
 4. Write clear requirements and design.
    - Write each required behavior as a requirement with a permanent ID and a
      check, as the [requirements rules](#requirements-and-checks) describe.
-   - Record scope, non-scope, risks, assumptions, and open questions. Identify
-     the work each unresolved question blocks and any permitted temporary
-     assumption. Record the source revision inspected and relevant source/tests.
-     For prerequisites, name the needed capability, its owner, and an availability
-     check. Planning approval alone does not prove implementation is available.
-     For moving upstream targets, date the inspected revision without silently
-     fixing the product target to that snapshot.
+   - Record scope, non-scope, risks, assumptions, and open questions. In a
+     plan without SRD.md, scope limits go in the summary. A risk the plan
+     must track and a prerequisite to confirm go where
+     [Adding files](#adding-files) sends them; an assumption the plan must
+     track is such a risk. Identify the work each unresolved question blocks
+     and any permitted temporary assumption. Record the source revision
+     inspected and relevant source/tests. For prerequisites, name the needed
+     capability, its owner, and an availability check. Planning approval
+     alone does not prove implementation is available. For moving upstream
+     targets, date the inspected revision without silently fixing the
+     product target to that snapshot.
    - Convert an active packet in an older shape to the shared template first,
      following [old-packet conversion](references/old-packet-migration.md).
      Don't add a second status block beside the old one.
@@ -132,8 +136,11 @@ Record the check's actual result only after running it.
 
 5. Plan delivery and review.
    - Name the selected delivery's concrete endpoint. Divide it into useful
-     phases with exact prerequisites, validation, and exit criteria. Before
-     expanding it, consider reuse, deletion, or a narrower deliverable.
+     phases, each proved by its requirements' checks. Write a phase's
+     prerequisite, ordered steps, other exit criterion or rollback plan only
+     when it has one, in IMPLEMENTATION_PLAN.md, as
+     [Adding files](#adding-files) says. Before expanding it, consider reuse,
+     deletion, or a narrower deliverable.
    - For work across packets or repositories, assign each shared acceptance
      obligation one owner. Children prove their contributions; the parent owns
      the integrated outcome. Name the authoritative contract and accepted
@@ -146,7 +153,8 @@ Record the check's actual result only after running it.
    - Record each result once with a requirement/check ID, tested source (including
      relevant uncommitted changes), date, relevant dependencies and environment,
      exact method, expected result, actual result and limits: under its phase
-     in IMPLEMENTATION_PLAN.md, or in the phase note of a README-only packet.
+     in IMPLEMENTATION_PLAN.md, or, in a packet without that file, in the
+     phase's note or the bullets below the README's `## Phases` table.
      Link to an unchanged method or an existing evidence store when sufficient.
      Required skipped or unavailable checks remain incomplete.
    - For difficult hardware, performance, or platform checks, prove the method
@@ -301,8 +309,9 @@ made from one, keeps them as written here:
 
 A plan starts as the README alone. Add a file only when one of its
 triggers holds. Each trigger names a kind of information, not the size of
-the work; the only counts are more than 8 requirements for SRD.md and more
-than 3 evidence bullets for IMPLEMENTATION_PLAN.md.
+the work. The counts in them are more than 8 requirements for SRD.md, more
+than 3 evidence bullets for IMPLEMENTATION_PLAN.md, and more than one
+requirement or phase using the same test data for FIXTURES.md.
 
 - **SRD.md** when the work adds or deliberately changes a public contract:
   anything people or programs outside the code rely on, such as a CLI
@@ -348,7 +357,8 @@ this skill's `assets/default-packet/`.
    `<slug>/`, since `git mv` does not create it, then run
    `git mv plc-<slug>.md <slug>/README.md`. Its side files move in under
    the packet's names: `git mv plc-<slug>-srd.md <slug>/SRD.md`, a
-   `-sadd.md` file to `SADD.md`, and a `-plan.md` or
+   `-prd.md` file to `SRD.md` too, a `-sadd.md` file to `SADD.md`, and a
+   `-plan.md` or
    `-implementation-plan.md` file to `IMPLEMENTATION_PLAN.md`. A file that
    arrives this way is not one the plan lacks, so it needs no new copy of
    the template. Update the links into and out of the moved files, as
@@ -356,18 +366,21 @@ this skill's `assets/default-packet/`.
 2. Copy the new file's template, such as
    [SRD.md](assets/default-packet/SRD.md), and delete the sections that do
    not apply.
-3. Move the information into it, so it has one home: delete it from where
-   it was, and link to it from the part of the packet that uses it.
+3. Move the information into it, so it has one home: delete it from the
+   README section or file where it was, and link to it from the part of the
+   packet that uses it. Log lines are history and stay as written.
    - Requirements move with their IDs, text and checks unchanged, so moving
      one does not change it. Each gets Priority `Must` unless the plan says
      otherwise. `## Done when` then keeps only the pointer line the
      [requirements rules](#requirements-and-checks) give.
-   - A public contract goes to SRD.md's User Experience And Public Surface
-     and Expected Experience sections, and a risk to its Risks And
-     Assumptions table.
+   - A public contract goes to SRD.md: its definition, including
+     invalid-input behavior, in Public Contracts; a row in User Experience
+     And Public Surface; and examples in Expected Experience. A risk goes to
+     its Risks And Assumptions table.
    - A decision that meets SADD.md's trigger goes to SADD.md's decisions
-     table, and its Log line links there. Other design facts go to the
-     SADD.md section that covers them.
+     table. The Log line this update adds for it links there; older Log
+     lines stay as written. Other design facts go to the SADD.md section
+     that covers them.
    - A phase's details and evidence go under its `### P<n>: <name>` heading
      in IMPLEMENTATION_PLAN.md, and its `## Phases` row links to that
      heading.
@@ -376,7 +389,7 @@ this skill's `assets/default-packet/`.
 4. Add one dated Log line naming the file added and why:
    `- 2026-11-04 Added SRD.md: the new --max-age flag is a public contract.`
 
-A finished packet never grows; new scope opens a new packet, as
+A packet in `completed/` never grows; new scope opens a new packet, as
 [Ending a packet](#ending-a-packet) says.
 
 #### Title and summary
@@ -422,8 +435,8 @@ A finished packet never grows; new scope opens a new packet, as
 - Verified and Live need evidence in the note: the check that passed and the
   commit or CI run it passed on, such as
   `Verified — task test → 112 passed @ abc1234`, or a CI link.
-- Fuller evidence for a README-only packet goes below the table, one bullet
-  per result starting with the phase ID:
+- Fuller evidence for a packet without IMPLEMENTATION_PLAN.md goes below
+  the table, one bullet per result starting with the phase ID:
   `- P1: task test → 112 passed @ abc1234, 2026-11-03`. A packet with
   IMPLEMENTATION_PLAN.md keeps it under the phase's heading there.
 
@@ -432,7 +445,7 @@ A finished packet never grows; new scope opens a new packet, as
 - Each requirement says what is true when it is done, and names a check: a
   command, a test, or a written manual procedure, with its expected result.
   EARS wording ("WHEN … the system SHALL …") is optional.
-- A README-only packet lists requirements under `## Done when`. A packet
+- A packet without SRD.md lists requirements under `## Done when`. A packet
   with SRD.md keeps its requirements in SRD.md, and its `## Done when` holds
   only one line pointing there. If the repository has its own README
   template whose `## Done when` line points to SRD.md, use that line;

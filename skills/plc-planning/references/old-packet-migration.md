@@ -25,11 +25,11 @@ beside the old one. "Convert" here means changing the format in place;
   another worktree's branch or commit, or uncommitted edits you did not
   make. The packet you are updating for its own work is yours to convert.
 - Don't reword text. The only edits are moving whole lines and the format
-  edits below. Four steps change what the packet says: M1's duplicate rule
+  edits below. Five steps change what the packet says: M1's duplicate rule
   deletes lines, M5 adds a pointer line where a moved table was (and
-  removes a heading the move left empty), M8 adds a `## Done when` line,
-  and E6 can add evidence. List each line they touch for the owner's
-  review.
+  removes a heading the move left empty), M7 removes old status lines, M8
+  adds a `## Done when` line, and E6 can add evidence. List each line they
+  touch for the owner's review.
 - An owner case is a point only the packet's owner can settle. Leave the
   text as it is, and list the case in your report and as an
   `Open question:` line. Never guess one. Owner cases include a status that
@@ -83,7 +83,8 @@ beside the old one. "Convert" here means changing the format in place;
 7. **M7. Old status lines.** Remove `Folder:` lines (the path says it). In
    other files, remove `Lifecycle status:` lines, and `- Lifecycle:` lines
    that start with a packet status word, as the format check reports them
-   (the README holds the status).
+   (the README holds the status). A line whose word disagrees with the
+   README's Status is an owner case: leave it and list it.
 8. **M8. Done when.** When the README has no `## Done when` and the packet
    has SRD.md, add `## Done when` in the template's
    [section order](../SKILL.md#order-and-format), holding only the line the
@@ -131,5 +132,5 @@ When the cells disagree, the row is an owner case.
 
 Run the [format check](../SKILL.md#format-check) on the packet, first in
 default mode and then with `--strict`. Each finding left must be one of the
-owner cases you listed. Report those cases, and each line M1 deleted or
-M5, M8 or E6 added.
+owner cases you listed. Report those cases, and each line M1 or M7 deleted
+or M5, M8 or E6 added.

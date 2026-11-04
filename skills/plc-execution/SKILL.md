@@ -54,12 +54,15 @@ work list and the sections that own them. Record each result once and link
 to it elsewhere; do not restate the skill's general workflow in the packet. Keep raw logs,
 repeated handoffs, abandoned attempts, and session narration out of requirements and
 design. A new reader must be able to identify approved scope, current design,
-and remaining work without reconstructing the conversation. Label pending
-proposals as unapproved; do not silently weaken or defer requirements to match
-delivered code. Update the plan's Current Work block, its `## Phases` rows,
-and its `## Log` with the rewrite rules in `plc-checkpoint`'s "Rewrite
-Current Work" step. Preserve repository-specific locations. Do not append
-successive checkpoints or keep superseded instructions as current directions.
+and remaining work without reconstructing the conversation. Record a proposal
+that would add scope as an `Open question:` line, as `plc-planning`'s
+[Adding files](../plc-planning/SKILL.md#adding-files) rule says, and label any
+other pending proposal as unapproved; do not silently weaken or defer
+requirements to match delivered code. Update the plan's Current Work block,
+its `## Phases` rows, and its `## Log` with the rewrite rules in
+`plc-checkpoint`'s "Rewrite Current Work" step. Preserve repository-specific
+locations. Do not append successive checkpoints or keep superseded
+instructions as current directions.
 
 Useful implementation notes belong in the packet and must be committed
 with the work. Delete temporary notes when no longer useful. Keep raw receipts
