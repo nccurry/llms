@@ -117,8 +117,9 @@ grader as it was then.
 - Checked by hand against the current grader, using the saved run output;
   no agent re-run and no new grading: point 2 passes for all three, and
   point 5 passes for all three, since each has a dated surprise line for
-  the missing call. Point 6 fails for all three: P1 is Merged, but nobody
-  built the `save_booking` call, so it is In progress. Point 7 fails for
+  the missing call. Point 6 fails for all three: each marked P1 Merged, but
+  P1 should be In progress, because nobody built the `save_booking` call.
+  Point 7 fails for
   all three: run 1 as above, and runs 2 and 3 have no `## Done when` and
   no pointer line. `check_state.py`, run with the current `packet_content`
   on copies of the saved runs, fails all three on P1's word and the Done
