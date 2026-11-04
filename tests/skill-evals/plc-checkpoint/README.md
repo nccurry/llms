@@ -102,19 +102,24 @@ grader as it was then.
   wanted the converted `none` kept. Grader defect, now fixed: converting
   keeps the value, and the status update that follows writes the template's
   `None`.
-- Point 7, run 1: it added a `## Done when` section, and a line in
-  `IMPLEMENTATION_PLAN.md` pointing to the README's phase table; no
-  conversion step listed either. Adding `## Done when` is now step M8, so
-  that part was a gap in the skill and grader, now fixed, and step M5 now
-  leaves that pointer line where the table was. But run 1 wrote its own Done
-  when line, not M8's fixed line: real agent behavior.
+- Point 7, run 1: it added a `## Done when` section and, in
+  `IMPLEMENTATION_PLAN.md`, a line pointing to the README's phase table. At
+  the time, no conversion step called for either line. Steps M8 and M5 now
+  call for both, so that part was a gap in the skill and grader, now fixed.
+  But run 1's Done when line was its own wording, not M8's line, so it
+  would still fail point 7 under the current grader: real agent behavior.
 - The grader's findings name no other failed point. All three runs marked
   P1 Merged and raised the missing `save_booking` call as an
   `Open question:` line.
+- Read against the current grader, without a new run or grade: point 2 now
+  passes for all three, and point 5 passes for all three, since each has a
+  dated surprise line for the missing call. Point 6 fails for all three: P1
+  is Merged, but nobody built the `save_booking` call, so it is In
+  progress. Point 7 fails for all three: run 1 as above, and runs 2 and 3
+  have no `## Done when` and no pointer line.
 - These runs used the skill text and grader from before the 2026-11-04
-  fixes (the In progress rule for a partly merged phase, step M8 and the
-  grader changes above), so the state-word and grader fixes have not been
-  re-run yet.
+  fixes (the rules for a phase's parts, steps M5 and M8, and the grader
+  changes above), so those fixes have not been re-run yet.
 
 ### 2026-10-27, first run of plc-checkpoint
 

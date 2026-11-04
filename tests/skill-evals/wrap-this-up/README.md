@@ -23,7 +23,10 @@ It extracts the plan from `origin/main` and checks it with fixture_lib's
 `packet_shape_problems`, which runs the shipped format check in strict mode
 plus the evals' own rules, including the `@alex` owner. It reads the packet
 status as a word, so `Done` counts as Complete, and checks whether Current
-Work opens with the historical-record line.
+Work opens with the historical-record line. In unmet-requirement and
+direct-mid-stream, the phase that still holds an unbuilt part must be In
+progress, or Merged or Verified once its note says `moved to P<n>` and that
+row exists, and "Where the work lives" must not name a removed checkout.
 
 It also compares the end state with `_snapshot.json`. A worktree or local
 branch the run added must be gone, including the `_merge` checkout the skill
@@ -71,18 +74,24 @@ with the grader as it was then.
   `In progress — DIG-001 merged @ <merge>; DIG-003 not started`, and the
   grader wanted Merged. Grader defect, now fixed: the owner decided on
   2026-11-04 that a phase with part of its work merged and part not started
-  is In progress.
+  is In progress. These notes pass the current point 4 because they name
+  the merge commit and the missing requirement, DIG-003.
 - Point 4, run 3: P1 read
-  `Planned — DIG-001 merged @ <merge>; DIG-003 not started`. The agent
-  applied plc-checkpoint's old rule, "A phase takes the earliest word, in
-  the list's order, among its items", as written, so this was neither a
-  grader defect nor the agent's own error. That rule has since been
-  rewritten; Planned still fails.
+  `Planned — DIG-001 merged @ <merge>; DIG-003 not started`. Skill defect,
+  now fixed: the agent applied plc-checkpoint's old rule, "A phase takes the
+  earliest word, in the list's order, among its items", as written. That
+  rule has since been rewritten; Planned still fails.
 - Point 5, run 2: one dated Log line named both the merge and the gap, and
   the grader wanted a line for each. Grader defect, now fixed: P1's word did
-  not change, so the gap is the one event the Log rule asks for, and one
-  line naming both passes.
+  not change, so a line about the merge is not needed, and one line naming
+  both the merge and the gap passes.
 - The grader's findings name no other failed point.
+- Read against the current grader, without a new run or grade: point 4
+  passes for runs 1 and 2 and still fails for run 3, and point 5 passes for
+  all three, since each has a dated line for the gap and an
+  `Open question:` line that names what it blocks. Run on a copy of each
+  run with the new expectations, check_wrap.py passes runs 1 and 2 and
+  fails run 3 on P1's word.
 - These runs used the skill text and grader from before the 2026-11-04
   fixes, so the state-word and grader fixes have not been re-run yet.
 

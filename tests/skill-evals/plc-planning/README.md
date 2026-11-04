@@ -59,5 +59,9 @@ grader as it was then.
   phase, not a first step. Real agent behavior; the grader now gives an
   example of a concrete step.
 - The grader's findings name no other failed point.
+- Read against the current grader, without a new run or grade: point 6
+  passes for runs 1 and 2. Point 3 is a judgment; runs 1 and 2 name the
+  files to change (`tests/test_harbor.py`, `harbor.py`), and run 3 names
+  none, so it still fails.
 - These runs used the skill text and grader from before the 2026-11-04
   fixes, so the state-word and grader fixes have not been re-run yet.
