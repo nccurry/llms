@@ -392,16 +392,38 @@ def _phase_rows(readme: str) -> list[list[str]]:
     return [format_check().cells(line) for line in rows if line.lstrip().startswith("|")]
 
 
-def phase_state(readme: str, phase: str) -> str | None:
-    """The canonical state word of `phase`'s row in a README's `## Phases` table."""
+def phase_cell(readme: str, phase: str) -> str | None:
+    """The State (or Status) cell of `phase`'s row in a README's `## Phases`
+    table: its word and note."""
     rows = _phase_rows(readme)
     header = [cell.lower() for cell in rows[0]] if rows else []
     column = next((header.index(name) for name in ("state", "status") if name in header), None)
     row = next((row for row in rows[2:] if row[0] == phase), None)
     if column is None or row is None or column >= len(row):
         return None
+    return row[column]
+
+
+def phase_state(readme: str, phase: str) -> str | None:
+    """The canonical state word of `phase`'s row in a README's `## Phases` table."""
+    cell = phase_cell(readme, phase)
+    if cell is None:
+        return None
     fc = format_check()
-    return fc.lookup_word(fc.PHASE_WORDS, row[column])
+    return fc.lookup_word(fc.PHASE_WORDS, cell)
+
+
+def listed_checkouts(readme: str) -> list[str]:
+    """The Checkout cell of each row of Current Work's "Where the work lives"
+    table, without the header and divider."""
+    lines = section_lines(readme, "Current Work")
+    start = next(
+        (i for i, line in enumerate(lines) if line.startswith("Where the work lives")), None
+    )
+    if start is None:
+        return []
+    table = [line for line in lines[start + 1 :] if line.lstrip().startswith("|")]
+    return [cells[0] for cells in map(format_check().cells, table[2:]) if cells]
 
 
 def packet_status(readme: str) -> str | None:

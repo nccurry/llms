@@ -256,5 +256,16 @@ COMPLETED_PLAN = {
 }
 
 
+def open_plan_with_unbuilt_part(phase: str) -> dict:
+    """OPEN_PLAN for a case where `phase` merges with a part nobody built.
+
+    While the phase still holds that part it is In progress; once its note
+    says `moved to P<n>`, it may be Merged or Verified. "Where the work
+    lives" must not name a checkout the run removed.
+    """
+    rule = {"states": ["In progress"], "after_move": ["Merged", "Verified"]}
+    return {**OPEN_PLAN, "phases": {phase: rule}, "lists_no_removed_checkouts": True}
+
+
 def expect(dest: Path, **data) -> None:
     (dest / "_expect.json").write_text(json.dumps(data, indent=2), encoding="utf-8")

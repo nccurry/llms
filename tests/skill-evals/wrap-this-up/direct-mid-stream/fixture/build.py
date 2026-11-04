@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from digest_fixture import OPEN_PLAN, build, expect  # noqa: E402
+from digest_fixture import build, expect, open_plan_with_unbuilt_part  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import destination  # noqa: E402
@@ -18,6 +18,7 @@ expect(
     deleted_branches=["plc/digest-p1", "plc/digest-p2"],
     deleted_remote_branches=["plc/digest-p1"],
     absent_remote_files=["docs/plans/completed/digest/README.md"],
-    plans=[OPEN_PLAN],
+    # P2 still holds channel posting, which nobody built.
+    plans=[open_plan_with_unbuilt_part("P2")],
 )
 print(dest)

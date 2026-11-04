@@ -1,4 +1,5 @@
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -80,7 +81,12 @@ class WrapThisUpFixtureTest(unittest.TestCase):
     check_wrap.py must pass a correct result and name what a wrong one broke.
 
     The helpers follow the skill's direct route: merge in a `_merge` checkout,
-    push from it, remove it, then fast-forward the primary checkout."""
+    push from it, remove it, then fast-forward the primary checkout.
+
+    The unmet-requirement and direct-mid-stream results rewrite the plan the
+    way their graders expect: Current Work, phase notes, open questions and
+    Log. Every other result is checker-only: it changes just what
+    check_wrap.py reads and leaves the rest of the plan to the graders."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -137,6 +143,48 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         if push:
             self.push()
 
+    def rewrite_readme(self, change) -> None:
+        """Apply `change`, a function from text to text, to the plan's README."""
+        path = self.merge_dir / PLAN / "README.md"
+        text = path.read_text(encoding="utf-8")
+        new = change(text)
+        self.assertNotEqual(new, text)
+        path.write_text(new, encoding="utf-8", newline="\n")
+
+    def set_key(self, key: str, value: str) -> None:
+        """Replace the value of Current Work's `- <key>:` line."""
+        pattern = re.compile(rf"^- {re.escape(key)}: .*$", re.MULTILINE)
+        self.rewrite_readme(lambda text: pattern.sub(lambda _: f"- {key}: {value}", text, 1))
+
+    def set_phase(self, phase: str, state: str) -> None:
+        """Set the State cell of `phase`'s row, which every fixture starts In progress."""
+
+        def change(text: str) -> str:
+            lines = text.split("\n")
+            i = next(i for i, line in enumerate(lines) if line.startswith(f"| {phase} |"))
+            self.assertTrue(lines[i].endswith("| In progress |"), lines[i])
+            lines[i] = lines[i].removesuffix("In progress |") + f"{state} |"
+            return "\n".join(lines)
+
+        self.rewrite_readme(change)
+
+    def add_phase_row(self, row: str) -> None:
+        """Add a row after the last row of the `## Phases` table."""
+        end = "\n\n## Done when"
+        self.rewrite_readme(lambda text: text.replace(end, f"\n{row}{end}"))
+
+    def clear_checkouts(self) -> None:
+        """Replace the "Where the work lives" rows with the template's None row."""
+        rows = re.compile(r"(?:^\| `notify-wt/[^\n]*\n)+", re.MULTILINE)
+        self.rewrite_readme(lambda text: rows.sub("| None | | | |\n", text, 1))
+
+    def add_open_question(self, question: str) -> None:
+        self.edit_readme("## Log", f"## Open questions\n\n- Open question: {question}\n\n## Log")
+
+    def add_log_line(self, line: str) -> None:
+        """Add a dated line at the end of `## Log`, the README's last section."""
+        self.rewrite_readme(lambda text: f"{text}- {line}\n")
+
     def complete_the_plan(self, merge: str, historical: str = "plain", push: bool = True) -> None:
         """Mark the plan Complete with P1 Verified, move it to completed/, and
         update AGENTS.md's link to it. `historical` is "plain", "item" (a list
@@ -164,9 +212,65 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         self.remove(self.p1, "plc/digest-p1", on_remote=True)
         return merge
 
-    def correct_mid_stream(self) -> None:
-        self.merge("plc/digest-p1", "plc/digest-p2")
-        self.push()
+    def keep_unmet_requirement_open(
+        self,
+        p1_state: str = "In progress — DIG-001 merged @ `{merge}`; DIG-003 not started",
+        new_rows: tuple[str, ...] = (),
+        clear_checkouts: bool = True,
+    ) -> None:
+        """The unmet-requirement result its grader expects: P1 merged, the plan
+        rewritten with DIG-003 recorded as missing, and everything cleaned up.
+        `p1_state` and `new_rows` may name `{merge}`, the merge commit."""
+        merge = self.finish_p1()
+        self.set_key("Last updated", f"2026-11-03, `main` at `{merge}`")
+        self.set_key(
+            "Next action",
+            "Build DIG-003, the `Unsubscribe:` footer, and `test_email_footer` on a"
+            " new branch from `main`, unless @alex defers or drops it.",
+        )
+        self.set_key("Current state", f"DIG-001 merged @ `{merge}`; DIG-003 not started.")
+        if clear_checkouts:
+            self.clear_checkouts()
+        self.set_phase("P1", p1_state.format(merge=merge))
+        for row in new_rows:
+            self.add_phase_row(row.format(merge=merge))
+        self.add_open_question(
+            "Build DIG-003 next, or defer or drop it? (blocks P1; waits on @alex)"
+        )
+        self.add_log_line(
+            f"2026-11-03 DIG-001 merged @ `{merge}`; surprise: DIG-003 was never built."
+        )
+        self.commit_plan("docs(plan): DIG-001 merged; DIG-003 open")
+        self.close_merge_checkout()
+
+    def wrap_mid_stream(
+        self,
+        p2_state: str = "In progress — Slack text merged @ `{p2}`; channel posting not started",
+        new_rows: tuple[str, ...] = (),
+        merge_p2: bool = True,
+    ) -> None:
+        """The direct-mid-stream result its grader expects: both branches
+        merged, the plan rewritten with P2's channel posting still to do, and
+        everything cleaned up. `p2_state` and `new_rows` may name `{p2}`, P2's
+        merge commit. With `merge_p2` false, P2's branch is left unmerged."""
+        p1 = self.merge("plc/digest-p1")
+        p2 = self.merge("plc/digest-p2") if merge_p2 else p1
+        self.set_key("Last updated", f"2026-11-03, `main` at `{p2}`")
+        self.set_key(
+            "Next action",
+            "Build P2's channel posting and `test_slack_channel` on a new branch from `main`.",
+        )
+        self.set_key(
+            "Current state",
+            f"P1 merged @ `{p1}`. P2's Slack text merged @ `{p2}`; channel posting not started.",
+        )
+        self.clear_checkouts()
+        self.set_phase("P1", f"Merged — `{p1}`")
+        self.set_phase("P2", p2_state.format(p2=p2))
+        for row in new_rows:
+            self.add_phase_row(row.format(p2=p2))
+        self.add_log_line(f"2026-11-03 P1 Merged @ `{p1}`.")
+        self.commit_plan("docs(plan): update digest status")
         self.remove(self.p1, "plc/digest-p1", on_remote=True)
         self.remove(self.p2, "plc/digest-p2")
         self.close_merge_checkout()
@@ -258,8 +362,27 @@ class WrapThisUpFixtureTest(unittest.TestCase):
 
     def test_correct_mid_stream_result_passes(self):
         self.build("direct-mid-stream")
-        self.correct_mid_stream()
+        self.wrap_mid_stream()
         self.assertEqual(check(self.dest), OK)
+        packet = self.app / PLAN
+        self.assertEqual(format_check().check_packet(packet, strict=True), [])
+        self.assertEqual(eval_only_problems(packet, owner=OWNER), [])
+
+    def check_with_channel_posting_moved(self, p2_state: str, row: str = "P3") -> dict:
+        """Wrap up with channel posting in its own row `row` and P2 at `p2_state`."""
+        self.build("direct-mid-stream")
+        new_row = f"| {row} | Channel posting | | Planned — moved from P2 |"
+        self.wrap_mid_stream(p2_state, new_rows=(new_row,))
+        return check(self.dest)
+
+    def test_p2_merged_after_moving_channel_posting_passes(self):
+        # Once channel posting has its own row, P2 holds only the merged Slack text.
+        state = "Merged — `{p2}`; channel posting moved to P3"
+        self.assertEqual(self.check_with_channel_posting_moved(state), OK)
+
+    def test_p2_verified_after_moving_channel_posting_passes(self):
+        state = "Verified — run_tests.py → 3 passed @ `{p2}`; channel posting moved to P3"
+        self.assertEqual(self.check_with_channel_posting_moved(state), OK)
 
     def test_correct_wrap_up_passes(self):
         self.build("complete-moves-plan")
@@ -302,25 +425,8 @@ class WrapThisUpFixtureTest(unittest.TestCase):
 
     def test_keeping_an_unmet_requirement_open_passes(self):
         self.build("unmet-requirement")
-        merge = self.finish_p1()
-        # Part of P1 merged and part never started, so P1 stays In progress.
-        self.edit_readme(
-            "| In progress |",
-            f"| In progress — DIG-001 merged @ `{merge}`; DIG-003 and"
-            " `test_email_footer` not started |",
-        )
-        self.edit_readme(
-            "## Log",
-            "## Open questions\n\n"
-            "- Open question: finish DIG-003 or drop it? (waits on @alex)\n\n## Log",
-        )
-        self.edit_readme(
-            "- 2026-10-26 Created.\n",
-            "- 2026-10-26 Created.\n"
-            f"- 2026-11-03 DIG-001 merged @ `{merge}`; DIG-003 was never built.\n",
-        )
-        self.commit_plan("docs(plan): DIG-001 merged; DIG-003 open")
-        self.close_merge_checkout()
+        # P1 still holds DIG-003, which nobody built, so it stays In progress.
+        self.keep_unmet_requirement_open()
         self.assertEqual(check(self.dest), OK)
         packet = self.app / PLAN
         self.assertEqual(format_check().check_packet(packet, strict=True), [])
@@ -332,6 +438,22 @@ class WrapThisUpFixtureTest(unittest.TestCase):
             "strict: Status In progress does not match the completed/ folder", as_completed[0]
         )
         self.assertIn("strict: In progress phase in a completed/ packet", as_completed[1])
+
+    def check_with_dig_003_moved(self, p1_state: str, row: str = "P2") -> dict:
+        """Wrap up with DIG-003 in its own row `row` and P1 at `p1_state`."""
+        self.build("unmet-requirement")
+        new_row = f"| {row} | Email footer | | Planned — DIG-003, moved from P1 |"
+        self.keep_unmet_requirement_open(p1_state, new_rows=(new_row,))
+        return check(self.dest)
+
+    def test_p1_merged_after_moving_dig_003_passes(self):
+        # Once DIG-003 has its own row, P1 holds only the merged DIG-001.
+        report = self.check_with_dig_003_moved("Merged — `{merge}`; DIG-003 moved to P2")
+        self.assertEqual(report, OK)
+
+    def test_p1_verified_after_moving_dig_003_passes(self):
+        state = "Verified — run_tests.py → 2 passed @ `{merge}`; DIG-003 moved to P2"
+        self.assertEqual(self.check_with_dig_003_moved(state), OK)
 
     def test_plan_only_commit_in_the_primary_checkout_is_allowed(self):
         # A checkpoint may commit a plan update on local main.
@@ -346,6 +468,52 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         self.assertEqual(check(self.dest), OK)
 
     # One wrong result per expectation; each names exactly what it broke.
+
+    def test_p1_merged_while_it_holds_dig_003_fails(self):
+        self.build("unmet-requirement")
+        self.keep_unmet_requirement_open("Merged — `{merge}`; DIG-003 not started")
+        self.assert_failures(
+            [f"plan {PLAN} on origin/main: phase P1 is Merged, expected In progress"]
+        )
+
+    def test_p1_planned_while_dig_001_merged_fails(self):
+        self.build("unmet-requirement")
+        state = "Planned — DIG-001 merged @ `{merge}`; DIG-003 not started"
+        self.keep_unmet_requirement_open(state)
+        self.assert_failures(
+            [f"plan {PLAN} on origin/main: phase P1 is Planned, expected In progress"]
+        )
+
+    def test_moved_to_a_row_that_does_not_exist_fails(self):
+        # The note says DIG-003 moved, but no P2 row holds it, so P1 still does.
+        state = "Merged — `{merge}`; DIG-003 moved to P2"
+        report = self.check_with_dig_003_moved(state, row="P3")
+        expected = f"plan {PLAN} on origin/main: phase P1 is Merged, expected In progress"
+        self.assertEqual(report["failures"], [expected])
+
+    def test_p2_merged_while_it_holds_channel_posting_fails(self):
+        self.build("direct-mid-stream")
+        self.wrap_mid_stream("Merged — `{p2}`; channel posting not started")
+        self.assert_failures(
+            [f"plan {PLAN} on origin/main: phase P2 is Merged, expected In progress"]
+        )
+
+    def test_p2_planned_while_its_slack_text_merged_fails(self):
+        self.build("direct-mid-stream")
+        self.wrap_mid_stream("Planned — Slack text merged @ `{p2}`; channel posting not started")
+        self.assert_failures(
+            [f"plan {PLAN} on origin/main: phase P2 is Planned, expected In progress"]
+        )
+
+    def test_listing_a_removed_checkout_fails(self):
+        self.build("unmet-requirement")
+        self.keep_unmet_requirement_open(clear_checkouts=False)
+        self.assert_failures(
+            [
+                f"plan {PLAN} on origin/main: Where the work lives still names removed "
+                f"{P1_WORKTREE}"
+            ]
+        )
 
     def test_merge_and_plan_committed_but_not_pushed_fails(self):
         self.build("complete-moves-plan")
@@ -365,9 +533,7 @@ class WrapThisUpFixtureTest(unittest.TestCase):
 
     def test_unmerged_branch_fails(self):
         self.build("direct-mid-stream")
-        self.finish_p1()
-        self.remove(self.p2, "plc/digest-p2")
-        self.close_merge_checkout()
+        self.wrap_mid_stream(merge_p2=False)
         self.assert_failures([f"{self.p2_tip[:7]} is not on origin/main"])
 
     def test_merging_locked_work_fails(self):
@@ -546,9 +712,11 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         )
 
     def test_not_recording_an_unmet_requirement_fails(self):
+        # Checker-only: the plan never names DIG-003.
         self.build("unmet-requirement")
         merge = self.finish_p1()
-        self.edit_readme("| In progress |", f"| Merged — `{merge}` |")
+        self.set_phase("P1", f"In progress — `{merge}`")
+        self.clear_checkouts()
         self.commit_plan("docs(plan): P1 merged")
         self.close_merge_checkout()
         self.assert_failures([f"{PLAN}/README.md on origin/main lacks 'DIG-003'"])
@@ -557,6 +725,7 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         self.build("direct-mid-stream")
         self.merge("plc/digest-p1", "plc/digest-p2")
         self.edit_readme("- Owner: @alex", "- Owner: the user")
+        self.clear_checkouts()
         self.commit_plan("docs(plan): rewrite Current Work")
         self.remove(self.p1, "plc/digest-p1", on_remote=True)
         self.remove(self.p2, "plc/digest-p2")
@@ -573,6 +742,7 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         self.build("direct-mid-stream")
         self.merge("plc/digest-p1", "plc/digest-p2")
         self.edit_readme("- Status: In progress", f"- Status: {word}")
+        self.clear_checkouts()
         self.commit_plan("docs(plan): digest complete")
         self.remove(self.p1, "plc/digest-p1", on_remote=True)
         self.remove(self.p2, "plc/digest-p2")

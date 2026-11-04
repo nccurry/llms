@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from digest_fixture import OPEN_PLAN, build, expect  # noqa: E402
+from digest_fixture import build, expect, open_plan_with_unbuilt_part  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from fixture_lib import destination  # noqa: E402
@@ -29,6 +29,7 @@ expect(
     # The README starts with no mention of DIG-003, so naming it shows the gap
     # was recorded; SRD.md must still list it.
     remote_text={README: ["DIG-003"], SRD: ["DIG-003"]},
-    plans=[OPEN_PLAN],
+    # P1 still holds DIG-003, which nobody built.
+    plans=[open_plan_with_unbuilt_part("P1")],
 )
 print(dest)

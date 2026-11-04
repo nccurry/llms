@@ -23,12 +23,19 @@ _expect.json may list:
                     on the remote's main
   absent_remote_text       {path: [text, ...]}: no text may appear in that
                     file on the remote's main
-  plans             [{path, statuses, owner, historical}]: a packet folder on
-                    the remote's main. It must pass fixture_lib's
+  plans             [{path, statuses, owner, historical, phases,
+                    lists_no_removed_checkouts}]: a packet folder on the
+                    remote's main. It must pass fixture_lib's
                     packet_shape_problems, including the Owner rule for
                     `owner`; its packet status must be one of `statuses`; and
                     its Current Work must open with the historical-record
                     line when `historical` is true, and not have it when false.
+                    `phases` maps a phase ID to {states, after_move}: the
+                    phase's state word must be one of `states`, or one of
+                    `after_move` once its note says `moved to P<n>` and the
+                    table has that row. When `lists_no_removed_checkouts` is
+                    true, "Where the work lives" must not name a worktree
+                    from `removed_worktrees` that is no longer registered.
 
 Every run is also compared with _snapshot.json. A worktree or local branch
 the run added must be gone by the end, including the merge checkout the skill
@@ -43,6 +50,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import subprocess
 import sys
 import tarfile
@@ -53,8 +61,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from fixture_lib import (  # noqa: E402
     GIT_ENV,
     is_ancestor,
+    listed_checkouts,
     packet_shape_problems,
     packet_status,
+    phase_cell,
+    phase_state,
     run_git,
     section_lines,
     status_paths,
@@ -295,6 +306,33 @@ class Checker:
             )
         if historical is False and HISTORICAL in "\n".join(section_lines(readme, "Current Work")):
             self.failures.append(f"{label}: Current Work has the historical-record line")
+        for phase, rule in plan.get("phases", {}).items():
+            self.check_phase(label, readme, phase, rule)
+        if plan.get("lists_no_removed_checkouts"):
+            self.check_listed_checkouts(label, readme)
+
+    def check_phase(self, label: str, readme: str, phase: str, rule: dict) -> None:
+        """The phase's word must be one of `states`; once its note says
+        `moved to P<n>` and that row exists, one of `after_move` instead."""
+        moved = re.search(r"\b[Mm]oved to (P\d+[a-z]?)\b", phase_cell(readme, phase) or "")
+        allowed = rule["states"]
+        if moved and phase_cell(readme, moved[1]) is not None:
+            allowed = rule.get("after_move", allowed)
+        word = phase_state(readme, phase) or "missing"
+        if word not in allowed:
+            expected = " or ".join(allowed)
+            self.failures.append(f"{label}: phase {phase} is {word}, expected {expected}")
+
+    def check_listed_checkouts(self, label: str, readme: str) -> None:
+        """Where the work lives must not name a worktree the run removed."""
+        listing = run_git(self.app, "worktree", "list", "--porcelain").stdout
+        registered = worktree_records(listing)
+        listed = listed_checkouts(readme)
+        for rel in self.cleanup("removed_worktrees"):
+            if (self.dest / rel).resolve() in registered:
+                continue
+            if any(Path(rel).name in cell for cell in listed):
+                self.failures.append(f"{label}: Where the work lives still names removed {rel}")
 
 
 def check(dest: Path) -> dict:
