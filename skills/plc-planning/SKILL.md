@@ -436,9 +436,14 @@ python3 <skill-dir>/scripts/format_check.py <plans folder> --people "Alex Kim=al
   `plc-012-retry-srd.md`.
 - Default mode checks the structure: the summary, one Current Work with its
   first keys, known words and an Owner `@handle`, a Log, and status only in
-  the README. A phase table with state, or a `- Status:` or `- State:` line,
-  in IMPLEMENTATION_PLAN.md, SRD.md or SADD.md is a finding. It ignores
-  fenced code blocks. `--strict` adds the rules across fields.
+  the README. In IMPLEMENTATION_PLAN.md, SRD.md or SADD.md, a phase table
+  with state is a finding, and so is a `- Status:` or `- State:` line that
+  starts with a status or phase state word, or a `- Lifecycle:` line that
+  starts with a status word. A line such as `- Status: Approved; …` is not
+  status. When SRD.md exists, `## Done when` holding more than one line, or
+  a requirement ID from SRD.md's requirements table, is a finding too; HTML
+  comments there do not count. It ignores fenced code blocks. `--strict`
+  adds the rules across fields.
 - `--lifecycle <folder>` checks a packet as if it were in that lifecycle
   folder, for example before a finished packet moves to `completed/`.
 - `--people` takes `NAME=HANDLE` pairs (HANDLE may start with `@`) and

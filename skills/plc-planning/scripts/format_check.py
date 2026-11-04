@@ -17,8 +17,13 @@ Default mode checks the structure every active packet needs: a summary under
 the title; one ## Current Work block that starts with Status, Owner and Last
 updated, uses known words and names an @handle; a ## Log section; and status
 only in the README. Phase state belongs in the README's ## Phases table, not
-in a phase table or a `- Status:` or `- State:` line in IMPLEMENTATION_PLAN.md,
-SRD.md or SADD.md. Fenced code blocks are ignored.
+in IMPLEMENTATION_PLAN.md, SRD.md or SADD.md: not in a phase table, a
+`- Status:` or `- State:` line that starts with a status or phase state word,
+or a `- Lifecycle:` line that starts with a status word. When SRD.md exists,
+it holds the requirements: the README's ## Done when holds one line pointing
+there, and no requirement ID from SRD.md's requirements table (the table
+whose first column is ID). HTML comments in ## Done when do not count. Fenced
+code blocks are ignored.
 
 --strict also checks the five rules across fields:
   1. Status matches the lifecycle folder.
@@ -45,6 +50,9 @@ Python API, for tools that load this file by path:
   is_packet(path) -> bool
       Whether an entry of a lifecycle folder is a packet: a folder with
       Markdown files, or a one-file plc-*.md plan that is not a side file.
+  requirement_rows(lines) -> list[tuple[int, list[str]]]
+      The rows of SRD.md's requirements table, the table whose first column
+      is ID, as (1-based line, cells).
   unfenced(lines) -> list[str]
       The lines with each fenced code block, fences included, replaced by
       empty strings, so line numbers stay the same.
@@ -98,6 +106,13 @@ ACTIVE_FOLDERS = ("planned", "in-progress")
 FIRST_KEYS = ["status", "owner", "last updated"]
 MAX_KEYS = 12
 STATE_KEYS = {"status", "state"}
+# Key lines that give status outside the README, by key, with the words that
+# make them status. A Status line such as "Approved; ..." is not status.
+OUTSIDE_STATUS_KEYS = {
+    "status": (PHASE_WORDS, PACKET_WORDS),
+    "state": (PHASE_WORDS, PACKET_WORDS),
+    "lifecycle": (PACKET_WORDS,),
+}
 STATE_COLUMNS = ("state", "status")
 OLD_STATE_COLUMNS = {"implementation", "verification", "delivery"}
 MAX_BYTES = 4 * 1024 * 1024
@@ -111,6 +126,7 @@ SIDE_FILE = re.compile(r"-(?:srd|sadd|prd)\.md$")
 PLAN_SIDE_FILE = re.compile(r"-(?:implementation-)?plan\.md$")
 
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 DIVIDER = re.compile(r"^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$")
 PIPE = re.compile(r"(?<!\\)\|")
 KEY = re.compile(r"- (?:\*\*)?([A-Z][A-Za-z /-]*?)(?:\*\*)?:(?:\*\*)?(?:\s+(.*))?$")
@@ -224,6 +240,15 @@ def unfenced(lines):
             fence = None
         out.append("")
     return out
+
+
+def uncommented(lines):
+    """The lines with HTML comments removed. A comment's line breaks stay, so
+    line numbers stay the same."""
+    if not lines:
+        return []
+    text = COMMENT.sub(lambda match: "\n" * match[0].count("\n"), "\n".join(lines))
+    return text.split("\n")
 
 
 def sections(lines):
@@ -466,15 +491,54 @@ def check_other_file(path, lines):
     found = [finding(path, table.line, OUTSIDE) for table in tables(lines) if holds_phase_state(table)]
     for i, line in enumerate(lines):
         key = KEY.match(line)
-        if not key or key[1].lower() not in STATE_KEYS:
-            continue
-        value = key[2] or ""
-        if lookup_word(PHASE_WORDS, value) or lookup_word(PACKET_WORDS, value):
+        words = OUTSIDE_STATUS_KEYS.get(key[1].lower()) if key else None
+        if words and any(lookup_word(table, key[2] or "") for table in words):
             message = (
                 f"Phases: {key[1]} line outside the README; "
                 "status lives in its ## Current Work and ## Phases"
             )
             found.append(finding(path, i + 1, message))
+    return found
+
+
+def requirement_rows(lines):
+    """The rows of SRD.md's requirements table, the table whose first column is
+    ID, as (1-based line, cells)."""
+    return [
+        row
+        for table in tables(lines)
+        if table.header and table.header[0].strip("*_` ").lower() == "id"
+        for row in table.rows
+    ]
+
+
+def requirement_id(row):
+    """The ID in a requirements table row's first cell, or None for a note row."""
+    words = row[1][0].strip("*_` ").split()
+    return words[0].strip("*_`") if words and words[0] not in ("—", "-") else None
+
+
+def check_done_when(readme, lines, parts, srd_lines):
+    """Findings for a README ## Done when beside SRD.md, which holds the requirements."""
+    done_when = named(parts, "done when")
+    if not done_when:
+        return []
+    part = done_when[0]
+    body = uncommented(lines[part.start + 1 : part.end])
+    found = []
+    filled = [line for line in body if line.strip()]
+    if len(filled) > 1:
+        message = f"Done when: {len(filled)} lines; with SRD.md it holds only the line pointing there"
+        found.append(finding(readme, part.start + 1, message))
+    ids = [req for req in map(requirement_id, requirement_rows(srd_lines)) if req]
+    seen = set()
+    for i, line in enumerate(body):
+        for req in ids:
+            if req in seen or not re.search(rf"(?<![\w-]){re.escape(req)}(?![\w-])", line):
+                continue
+            seen.add(req)
+            message = f"Done when: {req} is also in SRD.md's requirements table; keep each requirement in one place"
+            found.append(finding(readme, part.start + 2 + i, message))
     return found
 
 
@@ -515,6 +579,9 @@ def check_packet(path, people=(), strict=False, lifecycle=None):
     if not named(parts, "log"):
         found.append(finding(readme, 1, "Log: no ## Log section"))
     found += check_phase_tables(readme, lines, parts, lifecycle, strict)
+    srd = next((other_lines for other, other_lines in others if other.name == "SRD.md"), None)
+    if srd is not None:
+        found += check_done_when(readme, lines, parts, srd)
     for other, other_lines in others:
         found += check_other_file(other, other_lines)
     return found

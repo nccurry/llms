@@ -41,6 +41,11 @@ OUTSIDE = "Phases: phase state outside the README ## Phases table"
 NO_EVIDENCE = "strict: Verified phase has no evidence after ' — '"
 NO_BLOCKER = "strict: Status is Blocked, but the Blocker line is missing or None"
 NOT_FINISHED = "phase in a completed/ packet, which allows only Verified, Live, Deferred or Dropped"
+TWO_HOMES = "packets/planned/two-requirement-homes"
+LINES_BESIDE_SRD = "Done when: {} lines; with SRD.md it holds only the line pointing there"
+ALSO_IN_SRD = "Done when: {} is also in SRD.md's requirements table; keep each requirement in one place"
+LIFECYCLE_OUTSIDE = "Phases: Lifecycle line outside the README; status lives in its ## Current Work and ## Phases"
+POINTER = "The requirements and their checks are in [SRD.md](SRD.md)."
 
 DEFAULT_FINDINGS = [
     f"{GAPS}:5: {FIRST_KEYS}",
@@ -52,6 +57,10 @@ DEFAULT_FINDINGS = [
     "packets/planned/plc-harbor-alerts-plan.md:1: Log: no ## Log section",
     "packets/planned/plc-harbor-cache.md:1: Log: no ## Log section",
     f"packets/planned/two-phase-tables/IMPLEMENTATION_PLAN.md:3: {OUTSIDE}",
+    f"{TWO_HOMES}/README.md:17: {LINES_BESIDE_SRD.format(2)}",
+    f"{TWO_HOMES}/README.md:20: {ALSO_IN_SRD.format('REQ-002')}",
+    f"{TWO_HOMES}/SRD.md:3: {LIFECYCLE_OUTSIDE}",
+    f"{TWO_HOMES}/SADD.md:3: {LIFECYCLE_OUTSIDE}",
     f"{BAD}:1: summary: no paragraph directly under the title",
     f"{BAD}:3: Current Work: 13 keys; at most 12 are allowed",
     f"{BAD}:6: Current Work: Owner names no @handle",
@@ -74,6 +83,10 @@ STRICT_FINDINGS = [
     " which needs Planned or Blocked",
     "packets/planned/superseded/README.md:7: strict: Superseded note does not start with a reason word",
     f"packets/planned/two-phase-tables/IMPLEMENTATION_PLAN.md:3: {OUTSIDE}",
+    f"{TWO_HOMES}/README.md:17: {LINES_BESIDE_SRD.format(2)}",
+    f"{TWO_HOMES}/README.md:20: {ALSO_IN_SRD.format('REQ-002')}",
+    f"{TWO_HOMES}/SRD.md:3: {LIFECYCLE_OUTSIDE}",
+    f"{TWO_HOMES}/SADD.md:3: {LIFECYCLE_OUTSIDE}",
     f"{BAD}:1: summary: no paragraph directly under the title",
     f"{BAD}:3: Current Work: 13 keys; at most 12 are allowed",
     f"{BAD}:6: Current Work: Owner names no @handle",
@@ -114,6 +127,15 @@ Stop retries after three attempts.
 """
 TABLE = "| Phase | Name | Owner | State |\n| --- | --- | --- | --- |\n| P1 | Cap retries | | Planned |"
 R = "planned/sample/README.md"
+# An SRD.md with two requirements, one with its ID in bold.
+SRD = """\
+# Requirements
+
+| ID | Priority | Requirement | Check |
+| --- | --- | --- | --- |
+| REQ-001 | Must | Stop after three attempts. | `task test` → passes |
+| **REQ-002** | Must | Log the third failure. | `task test` → passes |
+"""
 
 
 def edit(old, new, text=VALID):
@@ -300,6 +322,49 @@ class PacketRulesTest(unittest.TestCase):
             f"planned/sample/SADD.md:3: {OUTSIDE}",
         ])
 
+    def test_lifecycle_lines_in_other_files(self):
+        files = {
+            "SRD.md": "# Requirements\n\n- Lifecycle: Draft\n- Status: Approved; @sam signed off on 2026-11-02.\n",
+            "SADD.md": "# Design\n\n- **Lifecycle:** In progress\n- Status: Design record for the retry cap.\n",
+            "IMPLEMENTATION_PLAN.md": "# Plan\n\n- Lifecycle: see the README\n\n### P1: Cap\n",
+        }
+        self.assertEqual(self.check(files=files), [
+            f"planned/sample/SRD.md:3: {LIFECYCLE_OUTSIDE}",
+            f"planned/sample/SADD.md:3: {LIFECYCLE_OUTSIDE}",
+        ])
+
+    def test_requirements_live_in_srd(self):
+        def done_when(body):
+            return edit("## Log", f"## Done when\n\n{body}\n\n## Log")
+
+        srd = {"SRD.md": SRD}
+        self.assertEqual(self.check(done_when(POINTER), name="pointer", files=srd), [])
+        listed = done_when("- REQ-001: Stop after three attempts.\n- REQ-002: Log the third failure.")
+        self.assertEqual(self.check(listed, name="readme-only"), [])
+        self.assertEqual(self.check(listed, name="both", files=srd), [
+            f"planned/both/README.md:18: {LINES_BESIDE_SRD.format(2)}",
+            f"planned/both/README.md:20: {ALSO_IN_SRD.format('REQ-001')}",
+            f"planned/both/README.md:21: {ALSO_IN_SRD.format('REQ-002')}",
+        ])
+        one_line = done_when("REQ-001 and REQ-002 pass; see [SRD.md](SRD.md).")
+        self.assertEqual(self.check(one_line, name="one-line", files=srd), [
+            f"planned/one-line/README.md:20: {ALSO_IN_SRD.format('REQ-001')}",
+            f"planned/one-line/README.md:20: {ALSO_IN_SRD.format('REQ-002')}",
+        ])
+
+    def test_done_when_beside_srd_ignores_comments_and_other_ids(self):
+        def done_when(body):
+            return edit("## Log", f"## Done when\n\n{body}\n\n## Log")
+
+        srd = {"SRD.md": SRD}
+        comment = done_when(f"<!-- REQ-001 and REQ-002 moved to SRD.md\n     on 2026-11-03. -->\n{POINTER}")
+        self.assertEqual(self.check(comment, name="comment", files=srd), [])
+        other_ids = done_when("Unlike XREQ-001 and REQ-0010, these are in [SRD.md](SRD.md).")
+        self.assertEqual(self.check(other_ids, name="other-ids", files=srd), [])
+        traceability = {"SRD.md": "# Requirements\n\n| Requirement | Phase |\n| --- | --- |\n| REQ-001 | P1 |\n"}
+        listed = done_when("- REQ-001: Stop after three attempts.")
+        self.assertEqual(self.check(listed, name="traceability", files=traceability), [])
+
     def test_fenced_phase_table_in_the_plan(self):
         plan = "# Plan\n\n```\n| Phase | State |\n| --- | --- |\n| P1 | Planned |\n```\n"
         self.assertEqual(self.check(plan=plan), [])
@@ -453,6 +518,11 @@ class CommandLineTest(unittest.TestCase):
     def test_good_packet_passes_strict(self):
         self.assertEqual(run("--packet", "packets/planned/good", "--strict", *PEOPLE), (0, [], ""))
 
+    def test_full_packet_passes_strict(self):
+        # SRD.md holds the requirements, and the other files hold Status lines
+        # that are not status words.
+        self.assertEqual(run("--packet", "packets/planned/full", "--strict", *PEOPLE), (0, [], ""))
+
     def test_default_mode(self):
         self.assertEqual(run("packets", *PEOPLE), (1, DEFAULT_FINDINGS, ""))
 
@@ -552,6 +622,11 @@ class TemplateTest(unittest.TestCase):
     def test_default_packet_passes_when_filled(self):
         for source in sorted((SKILL / "assets" / "default-packet").glob("*.md")):
             (self.packet / source.name).write_text(fill(source.read_text(encoding="utf-8")), encoding="utf-8")
+        # With SRD.md, the requirements leave ## Done when for the pointer line.
+        readme = self.packet / "README.md"
+        text = readme.read_text(encoding="utf-8")
+        requirement = re.search(r"^- REQ-001: .*$", text, flags=re.MULTILINE)[0]
+        readme.write_text(edit(requirement, POINTER, text), encoding="utf-8")
         self.assertEqual(self.check(self.packet), (0, [], ""))
 
     def test_compact_plan_passes_when_filled(self):
