@@ -309,16 +309,19 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertTrue(is_ancestor(app, "plc/audit-log-p1", "origin/main"))
         self.assertEqual(git(worktree, "status", "--short"), "")
 
-    def test_old_shape_converted_and_updated_passes(self):
-        """The result the old-shape grader expects passes the checker and the shape check."""
+    def convert_old_shape(self, change_readme=None, change_plan=None) -> tuple[Path, str, str]:
+        """Build old-shape and write the result its grader expects, after
+        `change_readme` and `change_plan` (functions from text to text) make
+        it wrong in one way. Return the packet folder, README and plan."""
         build("old-shape", self.dest)
         app = self.dest / "marina"
         packet = app / "docs/plans/audit-log"
         merge = git(app, "rev-parse", "--short", "HEAD")
         readme = CONVERTED_OLD_SHAPE_README.format(merge=merge, done_when=DONE_WHEN_LINE)
+        readme = change_readme(readme) if change_readme else readme
         (packet / "README.md").write_text(readme, encoding="utf-8", newline="\n")
         # M7 removes the Lifecycle status line; M5 moves the table out, removes
-        # its now-empty heading and leaves the pointer line in its place.
+        # its now-empty heading and writes the pointer line in its place.
         plan = (packet / "IMPLEMENTATION_PLAN.md").read_text(encoding="utf-8")
         plan = plan.replace("Lifecycle status: In progress\n\n", "")
         plan = (
@@ -326,10 +329,20 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
             + f"{POINTER_LINE}\n\n"
             + plan[plan.index("## P1:") :]
         )
+        plan = change_plan(plan) if change_plan else plan
         (packet / "IMPLEMENTATION_PLAN.md").write_text(plan, encoding="utf-8", newline="\n")
         git(app, "worktree", "remove", str(self.dest / "marina-wt/audit-log/p1-record"))
         git(app, "branch", "-D", "plc/audit-log-p1")
+        return packet, readme, plan
 
+    def assert_old_shape_violation(self, violation: str, **changes) -> None:
+        self.convert_old_shape(**changes)
+        expected = [f"marina/docs/plans/audit-log: {violation}"]
+        self.assertEqual(check(self.dest)["violations"], expected)
+
+    def test_old_shape_converted_and_updated_passes(self):
+        """The result the old-shape grader expects passes the checker and the shape check."""
+        packet, readme, plan = self.convert_old_shape()
         report = check(self.dest)
         self.assertTrue(report["ok"], report)
         self.assertEqual(shipped_findings(packet), [])
@@ -341,6 +354,37 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertIn("(blocks P1; waits on @alex)", readme)
         self.assertIn(f"\n{POINTER_LINE}\n\n## P1: Record changes", plan)
         self.assertNotIn("## Phase Status", plan)
+
+    def test_old_shape_p1_merged_while_it_holds_the_call_fails(self):
+        def mark_p1_merged(text: str) -> str:
+            return text.replace("| In progress — `record`", "| Merged — `record`")
+
+        self.assert_old_shape_violation(
+            "phase P1 is Merged, expected In progress", change_readme=mark_p1_merged
+        )
+
+    def test_old_shape_without_the_pointer_line_fails(self):
+        self.assert_old_shape_violation(
+            f"IMPLEMENTATION_PLAN.md lacks {POINTER_LINE!r}",
+            change_plan=lambda text: text.replace(f"{POINTER_LINE}\n\n", ""),
+        )
+
+    def test_old_shape_keeping_the_phase_status_heading_fails(self):
+        def keep_heading(text: str) -> str:
+            return text.replace(POINTER_LINE, f"## Phase Status\n\n{POINTER_LINE}")
+
+        self.assert_old_shape_violation(
+            "IMPLEMENTATION_PLAN.md still has '## Phase Status'", change_plan=keep_heading
+        )
+
+    def test_old_shape_done_when_away_from_phases_fails(self):
+        def move_done_when(text: str) -> str:
+            section = f"## Done when\n\n{DONE_WHEN_LINE}\n\n"
+            return text.replace(section, "").replace("## Summary", f"{section}## Summary")
+
+        self.assert_old_shape_violation(
+            "## Done when is not directly after ## Phases", change_readme=move_done_when
+        )
 
     def test_plan_in_other_repo(self):
         build("plan-in-other-repo", self.dest)

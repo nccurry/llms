@@ -19,6 +19,7 @@ from fixture_lib import (  # noqa: E402
     git,
     make_repo,
     packet,
+    phase_rule,
     snapshot,
 )
 
@@ -242,29 +243,32 @@ def build(dest: Path, variant: str) -> dict:
 
 
 # What check_wrap.py requires of the plan on origin/main, by where it ends up.
+# In both, "Where the work lives" must not name a checkout the run removed.
 OPEN_PLAN = {
     "path": "docs/plans/digest",
     "statuses": ["In progress", "Blocked"],
     "owner": "@alex",
     "historical": False,
+    "lists_no_removed_checkouts": True,
 }
 COMPLETED_PLAN = {
     "path": "docs/plans/completed/digest",
     "statuses": ["Complete"],
     "owner": "@alex",
     "historical": True,
+    "lists_no_removed_checkouts": True,
 }
 
 
-def open_plan_with_unbuilt_part(phase: str) -> dict:
+def open_plan_with_unbuilt_part(phase: str, phases_at_start: list[str]) -> dict:
     """OPEN_PLAN for a case where `phase` merges with a part nobody built.
 
     While the phase still holds that part it is In progress; once its note
-    says `moved to P<n>`, it may be Merged or Verified. "Where the work
-    lives" must not name a checkout the run removed.
+    says `moved to P<n>` for a new row, one outside `phases_at_start`, it
+    may be Merged or Verified.
     """
-    rule = {"states": ["In progress"], "after_move": ["Merged", "Verified"]}
-    return {**OPEN_PLAN, "phases": {phase: rule}, "lists_no_removed_checkouts": True}
+    rule = phase_rule(["In progress"], ["Merged", "Verified"], phases_at_start)
+    return {**OPEN_PLAN, "phases": {phase: rule}}
 
 
 def expect(dest: Path, **data) -> None:

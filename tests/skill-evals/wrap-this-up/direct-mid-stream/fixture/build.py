@@ -19,6 +19,6 @@ expect(
     deleted_remote_branches=["plc/digest-p1"],
     absent_remote_files=["docs/plans/completed/digest/README.md"],
     # P2 still holds channel posting, which nobody built.
-    plans=[open_plan_with_unbuilt_part("P2")],
+    plans=[open_plan_with_unbuilt_part("P2", ["P1", "P2"])],
 )
 print(dest)

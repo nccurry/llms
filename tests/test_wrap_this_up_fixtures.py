@@ -13,10 +13,13 @@ sys.path.insert(0, str(EVALS))
 from fixture_lib import (  # noqa: E402
     GIT_ENV,
     OWNER,
+    PHASES_HEADER,
     eval_only_problems,
     format_check,
     git,
     packet_status,
+    phase_rule,
+    phase_rule_problem,
     phase_state,
 )
 
@@ -173,10 +176,18 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         end = "\n\n## Done when"
         self.rewrite_readme(lambda text: text.replace(end, f"\n{row}{end}"))
 
-    def clear_checkouts(self) -> None:
-        """Replace the "Where the work lives" rows with the template's None row."""
-        rows = re.compile(r"(?:^\| `notify-wt/[^\n]*\n)+", re.MULTILINE)
-        self.rewrite_readme(lambda text: rows.sub("| None | | | |\n", text, 1))
+    def drop_checkout_rows(self, *worktrees: str) -> None:
+        """Remove the "Where the work lives" rows naming `worktrees`, leaving
+        the template's None row when no row is left. A row already gone is
+        skipped, so a later plan rewrite can call this again."""
+        path = self.merge_dir / PLAN / "README.md"
+        text = path.read_text(encoding="utf-8")
+        for worktree in worktrees:
+            row = re.compile(rf"^\| `{re.escape(worktree)}` \|[^\n]*\n", re.MULTILINE)
+            text = row.sub("", text)
+        header = "| Checkout | Branch | Owner | State |\n| --- | --- | --- | --- |\n"
+        text = text.replace(f"{header}\n", f"{header}| None | | | |\n\n")
+        path.write_text(text, encoding="utf-8", newline="\n")
 
     def add_open_question(self, question: str) -> None:
         self.edit_readme("## Log", f"## Open questions\n\n- Open question: {question}\n\n## Log")
@@ -185,12 +196,17 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         """Add a dated line at the end of `## Log`, the README's last section."""
         self.rewrite_readme(lambda text: f"{text}- {line}\n")
 
-    def complete_the_plan(self, merge: str, historical: str = "plain", push: bool = True) -> None:
-        """Mark the plan Complete with P1 Verified, move it to completed/, and
-        update AGENTS.md's link to it. `historical` is "plain", "item" (a list
-        item) or "none"."""
+    def complete_the_plan(
+        self, merge: str, historical: str = "plain", push: bool = True, drop_row: bool = True
+    ) -> None:
+        """Mark the plan Complete with P1 Verified, drop P1's checkout row, move
+        the plan to completed/, and update AGENTS.md's link to it. Checker-only:
+        Last updated and Next action keep their old values. `historical` is
+        "plain", "item" (a list item) or "none"."""
         line = f"Historical record as of `{merge}`; the code is the current truth."
         opening = {"plain": f"{line}\n\n", "item": f"- {line}\n", "none": ""}[historical]
+        if drop_row:
+            self.drop_checkout_rows(P1_WORKTREE)
         self.edit_readme("## Current Work\n\n", f"## Current Work\n\n{opening}")
         self.edit_readme("- Status: In progress", "- Status: Complete")
         self.edit_readme(
@@ -205,9 +221,14 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         self.replace_in("AGENTS.md", f"{PLAN}/README.md", f"{COMPLETED}/README.md")
         self.commit_plan("docs(plan): digest complete", push=push)
 
-    def finish_p1(self) -> str:
-        """Merge P1, push, and remove its worktree and branches; return the merge."""
+    def finish_p1(self, drop_row: bool = True) -> str:
+        """Merge P1, drop its checkout row from the plan, push, and remove its
+        worktree and branches; return the merge. Checker-only: the rest of
+        the plan is left to the graders."""
         merge = self.merge("plc/digest-p1")
+        if drop_row:
+            self.drop_checkout_rows(P1_WORKTREE)
+            self.commit_plan("docs(plan): P1 merged", push=False)
         self.push()
         self.remove(self.p1, "plc/digest-p1", on_remote=True)
         return merge
@@ -216,12 +237,15 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         self,
         p1_state: str = "In progress — DIG-001 merged @ `{merge}`; DIG-003 not started",
         new_rows: tuple[str, ...] = (),
-        clear_checkouts: bool = True,
+        moved_to: str | None = None,
+        drop_row: bool = True,
     ) -> None:
         """The unmet-requirement result its grader expects: P1 merged, the plan
         rewritten with DIG-003 recorded as missing, and everything cleaned up.
-        `p1_state` and `new_rows` may name `{merge}`, the merge commit."""
-        merge = self.finish_p1()
+        `p1_state` and `new_rows` may name `{merge}`, the merge commit. When
+        DIG-003 has moved to the new row `moved_to`, the open question blocks
+        that row and P1's changed word gets its own Log line."""
+        merge = self.finish_p1(drop_row=drop_row)
         self.set_key("Last updated", f"2026-11-03, `main` at `{merge}`")
         self.set_key(
             "Next action",
@@ -229,17 +253,19 @@ class WrapThisUpFixtureTest(unittest.TestCase):
             " new branch from `main`, unless @alex defers or drops it.",
         )
         self.set_key("Current state", f"DIG-001 merged @ `{merge}`; DIG-003 not started.")
-        if clear_checkouts:
-            self.clear_checkouts()
         self.set_phase("P1", p1_state.format(merge=merge))
         for row in new_rows:
             self.add_phase_row(row.format(merge=merge))
         self.add_open_question(
-            "Build DIG-003 next, or defer or drop it? (blocks P1; waits on @alex)"
+            "Build DIG-003 next, or defer or drop it?"
+            f" (blocks {moved_to or 'P1'}; waits on @alex)"
         )
         self.add_log_line(
             f"2026-11-03 DIG-001 merged @ `{merge}`; surprise: DIG-003 was never built."
         )
+        if moved_to:
+            word = p1_state.split(" — ", 1)[0]
+            self.add_log_line(f"2026-11-03 P1 {word} @ `{merge}`; DIG-003 moved to {moved_to}.")
         self.commit_plan("docs(plan): DIG-001 merged; DIG-003 open")
         self.close_merge_checkout()
 
@@ -248,11 +274,14 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         p2_state: str = "In progress — Slack text merged @ `{p2}`; channel posting not started",
         new_rows: tuple[str, ...] = (),
         merge_p2: bool = True,
+        moved_to: str | None = None,
     ) -> None:
         """The direct-mid-stream result its grader expects: both branches
         merged, the plan rewritten with P2's channel posting still to do, and
         everything cleaned up. `p2_state` and `new_rows` may name `{p2}`, P2's
-        merge commit. With `merge_p2` false, P2's branch is left unmerged."""
+        merge commit. With `merge_p2` false, P2's branch is left unmerged.
+        When channel posting has moved to the new row `moved_to`, P2's changed
+        word gets its own Log line."""
         p1 = self.merge("plc/digest-p1")
         p2 = self.merge("plc/digest-p2") if merge_p2 else p1
         self.set_key("Last updated", f"2026-11-03, `main` at `{p2}`")
@@ -264,12 +293,17 @@ class WrapThisUpFixtureTest(unittest.TestCase):
             "Current state",
             f"P1 merged @ `{p1}`. P2's Slack text merged @ `{p2}`; channel posting not started.",
         )
-        self.clear_checkouts()
+        self.drop_checkout_rows(P1_WORKTREE, P2_WORKTREE)
         self.set_phase("P1", f"Merged — `{p1}`")
         self.set_phase("P2", p2_state.format(p2=p2))
         for row in new_rows:
             self.add_phase_row(row.format(p2=p2))
         self.add_log_line(f"2026-11-03 P1 Merged @ `{p1}`.")
+        if moved_to:
+            word = p2_state.split(" — ", 1)[0]
+            self.add_log_line(
+                f"2026-11-03 P2 {word} @ `{p2}`; channel posting moved to {moved_to}."
+            )
         self.commit_plan("docs(plan): update digest status")
         self.remove(self.p1, "plc/digest-p1", on_remote=True)
         self.remove(self.p2, "plc/digest-p2")
@@ -372,7 +406,7 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         """Wrap up with channel posting in its own row `row` and P2 at `p2_state`."""
         self.build("direct-mid-stream")
         new_row = f"| {row} | Channel posting | | Planned — moved from P2 |"
-        self.wrap_mid_stream(p2_state, new_rows=(new_row,))
+        self.wrap_mid_stream(p2_state, new_rows=(new_row,), moved_to=row)
         return check(self.dest)
 
     def test_p2_merged_after_moving_channel_posting_passes(self):
@@ -443,7 +477,7 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         """Wrap up with DIG-003 in its own row `row` and P1 at `p1_state`."""
         self.build("unmet-requirement")
         new_row = f"| {row} | Email footer | | Planned — DIG-003, moved from P1 |"
-        self.keep_unmet_requirement_open(p1_state, new_rows=(new_row,))
+        self.keep_unmet_requirement_open(p1_state, new_rows=(new_row,), moved_to=row)
         return check(self.dest)
 
     def test_p1_merged_after_moving_dig_003_passes(self):
@@ -505,15 +539,52 @@ class WrapThisUpFixtureTest(unittest.TestCase):
             [f"plan {PLAN} on origin/main: phase P2 is Planned, expected In progress"]
         )
 
-    def test_listing_a_removed_checkout_fails(self):
+    def test_p1_moved_to_itself_fails(self):
+        # A note that points at P1's own row moves nothing out of P1.
         self.build("unmet-requirement")
-        self.keep_unmet_requirement_open(clear_checkouts=False)
+        self.keep_unmet_requirement_open("Merged — `{merge}`; DIG-003 moved to P1")
+        self.assert_failures(
+            [f"plan {PLAN} on origin/main: phase P1 is Merged, expected In progress"]
+        )
+
+    def test_p2_moved_to_a_row_from_the_start_fails(self):
+        # P1 was in the plan from the start, so it is not a new row for channel posting.
+        self.build("direct-mid-stream")
+        self.wrap_mid_stream("Merged — `{p2}`; channel posting moved to P1")
+        self.assert_failures(
+            [f"plan {PLAN} on origin/main: phase P2 is Merged, expected In progress"]
+        )
+
+    def assert_removed_checkout_listed(self, plan: str = PLAN) -> None:
         self.assert_failures(
             [
-                f"plan {PLAN} on origin/main: Where the work lives still names removed "
+                f"plan {plan} on origin/main: Where the work lives still names removed "
                 f"{P1_WORKTREE}"
             ]
         )
+
+    def test_listing_a_removed_checkout_fails_unmet_requirement(self):
+        self.build("unmet-requirement")
+        self.keep_unmet_requirement_open(drop_row=False)
+        self.assert_removed_checkout_listed()
+
+    def test_listing_a_removed_checkout_fails_active_agent(self):
+        self.build("active-agent")
+        self.finish_p1(drop_row=False)
+        self.close_merge_checkout()
+        self.assert_removed_checkout_listed()
+
+    def test_listing_a_removed_checkout_fails_failing_checks(self):
+        self.build("failing-checks")
+        self.finish_p1(drop_row=False)
+        self.close_merge_checkout()
+        self.assert_removed_checkout_listed()
+
+    def test_listing_a_removed_checkout_fails_complete_moves_plan(self):
+        self.build("complete-moves-plan")
+        self.complete_the_plan(self.finish_p1(drop_row=False), drop_row=False)
+        self.close_merge_checkout()
+        self.assert_removed_checkout_listed(COMPLETED)
 
     def test_merge_and_plan_committed_but_not_pushed_fails(self):
         self.build("complete-moves-plan")
@@ -547,11 +618,15 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         self.build("active-agent")
         git(self.app, "merge", "-q", "--no-ff", "plc/digest-p1", "-m", "Merge P1")
         self.remove(self.p1, "plc/digest-p1", on_remote=True)
+        # The plan on origin/main was never updated, so it still lists P1's
+        # removed checkout.
         self.assert_failures(
             [
                 f"{self.p1_tip[:7]} is not on origin/main",
                 "primary checkout: commits beyond a fast-forward touch "
                 "['src/digest.py', 'tests/test_digest.py']",
+                f"plan {PLAN} on origin/main: Where the work lives still names removed "
+                f"{P1_WORKTREE}",
             ]
         )
 
@@ -716,7 +791,6 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         self.build("unmet-requirement")
         merge = self.finish_p1()
         self.set_phase("P1", f"In progress — `{merge}`")
-        self.clear_checkouts()
         self.commit_plan("docs(plan): P1 merged")
         self.close_merge_checkout()
         self.assert_failures([f"{PLAN}/README.md on origin/main lacks 'DIG-003'"])
@@ -725,7 +799,7 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         self.build("direct-mid-stream")
         self.merge("plc/digest-p1", "plc/digest-p2")
         self.edit_readme("- Owner: @alex", "- Owner: the user")
-        self.clear_checkouts()
+        self.drop_checkout_rows(P1_WORKTREE, P2_WORKTREE)
         self.commit_plan("docs(plan): rewrite Current Work")
         self.remove(self.p1, "plc/digest-p1", on_remote=True)
         self.remove(self.p2, "plc/digest-p2")
@@ -742,7 +816,7 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         self.build("direct-mid-stream")
         self.merge("plc/digest-p1", "plc/digest-p2")
         self.edit_readme("- Status: In progress", f"- Status: {word}")
-        self.clear_checkouts()
+        self.drop_checkout_rows(P1_WORKTREE, P2_WORKTREE)
         self.commit_plan("docs(plan): digest complete")
         self.remove(self.p1, "plc/digest-p1", on_remote=True)
         self.remove(self.p2, "plc/digest-p2")
@@ -792,6 +866,46 @@ class WrapThisUpFixtureTest(unittest.TestCase):
                 "primary checkout: history rewritten or reset",
             ]
         )
+
+
+class PhaseRuleTest(unittest.TestCase):
+    """fixture_lib.phase_rule_problem, which both checkers use, on small tables."""
+
+    RULE = phase_rule(["In progress"], ["Merged", "Verified"], ["P1", "P2"])
+
+    def problem(self, *rows: str) -> str | None:
+        table = "".join(f"{row}\n" for row in rows)
+        readme = f"# T\n\n## Phases\n\n{PHASES_HEADER}\n| --- | --- | --- | --- |\n{table}"
+        return phase_rule_problem(readme, "P2", self.RULE)
+
+    def test_in_progress_passes(self):
+        self.assertIsNone(self.problem("| P2 | Slack | | In progress — text merged |"))
+
+    def test_a_missing_row_says_so(self):
+        self.assertEqual(self.problem("| P1 | Email | | Merged |"), "phase P2 has no row")
+
+    def test_an_unknown_word_names_the_cell(self):
+        self.assertEqual(
+            self.problem("| P2 | Slack | | Finished — abc1234 |"),
+            "phase P2 has no known state word: Finished — abc1234",
+        )
+
+    def test_a_move_to_a_new_row_allows_merged(self):
+        rows = ("| P2 | Slack | | Merged — moved to P3 |", "| P3 | Posting | | Planned |")
+        self.assertIsNone(self.problem(*rows))
+
+    def test_a_move_to_a_row_that_does_not_exist_does_not_count(self):
+        self.assertEqual(
+            self.problem("| P2 | Slack | | Merged — moved to P3 |"),
+            "phase P2 is Merged, expected In progress",
+        )
+
+    def test_a_move_to_itself_or_a_starting_row_does_not_count(self):
+        for target in ("P2", "P1"):
+            with self.subTest(target=target):
+                p2 = f"| P2 | Slack | | Merged — moved to {target} |"
+                problem = self.problem(p2, "| P1 | Email | | Merged |")
+                self.assertEqual(problem, "phase P2 is Merged, expected In progress")
 
 
 if __name__ == "__main__":

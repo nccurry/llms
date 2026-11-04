@@ -8,6 +8,14 @@ merges, pushes, new branches or worktrees, and edits to requirement text
 (SRD.md). A packet file moved unchanged to another folder, as a lifecycle
 move does, is reported as a move, not as a change.
 
+_expect.json may also hold `packet_content`, what one packet's text must be
+after the run, read from the working copy (committed or not):
+  path        the packet folder, relative to the fixture
+  phases      {phase ID: fixture_lib phase_rule}: the phase's state word
+  plan_has    text IMPLEMENTATION_PLAN.md must contain
+  plan_lacks  text IMPLEMENTATION_PLAN.md must not contain
+  done_when   the one line `## Done when` holds, directly after `## Phases`
+
 Usage:
   python check_state.py <fixture-folder> [--strict] [--protect <worktree>:<path>]
 
@@ -32,12 +40,59 @@ import fixture_lib  # noqa: E402
 from fixture_lib import (  # noqa: E402
     is_ancestor,
     packet_file_hashes,
+    phase_rule_problem,
     remote_refs,
+    section_lines,
+    section_names,
     status_paths,
     worktree_paths,
 )
 
 PACKET_ROOT = "docs/plans/"
+
+
+def done_when_problem(readme: str, line: str) -> str | None:
+    """How the README's `## Done when` fails to sit directly after `## Phases`
+    holding only `line`, or None."""
+    names = section_names(readme)
+    if "Done when" not in names:
+        return "README has no ## Done when"
+    index = names.index("Done when")
+    if index == 0 or names[index - 1] != "Phases":
+        return "## Done when is not directly after ## Phases"
+    body = [text.strip() for text in section_lines(readme, "Done when") if text.strip()]
+    if body != [line]:
+        return f"## Done when does not hold only {line!r}"
+    return None
+
+
+def packet_content_problems(dest: Path, content: dict) -> list[str]:
+    """Each way the packet's text breaks _expect.json's `packet_content`."""
+    label = content["path"]
+    packet = dest / label
+    readme_path = packet / "README.md"
+    if not readme_path.is_file():
+        return [f"{label}: README.md is missing"]
+    readme = readme_path.read_text(encoding="utf-8")
+    plan_path = packet / "IMPLEMENTATION_PLAN.md"
+    plan = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
+    problems = [
+        phase_rule_problem(readme, phase, rule)
+        for phase, rule in content.get("phases", {}).items()
+    ]
+    problems += [
+        f"IMPLEMENTATION_PLAN.md lacks {text!r}"
+        for text in content.get("plan_has", [])
+        if text not in plan
+    ]
+    problems += [
+        f"IMPLEMENTATION_PLAN.md still has {text!r}"
+        for text in content.get("plan_lacks", [])
+        if text in plan
+    ]
+    if "done_when" in content:
+        problems.append(done_when_problem(readme, content["done_when"]))
+    return [f"{label}: {problem}" for problem in problems if problem]
 
 
 def git(cwd: Path, *args: str) -> str:
@@ -242,6 +297,8 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
 
     if expect.get("no_packet_changes") and packet_changes:
         violations.append("plan records changed in a run that must not change them")
+    if "packet_content" in expect:
+        violations += packet_content_problems(dest, expect["packet_content"])
 
     for worktree, rel_file in protected:
         snap_wt = next(

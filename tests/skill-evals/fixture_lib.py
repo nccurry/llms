@@ -218,10 +218,13 @@ def expect(
     deleted_branches: dict[str, list[str]] | None = None,
     deleted_remote_branches: dict[str, list[str]] | None = None,
     no_packet_changes: bool = False,
+    packet_content: dict | None = None,
 ) -> None:
     """Record the tidying a run must do. Anything removed beyond this fails.
 
     Paths are relative to `dest`; branches are short names such as `plc/x-p1`.
+    `packet_content` is what check_state.py requires of one packet's text
+    after the run; its docstring lists the keys.
     """
     data = {
         "removed_worktrees": list(removed_worktrees),
@@ -229,6 +232,8 @@ def expect(
         "deleted_remote_branches": deleted_remote_branches or {},
         "no_packet_changes": no_packet_changes,
     }
+    if packet_content is not None:
+        data["packet_content"] = packet_content
     (dest / "_expect.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
@@ -380,6 +385,11 @@ def section_lines(text: str, name: str) -> list[str]:
     return next((lines for heading, lines, _ in _sections(text) if heading == name), [])
 
 
+def section_names(text: str) -> list[str]:
+    """The `## ` section headings of Markdown text, in order."""
+    return [heading for heading, _, _ in _sections(text)]
+
+
 def _key_value(lines: Sequence[str], key: str) -> str | None:
     """The value of the first `- Key: value` line, allowing bold keys."""
     pattern = re.compile(rf"- (?:\*\*)?{re.escape(key)}(?:\*\*)?:(?:\*\*)?\s+(.*)$")
@@ -411,6 +421,47 @@ def phase_state(readme: str, phase: str) -> str | None:
         return None
     fc = format_check()
     return fc.lookup_word(fc.PHASE_WORDS, cell)
+
+
+def phase_rule(
+    states: Sequence[str], after_move: Sequence[str], phases_at_start: Sequence[str]
+) -> dict:
+    """A rule for `phase_rule_problem`, as checkers read it from _expect.json."""
+    return {
+        "states": list(states),
+        "after_move": list(after_move),
+        "phases_at_start": list(phases_at_start),
+    }
+
+
+def phase_rule_problem(readme: str, phase: str, rule: dict) -> str | None:
+    """How `phase`'s row breaks `rule`, or None when it keeps it.
+
+    The phase's word must be one of `rule["states"]`. Once its note says
+    `moved to P<n>`, and P<n> is a row of its own that is not the phase itself
+    and was not in the plan at the start (`rule["phases_at_start"]`), it may
+    instead be one of `rule["after_move"]`.
+    """
+    cell = phase_cell(readme, phase)
+    if cell is None:
+        return f"phase {phase} has no row"
+    word = phase_state(readme, phase)
+    if word is None:
+        return f"phase {phase} has no known state word: {cell}"
+    allowed = rule["states"]
+    moved = re.search(r"\b[Mm]oved to (P\d+[a-z]?)\b", cell)
+    if moved:
+        target = moved[1]
+        is_new_row = (
+            target != phase
+            and target not in rule.get("phases_at_start", [])
+            and phase_cell(readme, target) is not None
+        )
+        if is_new_row:
+            allowed = rule.get("after_move", allowed)
+    if word not in allowed:
+        return f"phase {phase} is {word}, expected {' or '.join(allowed)}"
+    return None
 
 
 def listed_checkouts(readme: str) -> list[str]:

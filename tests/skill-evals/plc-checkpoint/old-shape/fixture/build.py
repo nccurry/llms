@@ -19,10 +19,15 @@ from fixture_lib import (
     expect,
     git,
     make_repo,
+    phase_rule,
     snapshot,
 )
 
 PACKET = "docs/plans/audit-log"
+# The line step M5 writes where the phase table was, and the line step M8
+# puts under `## Done when` in a repository with no README template of its own.
+POINTER_LINE = "Phase state lives in the README's [Phases](README.md#phases) table."
+DONE_WHEN_LINE = "The requirements and their checks are in [SRD.md](SRD.md)."
 
 
 def readme(start: str) -> str:
@@ -125,5 +130,15 @@ expect(
     dest,
     removed_worktrees=["marina-wt/audit-log/p1-record"],
     deleted_branches={"marina": ["plc/audit-log-p1"]},
+    # P1 merged `record` but nobody built the call from `save_booking`, so it
+    # stays In progress unless the call moves to a new row. Steps M5 and M8
+    # leave their lines.
+    packet_content={
+        "path": f"marina/{PACKET}",
+        "phases": {"P1": phase_rule(["In progress"], ["Merged", "Verified"], ["P1", "P2"])},
+        "plan_has": [POINTER_LINE],
+        "plan_lacks": ["## Phase Status"],
+        "done_when": DONE_WHEN_LINE,
+    },
 )
 print(dest)

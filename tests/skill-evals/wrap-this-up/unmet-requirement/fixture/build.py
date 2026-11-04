@@ -30,6 +30,6 @@ expect(
     # was recorded; SRD.md must still list it.
     remote_text={README: ["DIG-003"], SRD: ["DIG-003"]},
     # P1 still holds DIG-003, which nobody built.
-    plans=[open_plan_with_unbuilt_part("P1")],
+    plans=[open_plan_with_unbuilt_part("P1", ["P1"])],
 )
 print(dest)

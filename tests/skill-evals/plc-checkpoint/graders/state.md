@@ -21,6 +21,9 @@ Pass when it prints `"ok": true`. It fails on:
 - a commit or uncommitted change outside `docs/plans/`
 - any change to an `SRD.md`
 - any plan change in a case that forbids one (ad-hoc and report-only)
+- in a case whose `_expect.json` has `packet_content` (old-shape), packet
+  text that breaks it: a phase's state word, lines that must or must not be
+  in `IMPLEMENTATION_PLAN.md`, or the `## Done when` line and place
 
 `git fetch` is allowed: remote-tracking refs are not checked.
 
