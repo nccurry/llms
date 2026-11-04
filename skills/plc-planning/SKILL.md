@@ -15,11 +15,12 @@ evidence.
 
 ## Examples
 
-- "Make a PLC for a new configuration format": use the repository's template;
-  otherwise start from the default packet's README and add SRD.md for the
-  input, error, and compatibility behavior.
-- "Save a short plan for this bounded refactor": use the repository's format;
-  otherwise use the compact plan with the affected behavior and proving checks.
+- "Make a PLC for a new configuration format": start from the shared
+  template, with the repository's file names, location, and extra sections
+  when it has them, and add SRD.md for the input, error, and compatibility
+  behavior.
+- "Save a short plan for this bounded refactor": use the compact plan, the
+  same template as one file, with the affected behavior and proving checks.
 - "Review this PLC without editing it": report findings; do not run this
   authoring workflow or change the packet.
 
@@ -49,15 +50,16 @@ Record the check's actual result only after running it.
      that rule. If its template is still in an older shape, follow the shared
      template and tell the user.
    - Otherwise, start from [the default packet](assets/default-packet/README.md),
-     a packet folder whose README holds the shared template. For a one-file
-     plan, use [the compact plan](assets/compact-plan.md), the same README as
-     a single `plc-<slug>.md` file. Small fixes may need only investigation,
-     repair, and focused checks.
+     a packet folder whose README holds the shared template, or from
+     [the compact plan](assets/compact-plan.md), the same README as a single
+     `plc-<slug>.md` file. Choose the one-file plan for small work that will
+     not need SRD.md, SADD.md, or IMPLEMENTATION_PLAN.md; choose a folder when
+     the work may grow, since only a folder can hold those files. Small fixes
+     may need only investigation, repair, and focused checks.
    - Do not invent file names, ledgers, or approval steps when neither the
      repository nor the user asks for them. Keep the packet in the
-     [lifecycle folder](#rules) that matches its status; a finished packet
-     moves to `completed/` under the plans folder, so finished plans don't sit
-     beside active ones.
+     [lifecycle folder](#lifecycle-folders) that matches its status, so
+     finished plans don't sit beside active ones.
    - Store a durable packet with the repository's other durable planning docs.
      If there is no clear location, state the proposed location before writing.
 
@@ -69,16 +71,19 @@ Record the check's actual result only after running it.
      - [SADD.md](assets/default-packet/SADD.md) when design choices or
        alternatives need a record;
      - [IMPLEMENTATION_PLAN.md](assets/default-packet/IMPLEMENTATION_PLAN.md)
-       when a phase needs more detail or evidence than its row and note;
+       when a phase needs more detail or evidence than its row and note. It
+       keeps each phase under a `### P1: <name>` heading, with no state table;
      - [FIXTURES.md](assets/default-packet/FIXTURES.md) only when stable
        fixtures, example inputs, API inventories, or visual reference cases
        will help implementation.
-   - Link each added file from the README. When SRD.md holds the
-     requirements, `## Done when` links to them instead of listing them. When
-     IMPLEMENTATION_PLAN.md exists, link each phase row to its heading there.
-   - Status lives in the README: `## Current Work` for the packet, the
-     `## Phases` table for each phase, and `## Log` for history. No other file
-     holds status or phase state.
+
+     A packet with SRD.md, SADD.md, and IMPLEMENTATION_PLAN.md is a full
+     packet.
+   - Link each added file from the part of the packet that uses it. SRD.md:
+     from `## Done when`, which then links to the requirements instead of
+     listing them. IMPLEMENTATION_PLAN.md: each phase row links to its
+     heading there. SADD.md and FIXTURES.md: from the file or section that
+     relies on them.
    - Delete sections that do not apply; never leave `N/A`, `TBD`, or empty
      headings. Add repository-specific sections only when they record a real
      constraint or decision.
@@ -91,8 +96,8 @@ Record the check's actual result only after running it.
      expected results, not another results ledger.
 
 4. Write clear requirements and design.
-   - Give each required behavior a permanent ID and a check that can be run:
-     a command or test, and its expected result.
+   - Write each required behavior as a requirement with a permanent ID and a
+     check, as the [requirements rules](#requirements-and-checks) describe.
    - Record scope, non-scope, risks, assumptions, and open questions. Identify
      the work each unresolved question blocks and any permitted temporary
      assumption. Record the source revision inspected and relevant source/tests.
@@ -100,8 +105,8 @@ Record the check's actual result only after running it.
      check. Planning approval alone does not prove implementation is available.
      For moving upstream targets, date the inspected revision without silently
      fixing the product target to that snapshot.
-   - An active packet in an older shape moves to the shared template first,
-     following [old-packet migration](references/old-packet-migration.md).
+   - Convert an active packet in an older shape to the shared template first,
+     following [old-packet conversion](references/old-packet-migration.md).
      Don't add a second status block beside the old one.
    - When maintaining an approved packet, update affected sections in place.
      Preserve requirement IDs and decision rationale, reconcile superseded text,
@@ -126,8 +131,8 @@ Record the check's actual result only after running it.
    - When a change affects a CLI, API, configuration, UI, or other public
      surface, summarize the action, expected result, and compatibility in the
      SRD. Add short expected-experience examples for each changed surface.
-     Include error, empty, or permission behavior when it matters. Write
-     `None` for internal-only work.
+     Include error, empty, or permission behavior when it matters. For
+     internal-only work, delete those SRD sections.
    - Explain the chosen design, relevant alternatives, changed boundaries,
      data flow, interfaces, and test design. Identify fixed contracts, safety
      rules, and ownership boundaries; distinguish suggested implementations
@@ -144,10 +149,10 @@ Record the check's actual result only after running it.
      the integrated outcome. Name the authoritative contract and accepted
      decision or revision each consumer follows. Depend on the needed capability,
      not every remaining phase of a sibling packet.
-   - Track each phase on the [state ladder](#words) in the README `## Phases`
-     table, with the evidence notes the [Phases rules](#rules) require. A
-     Merged phase does not close unverified acceptance; a missing record does
-     not mean the work or its tests need repeating.
+   - Track each phase with a [phase state word](#words) in the README
+     `## Phases` table, with the evidence notes the [Phases rules](#phases)
+     require. A Merged phase does not close unverified acceptance; a missing
+     record does not mean the work or its tests need repeating.
    - Record each result once with a requirement/check ID, tested source (including
      relevant uncommitted changes), date, relevant dependencies and environment,
      exact method, expected result, actual result and limits: under its phase
@@ -213,8 +218,9 @@ Record the check's actual result only after running it.
 ## Shared template
 
 [The default packet's README](assets/default-packet/README.md) holds the
-shared template. The words and rules below are its contract. Other skills
-refer to this list instead of repeating it.
+shared template, and [the compact plan](assets/compact-plan.md) is the same
+README as one file. The words and rules below are its contract. Other skills
+refer to this section instead of repeating it.
 
 ### Words
 
@@ -223,17 +229,17 @@ refer to this list instead of repeating it.
 - **Phase state words, in order:**
   - Planned;
   - In progress;
-  - Implemented: done on a branch or in an open merge request, including a
-    merge into an integration branch;
-  - Merged: on the target branch, usually `main`;
+  - Implemented: done on a branch or in an open merge request;
+  - Merged: on the branch the work is delivered to, usually `main`. A merge
+    into an integration branch is still Implemented;
   - Verified: its acceptance checks passed on the merged code;
   - Live: released or deployed.
-- **Side states:** Blocked, Deferred, Dropped. Deferred and Dropped need
-  approval in the plan or the conversation.
-- **Merged is not Verified.** An unchecked phase stays Merged, with what is
-  missing in the note.
-- **Older words.** Tools that read packets also accept these in older text;
-  new text uses the words above.
+- **Side states:** Blocked, Deferred, Dropped. Deferred and Dropped need the
+  user's approval, in the plan or the conversation.
+- **Merged is not Verified.** A phase whose checks have not passed on the
+  merged code stays Merged, with what is missing in its note.
+- **Older words.** Tools still accept these in older text; new text uses the
+  words above.
   - For packets: Draft, Ready and Proposed (Planned); In-progress,
     Developing, Reviewing and Active (In progress); Completed, Closed and
     Done (Complete).
@@ -245,121 +251,157 @@ refer to this list instead of repeating it.
 
 ### Rules
 
-**Order and format**
+#### Order and format
+
 - Sections go in this order: title, summary, `## Current Work`,
   `## Phases`, `## Done when`, `## Open questions`, any repository-specific
   sections, then `## Log` last.
-- Plain Markdown with `- Key: value` lines and no front matter. Tools read
-  it strictly.
+- Plain Markdown with `- Key: value` lines and no front matter. The format
+  check and other tools find each line by its exact key name and read the
+  value after the colon, so keep both as written here.
 
-**Title and summary**
+#### Title and summary
+
 - The title is `# <ID> <name>` when the repository numbers its packets, such
   as `PLC-012`; otherwise it is the name alone.
 - One or two sentences sit directly under the title.
 
-**Current Work**
+#### Current Work
+
 - It is the one status block, directly after the summary. Skills replace its
   content each time, so it holds only its keys and the "Where the work
-  lives" table.
+  lives" table. The one exception is a finished packet's historical-record
+  line (see [Ending a packet](#ending-a-packet)).
 - Status, Owner and Last updated come first, in that order, under exactly
   those names. Then Next action, Blocker, Depends on, Current state and
-  Resume check.
+  Resume check. Keep each of these keys, and write `None` when one does not
+  apply.
 - Status starts with a packet status word; a note may follow ` — `.
 - Owner names every person by `@handle`; a team name may stay beside the
   handles.
-- Last updated starts with the date.
+- Last updated starts with the date, as `YYYY-MM-DD`.
 - Optional keys: `Selected work`, and, when packets replace one another,
   `Replaces: <path>` on the new packet and `Superseded by: <path>` on the old
   one.
 - At most 12 keys, each kept to one or two lines. History goes to the Log.
+- "Where the work lives" has one row per checkout: its path, its branch, the
+  person or agent working there, and its State: in progress, waiting,
+  locked, or kept, with the reason. With no checkouts, it has one `None` row.
 
-**Phases**
+#### Phases
+
 - The README `## Phases` table is the one place phase state lives. No other
-  file has a phase table with a State or Status column.
-- One row per phase, with every cell present. Follow-ups and notes go below
-  the table, not in rows.
+  file holds the packet's status or a phase's state.
+- One row per phase, with every cell present.
 - New packets use IDs `P1`, `P2`, and `P2a` for sub-phases. Existing packets
   keep their IDs.
 - Owner is a `@handle`, or blank for the packet owner.
-- State starts with a phase state word; a short note may follow ` — `.
+- The State cell holds a phase state word and, after ` — `, a short note.
+  Longer notes and follow-ups go below the table, not in rows.
 - When a state changes, the note names the merge request or commit:
-  `Merged — !974 @ abc1234`.
-- Verified and Live need evidence in the note: the check that passed and
-  where it ran, such as `Verified — task test → 112 passed @ abc1234`, or a
-  CI link.
+  `Merged — !12 @ abc1234`.
+- Verified and Live need evidence in the note: the check that passed and the
+  commit or CI run it passed on, such as
+  `Verified — task test → 112 passed @ abc1234`, or a CI link.
+- Fuller evidence for a README-only packet goes below the table, one bullet
+  per result starting with the phase ID:
+  `- P1: task test → 112 passed @ abc1234, 2026-11-03`. A larger packet
+  keeps it under the phase's heading in IMPLEMENTATION_PLAN.md.
 
-**Requirements and checks**
-- Each requirement says what is true when it is done, and names a check that
-  can be run: a command or test, and its expected result. EARS wording
-  ("WHEN … the system SHALL …") is optional.
+#### Requirements and checks
+
+- Each requirement says what is true when it is done, and names a check: a
+  command, a test, or a written manual procedure, with its expected result.
+  EARS wording ("WHEN … the system SHALL …") is optional.
 - A README-only packet lists requirements under `## Done when`; a larger one
   keeps them in SRD.md.
 - IDs are never renumbered, reused or renamed. A dropped requirement or phase
-  stays where it is, marked `Dropped — <reason>`, and new ones take the next
-  number.
+  stays where it is, marked Dropped with a [reason](#reasons), and new ones
+  take the next number.
 
-**Open questions**
+#### Reasons
+
+- A Dropped requirement or phase, and an Archived or Superseded packet, has a
+  note that starts with a reason word: superseded, duplicate, obsolete or
+  won't do. For example: `Dropped — superseded by P3`.
+
+#### Open questions
+
 - Each unresolved point is one `Open question:` line in the README, naming
-  whom it waits on.
+  what it blocks and whom it waits on:
+  `- Open question: Should the cap be configurable? (blocks P2; waits on @sam)`.
 - When it is answered, delete the line and add a dated `Decision:` line to
-  the Log.
+  the Log. When SADD.md exists, also record the decision in its decisions
+  table.
 
-**Log**
+#### Log
+
 - `## Log` is only ever added to: one dated line per state change, decision
   or surprise, newest last.
 - It is the packet's history; Current Work is its present.
 
-**Ending a packet**
-- Dropped, Archived and Superseded notes start with a reason word:
-  superseded, duplicate, obsolete or won't do.
-- A finished packet moves to `completed/`. Its Current Work starts with the
-  line "Historical record as of <commit>; the code is the current truth."
-  After that it is not edited, and new scope opens a new packet.
+#### Lifecycle folders
 
-**Other files**
-- IMPLEMENTATION_PLAN.md holds phase details and evidence under
-  `### P1: <name>` headings, with no state table of its own.
-- SRD.md holds requirements with their checks. SADD.md holds design and
-  decisions.
-
-**Lifecycle folders**
 - `planned/`, `in-progress/`, `completed/` and `archived/`, under the plans
-  folder.
-- A one-file plan is a `plc-*.md` file in a lifecycle folder.
+  folder. A one-file plan is a `plc-*.md` file in one of them.
+- When Status needs another lifecycle folder and the repository uses
+  lifecycle folders, move the packet there with `git mv`, keeping its folder
+  or file name. Create the folder first if it is missing, so the packet
+  lands inside it. Update the links into the packet, and the relative links
+  out of it when the move changes how deep it sits.
+- Finished plans that older versions of these skills put in another folder
+  stay where they are; move them to `completed/` when convenient, with their
+  links.
+
+#### Ending a packet
+
+- A finished packet moves to `completed/`. Its Current Work starts with the
+  line "Historical record as of <commit>; the code is the current truth.",
+  naming the commit that finished it. After that the packet is not edited,
+  and new scope opens a new packet.
+- An abandoned or replaced packet moves to `archived/`, with Status Archived
+  or Superseded and a reason.
 
 ### Rules across fields
 
-The format check's strict mode reports these:
+The format check's `--strict` mode reports these five:
 
-- The folder disagrees with the status:
-  - `planned/` needs Planned or Blocked;
-  - `in-progress/` needs In progress or Blocked;
-  - `completed/` needs Complete;
-  - `archived/` needs Archived or Superseded.
-- Status is Blocked, but the Blocker line is missing or `None`.
-- A phase is Verified or Live with no note after ` — `.
-- A Dropped, Archived or Superseded note does not start with a reason word.
-- A packet in `completed/` has a phase that is not Verified, Live, Deferred
-  or Dropped. This applies when a packet moves there, not to packets already
-  there.
+1. Status does not match the lifecycle folder:
+   - `planned/` needs Planned or Blocked;
+   - `in-progress/` needs In progress or Blocked;
+   - `completed/` needs Complete;
+   - `archived/` needs Archived or Superseded.
+2. Status is Blocked, but the Blocker line is missing or `None`.
+3. A phase is Verified or Live with no evidence note after ` — `.
+4. A Dropped phase, or an Archived or Superseded packet, has a note that does
+   not start with a reason word.
+5. A packet in `completed/`, or checked with `--lifecycle completed`, has a
+   phase that is not Verified, Live, Deferred or Dropped. A plans-folder run
+   skips `completed/`, so packets finished earlier are not rechecked.
 
 ### Format check
 
 `scripts/format_check.py` in this skill's folder checks packets against the
-template. Run it with Python 3 and no other dependencies:
+template. It needs Python 3.10 or later and nothing else:
 
 ```sh
 python3 <skill-dir>/scripts/format_check.py --packet <packet> --strict
+python3 <skill-dir>/scripts/format_check.py --packet <packet> --strict --lifecycle completed
 python3 <skill-dir>/scripts/format_check.py <plans folder> --people "Alex Kim=alex"
 ```
 
 - `--packet` checks one packet folder or one-file plan, in any lifecycle
   folder. A plans folder checks every packet in its `planned/` and
-  `in-progress/` folders, and skips flat design files such as `*-srd.md`.
+  `in-progress/` folders, and skips flat design files such as
+  `plc-012-retry-srd.md`.
 - Default mode checks the structure: the summary, one Current Work with its
-  first keys and known words, a Log, and phase state only in the README
-  `## Phases` table. `--strict` adds the rules across fields.
+  first keys, known words and an Owner `@handle`, a Log, and phase state only
+  in the README `## Phases` table. It ignores fenced code blocks. `--strict`
+  adds the rules across fields.
+- `--lifecycle <folder>` checks a packet as if it were in that lifecycle
+  folder, for example before a finished packet moves to `completed/`.
 - `--people` takes `NAME=HANDLE` pairs and reports an Owner line that names
   one of them without the handle. Put plans folders before `--people`.
 - It prints one line per finding. Exit 0 means nothing was found, 1 means
-  findings, and 2 means a bad path or bad arguments.
+  findings, and 2 means a bad path or argument, nothing to check, or a file
+  it could not read.

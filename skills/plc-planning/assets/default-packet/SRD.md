@@ -37,7 +37,8 @@ number.
 ## User Experience And Public Surface
 
 Summarize behavior a user, API consumer, operator, or integrator can observe.
-Write `None` when this change has no public surface.
+When this change has no public surface, delete this section and Expected
+Experience.
 
 | Surface | Action or input | Expected result | Compatibility |
 | --- | --- | --- | --- |

@@ -51,9 +51,9 @@ repeated handoffs, abandoned attempts, and session narration out of requirements
 design. A new reader must be able to identify approved scope, current design,
 and remaining work without reconstructing the conversation. Label pending
 proposals as unapproved; do not silently weaken or defer requirements to match
-delivered code. Rewrite the plan's Current Work block in the README with the
-shared template's keys, as `plc-checkpoint` step 5 describes, and put history
-in its `## Log`. Preserve repository-specific locations. Do not append
+delivered code. Update the plan's Current Work block, its `## Phases` rows,
+and its `## Log` with the rewrite rules in `plc-checkpoint`'s "Rewrite
+Current Work" step. Preserve repository-specific locations. Do not append
 successive checkpoints or keep superseded instructions as current directions.
 
 Useful implementation notes belong in the existing packet and must be committed
@@ -82,19 +82,19 @@ only one delivered capability is needed. For difficult hardware, performance,
 or platform qualification, prove the checking method early on a representative
 case and a known failure.
 
-Map each selected requirement and named design goal to its existing PLC ID,
-owner, proving check/review, and a state word from `plc-planning`'s
-[word list](../plc-planning/SKILL.md#words). Keep this completion map in the
-README's `## Phases` table and Current Work block, or the repository's
-equivalent work list; do not create a second durable plan. Rewrite Current
-Work, including "Last updated", the next action, and where the work lives,
-after each child merge, at phase close, and before finishing, so a later
-session or `plc-checkpoint` starts from current state. Record each result
-once with requirement/check ID, tested
-source (including relevant uncommitted changes), date, relevant dependencies,
-platform/backend and configuration, exact method, expected and actual results,
-and material limits. Link to existing methods and evidence stores where sufficient.
-Record audit scope, base, and verdict as evidence, not an uninspected shell command.
+Keep a completion map: for each selected requirement and named design goal,
+its existing PLC ID, owner, proving check or review, and the phase state word
+from `plc-planning`'s [word list](../plc-planning/SKILL.md#words) for the
+phase that delivers it. The map lives in the README's `## Phases` table and
+Current Work block, or the repository's equivalent work list; do not create
+a second durable plan. Update it after each child merge, at phase close, and
+before finishing, so a later session or `plc-checkpoint` starts from current
+state. Record each result once with requirement/check ID, tested source
+(including relevant uncommitted changes), date, relevant dependencies,
+platform/backend and configuration, exact method, expected and actual
+results, and material limits. Link to existing methods and evidence stores
+where sufficient. Record audit scope, base, and verdict as evidence, not an
+uninspected shell command.
 
 Run focused checks during implementation and broader checks at meaningful
 integration/delivery boundaries. Before repeating a check or review, identify
@@ -206,8 +206,10 @@ the prepared combined source:
    review and verify it before accepting it.
 4. Reconcile the completion map with current source and the user request.
    Selected requirements need owners and current proof.
-5. Update PLC results only after their checks pass. Mark a whole phase Verified
-   only when all its requirements passed, even if the selected block was smaller.
+5. Update PLC results only after their checks pass. Mark a phase Verified
+   only after it is Merged into the final target and the checks for all its
+   requirements passed on the merged code, even if the selected block was
+   smaller.
 
 Use `audit-codebase`'s limit of three consecutive audit passes total, including
 the initial pass. Re-audit only for verified serious findings or substantial

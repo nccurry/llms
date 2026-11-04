@@ -29,10 +29,11 @@ close out.
 
 ## 1. Checkpoint first
 
-Run [plc-checkpoint](../plc-checkpoint/SKILL.md) steps 1 to 4: find the work
-and its plan, read the last Current Work block, gather what changed, and tidy
-what is already merged. Don't rewrite Current Work yet; step 6 writes it once, with the
-end state.
+Run [plc-checkpoint](../plc-checkpoint/SKILL.md) from "Find the work and its
+plan" through "Tidy what is finished": find the work and its plan, read the
+last Current Work block, gather what changed, and tidy what is already
+merged. Don't rewrite Current Work yet; step 6 writes it once, with the end
+state.
 
 ## 2. Collect what's in flight
 
@@ -58,8 +59,9 @@ Use the user's words, then the plan's recorded route, then the repo's
   checkout, which may be dirty, on another branch, or hold their own
   unpushed commits. Use the integration worktree when there is one;
   otherwise `git worktree add --detach <campaign>/_merge origin/main`. Merge
-  each branch there, run the checks (step 4), then `git push <remote>
-  HEAD:main`. A wrap-up on this route authorizes that push. Afterwards,
+  each branch there, run the checks (step 4), commit the plan update on top
+  (step 6), then `git push <remote> HEAD:main`. A wrap-up on this route
+  authorizes that push. Afterwards,
   fast-forward local `main` only if it is clean and can fast-forward;
   otherwise say it is behind.
 - **Local only:** when the user says not to push, or names a local target
@@ -103,53 +105,70 @@ merge it in and rerun the affected checks. Never force-push `main`.
 ## 6. Finish the plan
 
 Rewrite Current Work and the README's `## Phases` table to the real end
-state, following [plc-checkpoint](../plc-checkpoint/SKILL.md) step 5,
-including its old-shape move, Log lines, evidence rule, and requirement
-comparison:
+state, using the rewrite rules in `plc-checkpoint`'s
+[Rewrite Current Work](../plc-checkpoint/SKILL.md#5-rewrite-current-work)
+step. Its commit rules don't apply; this step's delivery rules below do.
+Write in now the cleanup that step 7 will leave pending, so the plan is
+delivered once: in an open plan, as rows in Current Work's "Where the work
+lives" table, with the reason in the State cell; in a finished plan, as a
+dated Log line, written before step 2 below adds the historical-record line.
 
-- Each item merged, verified, or still open, with the merge commit and the
-  checks that ran on it.
-- If every requirement has passed its acceptance, finish the plan:
-  1. Set Status to Complete, and start Current Work with the line
-     "Historical record as of <commit>; the code is the current truth.",
-     naming the merge commit on the target.
-  2. Move the packet folder or one-file plan with `git mv` to
-     `<plans folder>/completed/`.
-  3. Before committing the move, run
-     `python3 <skills-dir>/plc-planning/scripts/format_check.py --packet <moved packet> --strict`.
-     It must exit 0: fix the format problems it reports. If it reports a
-     phase that is not Verified, Live, Deferred or Dropped, the plan is not
-     finished: move it back and leave it open.
-  4. Update links that pointed at the old path.
-- Otherwise the plan stays where it is, with what's left as the next step.
-  Don't mark anything complete to make the wrap-up look finished.
-- Record decisions and open questions from the conversation, as
-  `plc-checkpoint` does.
+The plan is finished only when every requirement has passed its acceptance.
+Then, in this order:
 
-Deliver the plan update the same way as the code: in the merge, or as a
-commit on `main` pushed with it. A plan kept in another repo gets its own
-commit there, following that repo's rules.
+1. Check the phases before changing Status:
+   `python3 <skills-dir>/plc-planning/scripts/format_check.py --packet <packet> --strict --lifecycle completed`.
+   Until step 2 below sets Complete, it reports that Status does not match
+   `completed/`; that finding is expected.
+   - When it reports a phase that `completed/` does not allow, the plan is
+     not finished. Leave Status as it is, add no historical-record line, and
+     record the gap as the rewrite rules say.
+   - When a finding needs the user's decision, such as a status that
+     disagrees with the evidence or a missing owner, stop and ask.
+   - Fix any other finding and run the check again.
+2. Set Status to Complete and add the historical-record line that
+   `plc-planning`'s [Ending a packet](../plc-planning/SKILL.md#ending-a-packet)
+   rule describes, naming the merge commit on the target.
+3. Move the packet to `<plans folder>/completed/` as `plc-planning`'s
+   [lifecycle folders](../plc-planning/SKILL.md#lifecycle-folders) rule says.
+   Plans that older versions of this skill finished into another folder stay
+   there.
+4. Run the check on the moved packet with `--strict`. It must exit 0.
+
+A plan that is not finished stays where it is, with what's left as the next
+step. Don't mark anything complete to make the wrap-up look finished.
+
+Deliver the plan update with the code:
+
+- **Direct:** commit it in the merge checkout on top of the merge, and push
+  both together.
+- **Local only:** commit it on top of the merge on the local target.
+- **PR/MR:** an open plan's update travels in the PR/MR. Finishing the plan
+  waits for the merge; then deliver it as a follow-up commit, by the repo's
+  usual route.
+- A plan kept in another repo gets its own commit there, following that
+  repo's rules.
 
 ## 7. Clean up this work
 
 Follow [clean-stale-worktrees](../clean-stale-worktrees/SKILL.md) for each
 removal and its verification. Only this work's checkouts and branches; other
-campaigns are untouched.
+campaigns are untouched. Step 6 already recorded what stays pending.
 
 - **Merged into `main`:** remove each worktree, including the `_merge`
   checkout (run from outside it, no `--force`, after checking ignored files
-  as `plc-checkpoint` step 4 describes), confirm the folder and registration
-  are gone, delete the local branch, and delete the remote branch with
+  as `plc-checkpoint`'s "Tidy what is finished" step describes), confirm the
+  folder and registration are gone, delete the local branch, and delete the
+  remote branch with
   `git push --force-with-lease=<branch>:<merged-sha> <remote> --delete
   <branch>`, so later pushes to it aren't lost. Remove the campaign folder
   and its `_output/` once it's empty of live work.
-- **Local only:** the same, except remote branches stay; list them as
-  pending in Current Work.
+- **Local only:** the same, except remote branches stay, pending.
 - **PR/MR left open:** remove the worktrees once the branch is pushed with no
-  local changes, keep the branch until the PR/MR merges, and record cleanup as
-  pending on that PR/MR in Current Work.
+  local changes, and keep the branch until the PR/MR merges, pending on that
+  PR/MR.
 - **Skipped (another agent, failing checks):** keep the worktree and branch,
-  and list them in Current Work with the reason.
+  pending, with the reason.
 
 ## 8. Report
 

@@ -1,4 +1,4 @@
-# Moving an old-shape packet
+# Converting an old-shape packet
 
 Use this when an active packet is not yet in the
 [shared template](../SKILL.md#shared-template). Signs of an older shape:
@@ -10,57 +10,107 @@ Use this when an active packet is not yet in the
   skill's Phase Status table;
 - a `Lifecycle status:` or `Folder:` line.
 
-Move the packet first, then update it. Never add a second status block
-beside the old one.
+Convert the packet first, then update it. Never add a second status block
+beside the old one. "Convert" here means changing the format in place;
+"move" means only a `git mv` to another folder.
 
 ## Before you start
 
-- Move only active packets: those in `planned/` or `in-progress/`, and those
-  with no lifecycle folder that are not Complete. Leave completed and
-  archived packets as they are, apart from links a move changes. List a
-  packet with no lifecycle folder for the owner to place.
-- Skip a packet that other live work is changing, and tell that work's
-  owner. Live work is an open merge request's branch, a worktree's branch or
-  commit, or uncommitted edits you did not make. The packet you are updating
-  for its own work is yours to move.
+- Convert only active packets: those in `planned/` or `in-progress/`, and
+  those with no lifecycle folder that are not Complete. Leave completed and
+  archived packets as they are, apart from links that a move changes. List a
+  packet with no lifecycle folder as an owner case.
+- Skip a packet that other people's work in progress is changing, and tell
+  whoever owns that work. Such work is an open merge request's branch,
+  another worktree's branch or commit, or uncommitted edits you did not
+  make. The packet you are updating for its own work is yours to convert.
 - Don't reword text. The only edits are moving whole lines and the format
-  edits below. Two of them delete or add text: M1's duplicate rule and E6's
-  evidence. List each line they touch for the owner's review.
-- Owner decisions are never guessed. A status that disagrees with its packet
-  or folder, a missing owner, a stale note, and a packet with no summary go
-  to the owner. List each one.
+  edits below. Two steps change what the packet says: M1's duplicate rule
+  deletes lines, and E6 can add evidence. List each line they touch for the
+  owner's review.
+- An owner case is a point only the packet's owner can settle. Leave the
+  text as it is, and list the case in your report and as an
+  `Open question:` line. Never guess one. Owner cases include a status that
+  disagrees with its packet or folder, a missing owner, a stale note, and a
+  packet with no summary.
 
-## Moves
+## Line moves
 
-| Step | Edit |
-| --- | --- |
-| M1 | Make one `## Current Work` block directly after the summary. Move into it, first and in order, the lines that give the status, the owner and the last-updated date. Rename keys only as this list allows: `State` to `Status` (when it starts with a packet status word) or `Current state`; `Updated` to `Last updated`; `Next step` to `Next action`; `Blockers` and `Blocker / owner` to `Blocker`; `Current phase` and `Progress` to `Current state`. Move a wrapped item with its continuation lines. A `Status:` paragraph becomes a `- Status:` item. Remove an old status heading only when its section is left empty. When Current Work and an older section hold the same key, keep the Current Work line and delete the older one, unless the owner decides otherwise. |
-| M2 | Add `@handle`s beside names already in the Owner line, from a name-to-handle map the owner approved. A name with no handle in the map is an owner case. |
-| M3 | Add a date-first `- Last updated:` line from the newest date the status text gives, keeping the line the date came from. |
-| M4 | Move the first paragraph of `## Summary` up to sit directly under the title. A packet with no `## Summary` and no paragraph under its title is an owner case. |
-| M5 | Move the packet's phase table that has a State or Status column, whole, under a new `## Phases` heading in the README. A link in a moved row to a heading in the plan's own file gains that file's name: `[P1](#p1-parse)` becomes `[P1](IMPLEMENTATION_PLAN.md#p1-parse)`. A packet with two such tables is an owner case. |
-| M6 | Add `## Log` at the end. Its first line comes from the `Created:` line, when there is one; then add `- <date> Moved to the shared PLC template (format only).` |
-| M7 | Remove `Folder:` lines (the path says it) and `Lifecycle status:` lines in other files (the README holds the status). |
+1. **M1. One Current Work block.** Make one `## Current Work` block directly
+   after the summary.
+   - Move into it, first and in order, the lines that give the status, the
+     owner and the last-updated date.
+   - Rename keys only as the table below allows.
+   - Move a wrapped item with its continuation lines.
+   - A `Status:` paragraph becomes a `- Status:` item.
+   - Remove an old status heading only when its section is left empty.
+   - When Current Work and an older section hold the same key, keep the
+     Current Work line and delete the older one, unless the owner decides
+     otherwise.
+
+   | Old key | New key |
+   | --- | --- |
+   | `State` | `Status` when it starts with a packet status word; otherwise `Current state` |
+   | `Updated` | `Last updated` |
+   | `Next step` | `Next action` |
+   | `Blockers`, `Blocker / owner` | `Blocker` |
+   | `Current phase`, `Progress` | `Current state` |
+
+2. **M2. Handles.** Add `@handle`s beside names already in the Owner line,
+   from a name-to-handle map the owner approved. A name with no handle in
+   the map is an owner case.
+3. **M3. Last updated.** Add a date-first `- Last updated:` line from the
+   newest date the status text gives, keeping the line the date came from.
+4. **M4. Summary.** Move the first paragraph of `## Summary` up to sit
+   directly under the title. A packet with no `## Summary` and no paragraph
+   under its title is an owner case.
+5. **M5. Phases.** Move the packet's phase table that has a State or Status
+   column, whole, under a new `## Phases` heading in the README. A link in a
+   moved row to a heading in the file the table came from gains that file's
+   name: `[P1](#p1-parse)` becomes `[P1](IMPLEMENTATION_PLAN.md#p1-parse)`. A
+   packet with two such tables is an owner case.
+6. **M6. Log.** Add `## Log` at the end. Its first line comes from the
+   `Created:` line, when there is one. Then add
+   `- <date> Converted to the shared PLC template (format only).`
+7. **M7. Old status lines.** Remove `Folder:` lines (the path says it) and
+   `Lifecycle status:` lines in other files (the README holds the status).
 
 ## Format edits
 
-| Step | Edit |
-| --- | --- |
-| E1, E2 | Put a state word in front of each status note or phase cell, keeping the old text after ` — `. Add a Status column where a phase table has none. |
-| E4, E5 | Apply owner decisions: write a state change as `<word> — was: <old text>`, and move folders together with the links that point at them. Superseded and abandoned packets go to `archived/`. |
-| E6 | Give each Verified or Live cell its evidence after ` — `, taken from what its packet already records. When the cell already names it, only the separator changes. When the packet records no check, the owner decides; the word may be Merged. |
+E3 is not used.
+
+1. **E1. State words.** Put a state word in front of each status note or
+   phase cell, keeping the old text after ` — `.
+2. **E2. State column.** Add a State column where a phase table has none.
+3. **E4. Owner decisions on state.** Write a state change the owner decided
+   as `<word> — was: <old text>`.
+4. **E5. Owner decisions on folders.** Move a packet the owner decided to
+   move, together with the links that point at it. Superseded and abandoned
+   packets go to `archived/`.
+5. **E6. Evidence.** Give each Verified or Live cell its evidence after
+   ` — `, taken from what its packet already records. When the cell already
+   names it, only the separator changes. When the packet records no check,
+   leave the cell as it is and list it as an owner case; the owner may
+   change the word to Merged.
+
+## The older skill's phase table
 
 The older skill's Phase Status table has Implementation, Verification,
-Delivery and Evidence record columns but no State or Status column. Add a
-Status column at the end (E2), then move the table (M5). Its word is the
-highest rung the row's own cells support: Live when Delivery records a
-release or deployment, Verified when Verification records a passed check,
-Merged when the change is on the target branch, then Implemented, In
-progress or Planned. When the cells disagree, the row is an owner case.
+Delivery and Evidence record columns, but no State or Status column. Add a
+State column at the end (E2), then move the table (M5). Its word is the
+latest one the row's own cells support:
+
+- Live when Delivery records a release or deployment;
+- Verified when the change is on the final target and Verification records
+  a check that passed on it;
+- Merged when the change is on the final target;
+- otherwise Implemented, In progress or Planned.
+
+When the cells disagree, the row is an owner case.
 
 ## Check the result
 
-Run the [format check](../SKILL.md#format-check) on the packet. Default mode
-should print only the cases left open for the owner, and `--strict` only the
-owner cases you list. Report each owner case, and each line that M1 deleted
-or E6 added.
+Run the [format check](../SKILL.md#format-check) on the packet, first in
+default mode and then with `--strict`. Each finding left must be one of the
+owner cases you listed. Report those cases, and each line M1 deleted or E6
+added.
