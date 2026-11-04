@@ -41,9 +41,12 @@ Pass only if all of these hold:
    decision or surprise, newest last.
 6. **Evidence for Verified.** A phase marked Verified or Live names, after
    ` — `, the check that passed and where it ran, as in
-   `Verified — run_tests.py → 3 passed @ abc1234`. A merged phase whose check
-   did not run, or does not exist yet, stays Merged, with what is missing in
-   its note.
+   `Verified — run_tests.py → 3 passed @ abc1234`. A phase whose work is all
+   merged, but whose check did not run or does not exist yet, stays Merged,
+   with what is missing in its note. A phase with part of its work merged
+   and part not started is In progress, as `plc-planning`'s Words list says
+   for a phase whose parts differ: its note names the merge commit and the
+   missing work with its check. Merged or Planned fails for such a phase.
 7. **Gaps recorded.** When the shipped code does not meet a requirement, the
    gap becomes a new phase row (Planned, or Deferred only with the user's
    approval) or an `Open question:` line naming whom it waits on. A

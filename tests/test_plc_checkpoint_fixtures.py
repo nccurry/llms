@@ -35,11 +35,14 @@ SHARED_SHAPE_CASES = [
 ]
 
 # The old-shape packet after a correct conversion and status update. The
-# conversion only moves lines and renames keys: `Blockers: none` becomes
-# `Blocker: none`, value unchanged. The status update then sets Last updated,
-# Next action, Current state and P1's row, adds the template's missing
-# `Depends on` and `Resume check` keys and the "Where the work lives" table,
-# and adds a Log line for P1's change after the conversion's line.
+# conversion moves lines, renames keys (`Blockers: none` becomes
+# `Blocker: none`, value unchanged) and, since the packet has SRD.md, adds
+# `## Done when` with the one line pointing there (step M8). The status update
+# then rewrites Current Work with the template's keys, so Blocker becomes
+# `None`; sets Last updated, Next action, Current state and P1's row, noting
+# the missing `save_booking` call; adds the template's missing `Depends on`
+# and `Resume check` keys and the "Where the work lives" table; and adds a Log
+# line for P1's merge after the conversion's line.
 CONVERTED_OLD_SHAPE_README = """# Audit log PLC
 
 Record who changed each berth booking, so support can answer "who changed
@@ -51,7 +54,7 @@ this?" without reading server logs.
 - Owner: @alex
 - Last updated: 2026-11-03, `main` at `{merge}`
 - Next action: start P2
-- Blocker: none
+- Blocker: None
 - Depends on: None
 - Current state: P1 merged into `main` at `{merge}`. P2 not started.
 - Resume check: `git log --oneline -1 main` → the P1 merge
@@ -66,8 +69,12 @@ Where the work lives:
 
 | Phase | Name | Requirements | Status |
 | --- | --- | --- | --- |
-| P1 | Record changes | AUD-001 | Merged — `{merge}` |
+| P1 | Record changes | AUD-001 | Merged — `{merge}`; nothing calls `record` from `save_booking` yet |
 | P2 | Audit command | AUD-002 | Not started |
+
+## Done when
+
+The requirements and their checks are in [SRD.md](SRD.md).
 
 ## Summary
 

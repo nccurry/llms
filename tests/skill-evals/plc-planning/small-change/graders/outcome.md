@@ -21,16 +21,23 @@ only if all of these hold:
 3. **Current Work.** It starts with `- Status: Planned`, `- Owner: @alex`,
    and `- Last updated:` with the run's date, `main` and the current commit.
    It has every other template key: Next action, Blocker, Depends on,
-   Current state and Resume check. The Next action is one concrete step, such
-   as writing the failing test. The "Where the work lives" table is there,
-   and lists no checkout.
+   Current state and Resume check. The Next action is one concrete step:
+   it says what to do first and where, so the next person can start without
+   choosing, as in
+   `Write a failing test for --limit 0 in tests/test_harbor.py`. A Next
+   action that names the whole phase, such as `Implement P1`, is not
+   concrete. The "Where the work lives" table is there, and lists no
+   checkout.
 4. **Phases.** The table is `| Phase | Name | Owner | State |`, with one row,
    `P1`, in state Planned. A second phase for work this small is a fail.
 5. **Done when.** Each requirement has an ID, says what is true when it is
    done (`--limit 0` and a negative limit exit with an error, and a valid
    limit still works), and names a check that can be run with its expected
    result, such as `python -m unittest` passing with a new test.
-6. **Log.** `## Log` has one line: `- <date> Created.`
+6. **Log.** `## Log` starts with `- <date> Created.` It may also hold dated
+   `Decision:` or surprise lines, one per decision or surprise, as the
+   skill's Log rule allows ("one dated line per state change, decision or
+   surprise").
 7. **No filler.** No empty sections, and no `N/A`, `TBD` or `<placeholder>`
    text.
 8. The answer says where the plan is and that no code was changed. It does

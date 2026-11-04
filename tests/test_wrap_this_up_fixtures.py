@@ -303,28 +303,35 @@ class WrapThisUpFixtureTest(unittest.TestCase):
     def test_keeping_an_unmet_requirement_open_passes(self):
         self.build("unmet-requirement")
         merge = self.finish_p1()
+        # Part of P1 merged and part never started, so P1 stays In progress.
         self.edit_readme(
             "| In progress |",
-            f"| Merged — `{merge}`; DIG-003 footer and `test_email_footer` missing |",
+            f"| In progress — DIG-001 merged @ `{merge}`; DIG-003 and"
+            " `test_email_footer` not started |",
         )
         self.edit_readme(
             "## Log",
             "## Open questions\n\n"
             "- Open question: finish DIG-003 or drop it? (waits on @alex)\n\n## Log",
         )
-        self.commit_plan("docs(plan): P1 merged; DIG-003 open")
+        self.edit_readme(
+            "- 2026-10-26 Created.\n",
+            "- 2026-10-26 Created.\n"
+            f"- 2026-11-03 DIG-001 merged @ `{merge}`; DIG-003 was never built.\n",
+        )
+        self.commit_plan("docs(plan): DIG-001 merged; DIG-003 open")
         self.close_merge_checkout()
         self.assertEqual(check(self.dest), OK)
         packet = self.app / PLAN
         self.assertEqual(format_check().check_packet(packet, strict=True), [])
         self.assertEqual(eval_only_problems(packet, owner=OWNER), [])
-        # The shipped check would refuse to complete it: P1 is only Merged.
+        # The shipped check would refuse to complete it: P1 is In progress.
         as_completed = format_check().check_packet(packet, strict=True, lifecycle="completed")
         self.assertEqual(len(as_completed), 2, as_completed)
         self.assertIn(
             "strict: Status In progress does not match the completed/ folder", as_completed[0]
         )
-        self.assertIn("strict: Merged phase in a completed/ packet", as_completed[1])
+        self.assertIn("strict: In progress phase in a completed/ packet", as_completed[1])
 
     def test_plan_only_commit_in_the_primary_checkout_is_allowed(self):
         # A checkpoint may commit a plan update on local main.
