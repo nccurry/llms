@@ -324,9 +324,10 @@ Whenever a skill updates a plan and a trigger in
 [Adding files](#adding-files) now holds for a file the plan lacks, add the
 file in the same update:
 
-1. A one-file plan becomes a folder first:
-   `git mv plc-<slug>.md <slug>/README.md`, in the same lifecycle folder.
-   Its side files, such as `plc-<slug>-srd.md`, move into the folder too.
+1. A one-file plan becomes a folder first. In its lifecycle folder, create
+   `<slug>/`, since `git mv` does not create it, then run
+   `git mv plc-<slug>.md <slug>/README.md`. Its side files, such as
+   `plc-<slug>-srd.md`, move into the folder too.
    Update the links into and out of it, as
    [Lifecycle folders](#lifecycle-folders) says for a move.
 2. Copy its template from `assets/default-packet/`, such as
