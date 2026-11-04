@@ -2,8 +2,8 @@
 
 `harbor list --limit 0` prints nothing, and a negative limit quietly drops
 berths from the end of the list. The fix is one argument check and a test.
-The repo says where plans go and, like the planning skill's sizing rule, that
-small work gets a one-file plan.
+The repo says where plans go and that small work gets a one-file plan; no
+trigger in the planning skill's Adding files rule holds.
 """
 
 import sys

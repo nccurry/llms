@@ -2,9 +2,9 @@
 
 A small, bounded change gets one plan file and nothing else: a one-file plan
 `docs/plans/planned/plc-<slug>.md`, named by the planning skill's format check
-rule for one-file plans. The skill's sizing rule picks a one-file plan for
-small work that will not need SRD.md, SADD.md or IMPLEMENTATION_PLAN.md, and
-the fixture's `docs/plans/README.md` says the same. No packet folder, side
+rule for one-file plans. The skill chooses a one-file plan when no trigger
+in its Adding files rule holds, as here, and the fixture's
+`docs/plans/README.md` names that shape for small work. No packet folder, side
 file or other file may appear, no code may change, and history must not be
 rewritten.
 The plan must pass the shipped format check in strict mode, as a packet in

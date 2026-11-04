@@ -2,11 +2,11 @@
 
 The fix is one argument check in `harbor.py` and one test. The repository's
 `docs/plans/README.md` says where plans go (`planned/` for a new one) and that
-a plan for small work is one file, `plc-<slug>.md`. The planning skill's
-sizing rule says the same: a one-file plan for small work that will not need
-SRD.md, SADD.md or IMPLEMENTATION_PLAN.md. None of the skill's triggers for
-adding a file holds: the error for a limit below 1 is a bug fix inside the
-existing `--limit` flag, not a new contract. This case grades that one shape.
+a plan for small work is one file, `plc-<slug>.md`. The planning skill
+agrees: it chooses a one-file plan when no trigger in its Adding files rule
+holds. None holds here: the error for a limit below 1 is a bug fix in the
+existing `--limit` flag, not a contract change. This case grades that one
+shape.
 
 Run `check_plan.py`, then read the plan and the agent's final answer. Pass
 only if all of these hold:

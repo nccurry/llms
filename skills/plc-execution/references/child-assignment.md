@@ -36,8 +36,11 @@ goes to the parent; independent work continues.
 Update maintained project documentation when behavior changes, and record
 completion evidence only in assigned PLC sections. Update current guidance in
 place, preserve IDs and rationale, and reconcile conflicting text. Keep status
-and evidence concise in the existing work list or status/evidence sections;
-link results instead of repeating them or restating the skill's general workflow.
+and evidence concise in the sections the parent assigned; link results instead
+of repeating them or restating the skill's general workflow. When the child
+finds information that meets a trigger in `plc-planning`'s Adding files rule
+for a file the packet lacks, it reports that to the parent, which grows the
+packet.
 Keep session narration out of requirements and design.
 Commit useful implementation notes in the assigned packet before handoff.
 Delete temporary notes when no longer useful. Report raw receipts separately;

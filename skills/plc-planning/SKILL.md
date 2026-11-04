@@ -52,10 +52,10 @@ Record the check's actual result only after running it.
    - Otherwise, start from [the default packet](assets/default-packet/README.md),
      a packet folder whose README holds the shared template, or from
      [the compact plan](assets/compact-plan.md), the same README as a single
-     `plc-<slug>.md` file. Choose the one-file plan for small work that will
-     not need SRD.md, SADD.md, or IMPLEMENTATION_PLAN.md; choose a folder when
-     the work may grow, since only a folder can hold those files. A one-file
-     plan that later needs one becomes a folder, as
+     `plc-<slug>.md` file. Choose the one-file plan when no trigger in
+     [Adding files](#adding-files) holds yet, unless the repository keeps
+     every plan in a folder; choose a folder when one does. A one-file plan
+     becomes a folder when a trigger holds later, as
      [Growing a packet](#growing-a-packet) says. Small fixes may need only
      investigation, repair, and focused checks.
    - Do not invent file names, ledgers, or approval steps when neither the
@@ -66,21 +66,23 @@ Record the check's actual result only after running it.
      If there is no clear location, state the proposed location before writing.
 
 3. Build the selected plan or packet.
-   - Size it to the work. Start with the README alone, and add SRD.md,
-     SADD.md, IMPLEMENTATION_PLAN.md or FIXTURES.md only when the
-     [Adding files](#adding-files) rule calls for it, in the way
-     [Growing a packet](#growing-a-packet) says. A packet with SRD.md,
-     SADD.md, and IMPLEMENTATION_PLAN.md is a full packet.
+   - Start with the README alone, and add SRD.md, SADD.md,
+     IMPLEMENTATION_PLAN.md or FIXTURES.md only for a trigger in
+     [Adding files](#adding-files) that already holds; then the plan starts
+     as a folder. Put each kind of information in its file, as step 3 of
+     [Growing a packet](#growing-a-packet) says. A new plan's Log needs only
+     its Created line. A packet with SRD.md, SADD.md, and
+     IMPLEMENTATION_PLAN.md is a full packet.
    - Delete sections that do not apply; never leave `N/A`, `TBD`, or empty
      headings. Add repository-specific sections only when they record a real
      constraint or decision.
    - Give each kind of information one home. The README owns the summary,
-     status, phase state, open questions, the Log, and a small packet's
-     requirements; SRD owns requirements with their checks, public contracts,
-     and risks; SADD owns design and decisions; the implementation plan owns
-     phase details and evidence. Link to existing schemas or evidence stores
-     instead of copying their contents. Fixtures hold stable inputs and
-     expected results, not another results ledger.
+     status, phase state, open questions, the Log, and a README-only
+     packet's requirements; SRD owns requirements with their checks, public
+     contracts, and risks; SADD owns design and decisions; the implementation
+     plan owns phase details and evidence. Link to existing schemas or
+     evidence stores instead of copying their contents. Fixtures hold stable
+     inputs and expected results, not another results ledger.
 
 4. Write clear requirements and design.
    - Write each required behavior as a requirement with a permanent ID and a
@@ -278,8 +280,8 @@ refer to this section instead of repeating it.
 
 #### Fixed fields
 
-Tools find these by their exact text, so each template keeps them as
-written here:
+Tools find these by their exact text, so each template, and every plan file
+made from one, keeps them as written here:
 
 - `README.md` and `compact-plan.md`: the section headings in
   [Order and format](#order-and-format) and the `- Key:` lines in
@@ -298,60 +300,84 @@ written here:
 #### Adding files
 
 A plan starts as the README alone. Add a file only when one of its
-triggers holds. The triggers depend on the kind of information, not on the
-size of the work:
+triggers holds. Each trigger names a kind of information, not the size of
+the work; the only counts are more than 8 requirements for SRD.md and more
+than 3 evidence bullets for IMPLEMENTATION_PLAN.md.
 
-- **SRD.md** when the work adds a public contract or changes one on
-  purpose: a CLI command or flag, an API, a configuration key, or a UI flow.
-  A bug fix inside an existing contract, such as a clear error for input
-  that never worked, does not count. Also when the work has real risks,
-  ones that need an owner and a check, or when `## Done when` would list
-  more than eight requirements.
-- **SADD.md** when a decision had other real options worth recording, or
-  when the change crosses several components, adds a dependency or a data
-  model, or affects security, performance or a migration.
-- **IMPLEMENTATION_PLAN.md** when a phase needs more than its row and a few
-  evidence bullets below the table.
-- **FIXTURES.md** when stable inputs, example data or reference cases will
-  help.
+- **SRD.md** when the work adds or deliberately changes a public contract:
+  anything people or programs outside the code rely on, such as a CLI
+  command, flag, exit status or output format, an API, a configuration key
+  or file format, or a UI flow. A bug fix is not a contract change: for
+  example, an existing flag that now rejects, with a clear error, input it
+  never handled correctly, such as a limit below 1 that printed nothing.
+  Also when the plan must track a risk until it is handled:
+  something that could make the work fail or cause harm, such as data loss
+  or a dependency that may not be ready, with an owner and a check. A
+  question one person can answer is an `Open question:` line, not a risk.
+  Also when `## Done when` would list more than 8 requirements.
+- **SADD.md** for a decision where another option was considered and
+  rejected, such as a different library or storage format, with the reason.
+  Also when the change alters how two or more modules or services connect,
+  adds a third-party dependency, adds or changes stored data (such as a
+  database table or file format), changes who can read or do what, sets a
+  performance target, or needs a data or configuration migration.
+- **IMPLEMENTATION_PLAN.md** when a phase needs written instructions beyond
+  its requirements and their checks: a prerequisite to confirm, ordered
+  steps, an exit criterion or a rollback plan. Also when a phase's evidence
+  needs more than 3 bullets below the `## Phases` table.
+- **FIXTURES.md** when checks need test data the repository does not
+  already hold, such as sample files, recorded API responses, expected CLI
+  output or screenshots, and more than one requirement or phase uses it.
 
-A file is added only for that information, never because the work is large
-or to fill out the packet.
+Only approved work counts toward a trigger. Adding a file for approved work
+needs no approval, even when a one-file plan becomes a folder. A proposal
+that would add scope stays an `Open question:` line in the README and adds
+no file until the user approves it. A file holds only the information its
+trigger names; it is never added because the work is large or to fill out
+the packet.
 
 #### Growing a packet
 
-Whenever a skill updates a plan and a trigger in
-[Adding files](#adding-files) now holds for a file the plan lacks, add the
-file in the same update:
+When a skill updates an existing plan, and a trigger in
+[Adding files](#adding-files) holds for a file the plan lacks, including
+for what this update records, add the file in the same update. When the
+repository has its own templates and file names, use them; otherwise use
+this skill's `assets/default-packet/`.
 
 1. A one-file plan becomes a folder first. In its lifecycle folder, create
    `<slug>/`, since `git mv` does not create it, then run
-   `git mv plc-<slug>.md <slug>/README.md`. Its side files, such as
-   `plc-<slug>-srd.md`, move into the folder too.
-   Update the links into and out of it, as
+   `git mv plc-<slug>.md <slug>/README.md`. Its side files move in under
+   the packet's names: `git mv plc-<slug>-srd.md <slug>/SRD.md`, a
+   `-sadd.md` file to `SADD.md`, and a `-plan.md` or
+   `-implementation-plan.md` file to `IMPLEMENTATION_PLAN.md`. A file that
+   arrives this way is not one the plan lacks, so it needs no new copy of
+   the template. Update the links into and out of the moved files, as
    [Lifecycle folders](#lifecycle-folders) says for a move.
-2. Copy its template from `assets/default-packet/`, such as
+2. Copy the new file's template, such as
    [SRD.md](assets/default-packet/SRD.md), and delete the sections that do
    not apply.
-3. Move the information into it, so it has one home, and link to it from
-   the part of the packet that uses it:
-   - requirements leave `## Done when`, which keeps only the pointer line
-     the [requirements rules](#requirements-and-checks) give;
-   - a decision with real alternatives goes to SADD.md's decisions table,
-     and its Log line links there;
-   - a phase's details and evidence go under its `### P<n>: <name>`
-     heading in IMPLEMENTATION_PLAN.md, and its `## Phases` row links to
-     that heading;
-   - fixtures go to FIXTURES.md, linked from the requirements or phases
+3. Move the information into it, so it has one home: delete it from where
+   it was, and link to it from the part of the packet that uses it.
+   - Requirements move with their IDs, text and checks unchanged, so moving
+     one does not change it. Each gets Priority `Must` unless the plan says
+     otherwise. `## Done when` then keeps only the pointer line the
+     [requirements rules](#requirements-and-checks) give.
+   - A public contract goes to SRD.md's User Experience And Public Surface
+     and Expected Experience sections, and a risk to its Risks And
+     Assumptions table.
+   - A decision that meets SADD.md's trigger goes to SADD.md's decisions
+     table, and its Log line links there. Other design facts go to the
+     SADD.md section that covers them.
+   - A phase's details and evidence go under its `### P<n>: <name>` heading
+     in IMPLEMENTATION_PLAN.md, and its `## Phases` row links to that
+     heading.
+   - Fixtures go to FIXTURES.md, linked from the requirements or phases
      that use them.
 4. Add one dated Log line naming the file added and why:
    `- 2026-11-04 Added SRD.md: the new --max-age flag is a public contract.`
 
-More detail inside approved scope needs no approval. New scope, such as a
-new deliverable or a contract or architecture change nobody approved, needs
-the user's approval first, as the execution boundary in step 5 of the
-[workflow](#workflow) says. A finished packet never grows; new scope opens a
-new packet, as [Ending a packet](#ending-a-packet) says.
+A finished packet never grows; new scope opens a new packet, as
+[Ending a packet](#ending-a-packet) says.
 
 #### Title and summary
 
@@ -398,8 +424,8 @@ new packet, as [Ending a packet](#ending-a-packet) says.
   `Verified — task test → 112 passed @ abc1234`, or a CI link.
 - Fuller evidence for a README-only packet goes below the table, one bullet
   per result starting with the phase ID:
-  `- P1: task test → 112 passed @ abc1234, 2026-11-03`. A larger packet
-  keeps it under the phase's heading in IMPLEMENTATION_PLAN.md.
+  `- P1: task test → 112 passed @ abc1234, 2026-11-03`. A packet with
+  IMPLEMENTATION_PLAN.md keeps it under the phase's heading there.
 
 #### Requirements and checks
 
@@ -429,9 +455,10 @@ new packet, as [Ending a packet](#ending-a-packet) says.
   `- Open question: Should the cap be configurable? (blocks P2; waits on @sam)`.
 - When it is answered, delete the line and add a dated `Decision:` line to
   the Log. Also record the decision in SADD.md's decisions table when
-  SADD.md exists, or when the decision had real alternatives, adding
-  SADD.md as [Growing a packet](#growing-a-packet) says if the packet has
-  none. The Log line then links to the table.
+  SADD.md exists, or when it meets SADD.md's trigger in
+  [Adding files](#adding-files), adding SADD.md as
+  [Growing a packet](#growing-a-packet) says if the packet has none. The
+  Log line then links to the table.
 
 #### Log
 

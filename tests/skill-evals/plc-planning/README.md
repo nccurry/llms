@@ -11,8 +11,9 @@ Markdown graders.
 
 `check_plan.py` compares the fixture with the `_snapshot.json` its build
 script wrote. The run must add exactly one plan, a one-file `docs/plans/planned/plc-<slug>.md`,
-and change nothing else. The fixture's plans README and the planning skill's
-sizing rule both name that shape for small work.
+and change nothing else. The fixture's plans README names that shape for
+small work, and none of the planning skill's triggers for adding a file
+holds.
 The plan must pass the planning skill's shipped format check in strict mode, as
 a packet in `planned/`, and the evals' own rules for new packets, such as
 section order and no placeholders, and name `@alex` as its owner. Both checks

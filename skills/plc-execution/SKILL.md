@@ -43,14 +43,15 @@ implementation choices and repairs within approved scope remain authorized.
 Keep planning documents coherent for the next agent. Update affected sections
 in place, preserve stable requirement IDs and decision rationale, and reconcile
 superseded or contradictory instructions across the packet. On every plan
-update, apply `plc-planning`'s
-[Growing a packet](../plc-planning/SKILL.md#growing-a-packet) rule, so
-information that meets one of its triggers gets its file instead of piling up
-in Log lines or notes. Requirements and
-design describe approved behavior and adopted decisions. Keep current status,
-remaining work, and concise validation evidence in the work list and the
-sections that own them. Record each result once and link to it elsewhere;
-do not restate the skill's general workflow in the packet. Keep raw logs,
+update, follow `plc-planning`'s
+[Growing a packet](../plc-planning/SKILL.md#growing-a-packet) rule: when a
+trigger in its [Adding files](../plc-planning/SKILL.md#adding-files) rule
+holds for a file the plan lacks, including for what the update records, add
+that file instead of piling the information into Log lines or notes.
+Requirements and design describe approved behavior and adopted decisions.
+Keep current status, remaining work, and concise validation evidence in the
+work list and the sections that own them. Record each result once and link
+to it elsewhere; do not restate the skill's general workflow in the packet. Keep raw logs,
 repeated handoffs, abandoned attempts, and session narration out of requirements and
 design. A new reader must be able to identify approved scope, current design,
 and remaining work without reconstructing the conversation. Label pending

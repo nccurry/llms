@@ -168,7 +168,15 @@ changes between Planned and In progress, follow `plc-planning`'s
 set Status to Complete or move the packet to `completed/`; finishing is
 `wrap-this-up`'s job. When the work looks finished, say so and offer it.
 
-Then, in the same README:
+Grow the plan first, following `plc-planning`'s
+[Growing a packet](../plc-planning/SKILL.md#growing-a-packet) rule: when a
+trigger in its [Adding files](../plc-planning/SKILL.md#adding-files) rule
+holds for a file the plan lacks, including for what this update records as
+approved, such as a requirement for a new CLI flag, add that file now,
+turning a one-file plan into a folder. Don't leave that information in a
+Log line or a README section instead.
+
+Then, in the plan's README:
 
 - Update the affected rows of the `## Phases` table under `plc-planning`'s
   [Phases rules](../plc-planning/SKILL.md#phases). Each changed note names the
@@ -196,23 +204,16 @@ Then, in the same README:
 - Record each decision the user approved in this conversation as a dated
   `Decision:` Log line, following `plc-planning`'s
   [open questions](../plc-planning/SKILL.md#open-questions) rule. When it
-  adds a requirement, also add the requirement where the plan keeps them,
+  adds a requirement, add the requirement where the plan now keeps them,
   with the next ID and a check, as the
   [requirements rules](../plc-planning/SKILL.md#requirements-and-checks)
-  say. Record an unapproved one as an `Open question:` line. Remove blockers
-  the evidence has cleared.
+  say. Record an unapproved one as an `Open question:` line; it adds no
+  requirement and no file. Remove blockers the evidence has cleared.
 
-Don't change existing requirement or design text: when code and a
-requirement disagree, add an open question. Don't mark the plan Complete
-while a requirement lacks its evidence.
-
-Each time this step writes to the plan, apply `plc-planning`'s
-[Growing a packet](../plc-planning/SKILL.md#growing-a-packet) rule. When
-something this update records, such as an approved requirement for a new
-CLI flag, meets a trigger in its
-[Adding files](../plc-planning/SKILL.md#adding-files) rule, add that file in
-the same update, turning a one-file plan into a folder first. Don't leave
-that information in a Log line or a README section instead.
+Don't reword existing requirement or design text: when code and a
+requirement disagree, add an open question. Moving a requirement into
+SRD.md with its ID, text and check unchanged is not a change. Don't mark
+the plan Complete while a requirement lacks its evidence.
 
 Then run `python3 <skills-dir>/plc-planning/scripts/format_check.py --packet <packet> --strict`
 and fix what it reports in the parts you changed. When a finding needs the
