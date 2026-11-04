@@ -344,11 +344,17 @@ refer to this section instead of repeating it.
 
 - `planned/`, `in-progress/`, `completed/` and `archived/`, under the plans
   folder. A one-file plan is a `plc-*.md` file in one of them.
-- When Status needs another lifecycle folder and the repository uses
-  lifecycle folders, move the packet there with `git mv`, keeping its folder
-  or file name. Create the folder first if it is missing, so the packet
-  lands inside it. Update the links into the packet, and the relative links
-  out of it when the move changes how deep it sits.
+- When Status changes between Planned and In progress, move the packet to
+  `planned/` or `in-progress/` only when the repository already uses those
+  folders. A finished packet always moves to `completed/`, and an abandoned
+  or replaced one to `archived/`, as [Ending a packet](#ending-a-packet)
+  says.
+- Move a packet with `git mv`, keeping its folder or file name. Create the
+  target folder first if it is missing, so the packet lands inside it. A
+  one-file plan moves together with its side files, such as
+  `plc-012-retry-srd.md`.
+- After a move, update the links into the packet, and every relative link
+  out of it that no longer resolves, including links to sibling packets.
 - Finished plans that older versions of these skills put in another folder
   stay where they are; move them to `completed/` when convenient, with their
   links.
@@ -358,7 +364,8 @@ refer to this section instead of repeating it.
 - A finished packet moves to `completed/`. Its Current Work starts with the
   line "Historical record as of <commit>; the code is the current truth.",
   naming the commit that finished it. After that the packet is not edited,
-  and new scope opens a new packet.
+  with one exception: a single dated Log line may record cleanup that
+  `wrap-this-up` could not finish. New scope opens a new packet.
 - An abandoned or replaced packet moves to `archived/`, with Status Archived
   or Superseded and a reason.
 
@@ -395,13 +402,15 @@ python3 <skill-dir>/scripts/format_check.py <plans folder> --people "Alex Kim=al
   `in-progress/` folders, and skips flat design files such as
   `plc-012-retry-srd.md`.
 - Default mode checks the structure: the summary, one Current Work with its
-  first keys, known words and an Owner `@handle`, a Log, and phase state only
-  in the README `## Phases` table. It ignores fenced code blocks. `--strict`
-  adds the rules across fields.
+  first keys, known words and an Owner `@handle`, a Log, and status only in
+  the README. A phase table with state, or a `- Status:` or `- State:` line,
+  in IMPLEMENTATION_PLAN.md, SRD.md or SADD.md is a finding. It ignores
+  fenced code blocks. `--strict` adds the rules across fields.
 - `--lifecycle <folder>` checks a packet as if it were in that lifecycle
   folder, for example before a finished packet moves to `completed/`.
-- `--people` takes `NAME=HANDLE` pairs and reports an Owner line that names
-  one of them without the handle. Put plans folders before `--people`.
+- `--people` takes `NAME=HANDLE` pairs (HANDLE may start with `@`) and
+  reports an Owner line that names one of them without the handle. Put plans
+  folders before `--people`.
 - It prints one line per finding. Exit 0 means nothing was found, 1 means
   findings, and 2 means a bad path or argument, nothing to check, or a file
   it could not read.

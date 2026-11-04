@@ -7,6 +7,6 @@ description: Check completed implementation against the PLC document or plan gui
 
 If the current work has no guiding PLC document or plan, report `not applicable`.
 
-Otherwise, read the plan and the implementation in the audit scope. For each requirement, design choice, and phase marked Implemented, Merged, Verified, or Live, or included in the work completed so far, check that the code and tests match it. Report missing, partial, or conflicting work with the plan reference and implementation evidence. Do not treat planned future work as a gap.
+Otherwise, read the plan and the implementation in the audit scope. For each requirement, design choice, and phase whose state word comes after In progress in `plc-planning`'s word list, or that is included in the work completed so far, check that the code and tests match it. Report missing, partial, or conflicting work with the plan reference and implementation evidence. Do not treat planned future work as a gap.
 
 Identify the plan version and completed phases checked. Map relevant requirements to implementation and verification evidence, distinguishing implemented, verified, incomplete, and conflicting work. Keep acceptance pending when required integration evidence is pending. Completing an assigned requirement is acceptance evidence, not an audit discovery. If the plan or implementation evidence is unavailable, name the blind spot. Return findings to `audit-codebase` using its severity and confidence rules; leave the aggregate verdict to that skill.

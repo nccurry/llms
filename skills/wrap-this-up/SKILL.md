@@ -100,7 +100,9 @@ Merge, then confirm the target contains each delivered branch's tip:
 `git merge-base --is-ancestor <tip> origin/main` after a fetch (or the local
 target ref on the local-only route), or the PR/MR's merged state for squash
 and rebase merges. Recheck the target right before pushing; if it moved,
-merge it in and rerun the affected checks. Never force-push `main`.
+merge it in and rerun the affected checks. Never force-push `main`. On the
+direct route the push happens at the end of step 6, with the plan update;
+run the `origin/main` check after that push.
 
 ## 6. Finish the plan
 
@@ -108,7 +110,8 @@ Rewrite Current Work and the README's `## Phases` table to the real end
 state, using the rewrite rules in `plc-checkpoint`'s
 [Rewrite Current Work](../plc-checkpoint/SKILL.md#5-rewrite-current-work)
 step. Its commit rules don't apply; this step's delivery rules below do.
-Write in now the cleanup that step 7 will leave pending, so the plan is
+First decide, with step 7's rules, which checkouts and branches step 7 will
+remove and which it will keep. Record what it will keep now, so the plan is
 delivered once: in an open plan, as rows in Current Work's "Where the work
 lives" table, with the reason in the State cell; in a finished plan, as a
 dated Log line, written before step 2 below adds the historical-record line.
@@ -135,13 +138,14 @@ Then, in this order:
    there.
 4. Run the check on the moved packet with `--strict`. It must exit 0.
 
-A plan that is not finished stays where it is, with what's left as the next
-step. Don't mark anything complete to make the wrap-up look finished.
+A plan that is not finished is not moved to `completed/`; any other move
+follows the lifecycle folders rule. Its next action says what's left. Don't
+mark anything complete to make the wrap-up look finished.
 
 Deliver the plan update with the code:
 
-- **Direct:** commit it in the merge checkout on top of the merge, and push
-  both together.
+- **Direct:** commit it in the merge checkout on top of the merge, push both
+  together, then run step 5's `origin/main` check.
 - **Local only:** commit it on top of the merge on the local target.
 - **PR/MR:** an open plan's update travels in the PR/MR. Finishing the plan
   waits for the merge; then deliver it as a follow-up commit, by the repo's
@@ -153,7 +157,11 @@ Deliver the plan update with the code:
 
 Follow [clean-stale-worktrees](../clean-stale-worktrees/SKILL.md) for each
 removal and its verification. Only this work's checkouts and branches; other
-campaigns are untouched. Step 6 already recorded what stays pending.
+campaigns are untouched. Step 6 already recorded what stays. If a removal
+step 6 planned fails, record what is left: in an open plan, as a row in
+"Where the work lives"; in a finished plan, as the one dated follow-up Log
+line that `plc-planning`'s
+[Ending a packet](../plc-planning/SKILL.md#ending-a-packet) rule allows.
 
 - **Merged into `main`:** remove each worktree, including the `_merge`
   checkout (run from outside it, no `--force`, after checking ignored files
