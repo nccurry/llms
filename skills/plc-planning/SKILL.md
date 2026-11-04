@@ -236,12 +236,13 @@ refer to this section instead of repeating it.
   - Live: released or deployed.
 - **Side states:** Blocked, Deferred, Dropped. Deferred and Dropped need the
   user's approval, in the plan or the conversation.
-- **Parts.** A phase's parts are the pieces of work its plan lists for it:
-  each requirement, and each task in its plan section. When one requirement
-  or task names work that can be built separately, such as a function and
-  the call that uses it, each piece is its own part. A part has started when
-  a commit or uncommitted change does its work; until then it is Planned,
-  even when every branch has merged.
+- **Parts.** A phase's parts are the tasks in its plan section and each of
+  its requirements that no listed task builds. When one requirement or task
+  names work that can be built separately, such as a function and the call
+  that uses it, each piece is a part in its place. A part has started when
+  a commit or uncommitted change does some of its work; until then it is
+  Planned, even when every branch has merged. A started part stays In
+  progress until all of its work is done.
 - **A phase whose parts differ** gets its word in these steps:
   1. When every part has a side state, the phase is Blocked if any part is
      Blocked, otherwise Deferred if any is Deferred, otherwise Dropped.
@@ -254,7 +255,9 @@ refer to this section instead of repeating it.
 
   Its note names each merged part with its merge request or commit, each
   part not yet merged, and each part with a side state:
-  `In progress — REQ-001 merged @ abc1234; REQ-002 not started`.
+  `In progress — REQ-001 merged @ abc1234; REQ-002 not started`, or, for a
+  task split into a function and its call,
+  `In progress — parse_config merged @ abc1234; its call from reload not started`.
 - **A part moved to its own row** leaves its old phase: write
   `moved to P<n>` in the old phase's note, and choose the old phase's word
   from the parts it still holds. A part recorded only as an

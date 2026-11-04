@@ -71,12 +71,12 @@ beside the old one. "Convert" here means changing the format in place;
    column, whole, under a new `## Phases` heading in the README. A link in a
    moved row to a heading in the file the table came from gains that file's
    name: `[P1](#p1-parse)` becomes `[P1](IMPLEMENTATION_PLAN.md#p1-parse)`.
-   When the table came from another file, write the line
+   When the table came from another file, remove the table's heading, such
+   as `## Phase Status`, if the table was the only thing under it, and write
+   the line
    `Phase state lives in the README's [Phases](README.md#phases) table.`
-   in that file where the table was, and remove the table's heading, such
-   as `## Phase Status`, when the move left it empty. A table moved within
-   the README needs no such line. A packet with two such tables is an owner
-   case.
+   in that file where the table was. A table moved within the README needs
+   no such line. A packet with two such tables is an owner case.
 6. **M6. Log.** Add `## Log` at the end. Its first line comes from the
    `Created:` line, when there is one. Then add
    `- <date> Converted to the shared PLC template (format only).`

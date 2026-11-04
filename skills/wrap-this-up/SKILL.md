@@ -125,7 +125,9 @@ Then, in this order:
    `completed/`; that finding is expected.
    - When it reports a phase that `completed/` does not allow, the plan is
      not finished. Leave Status as it is, add no historical-record line, and
-     record the gap as the rewrite rules say.
+     record what is left as the rewrite rules say: each gap as a new row or
+     an `Open question:` line, and other unfinished work in its phase's
+     note.
    - When a finding needs the user's decision, such as a status that
      disagrees with the evidence or a missing owner, stop and ask.
    - Fix any other finding and run the check again.

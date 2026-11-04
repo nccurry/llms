@@ -92,14 +92,13 @@ Fetch first, then collect facts. Record the commit each fact applies to.
    [dependency-check](references/dependency-check.md). Use one subagent per
    repo when there are several and the host supports it.
 
-Give each part of each phase a phase state word from `plc-planning`'s
-[word list](../plc-planning/SKILL.md#words); when the plan uses a different
-word, quote the plan's word beside yours. A phase's parts are what that list
-says: each requirement and task its plan lists, and each piece of one that
-can be built separately. Then choose each phase's word with the list's rule
-for a phase whose parts differ, including its steps for side states. For
-example, a phase with one part merged and one not started is In progress,
-not Planned.
+Find each phase's parts with the Parts rule in `plc-planning`'s
+[word list](../plc-planning/SKILL.md#words), and give each part a phase
+state word from that list; when the plan uses a different word, quote the
+plan's word beside yours. Then choose each phase's word with the list's
+rule for a phase whose parts differ, including its steps for side states.
+For example, a phase with one part merged and one not started is In
+progress, not Planned.
 
 If a source is unavailable (no host login, a path on another machine), say
 so under blind spots. Don't guess its state.
@@ -177,16 +176,16 @@ Then, in the same README:
   evidence in the note; otherwise give it the word `plc-planning`'s
   [Words](../plc-planning/SKILL.md#words) rules give.
 - Add one dated line to `## Log` for each state change, decision, or
-  surprise since the last update. A requirement or planned task that the
-  plan or a report called done, but that was never built, counts as a
-  surprise. A line about a merge names its merge request or commit. Don't
-  change older Log lines.
+  surprise since the last update. A gap (see below) that nobody had named
+  before this update counts as a surprise. A line about a merge names its
+  merge request or commit. Don't change older Log lines.
 - Compare each requirement ID, in `## Done when` or SRD.md, and each planned
   task with what shipped. A gap is a requirement or planned task that the
-  plan or a report treats as done, or that merged work was meant to meet,
-  but that the shipped code does not meet. Known unfinished work in a phase
-  that is still In progress is not a gap: the phase note names it. Record
-  each gap in one of two ways:
+  shipped code does not meet, although its phase's work has merged, or the
+  plan, a report or the user calls it done. Work that the plan, a commit
+  message or the user already said is still to be built is not a gap while
+  its phase stays In progress: the phase note names it. Record each gap in
+  one of two ways:
   - as a new phase row, Planned, or Deferred only with the user's approval.
     Write `moved to P<n>` in the old phase's note, and choose the old
     phase's word from the parts it still holds;
