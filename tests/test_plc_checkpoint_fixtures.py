@@ -34,15 +34,16 @@ SHARED_SHAPE_CASES = [
     "near-miss-wrap-up",
 ]
 
-# The old-shape packet after a correct conversion and status update. The
-# conversion moves lines, renames keys (`Blockers: none` becomes
-# `Blocker: none`, value unchanged) and, since the packet has SRD.md, adds
-# `## Done when` with the one line pointing there (step M8). The status update
-# then rewrites Current Work with the template's keys, so Blocker becomes
-# `None`; sets Last updated, Next action, Current state and P1's row, noting
-# the missing `save_booking` call; adds the template's missing `Depends on`
-# and `Resume check` keys and the "Where the work lives" table; and adds a Log
-# line for P1's merge after the conversion's line.
+# The old-shape packet after a correct conversion and status update, as its
+# grader expects. The conversion moves lines and renames keys (`Blockers: none`
+# becomes `Blocker: none`, value unchanged). Since the packet has SRD.md, step
+# M8 adds `## Done when` directly after `## Phases` with the one line pointing
+# there; step M5 leaves POINTER_LINE in IMPLEMENTATION_PLAN.md where the table
+# was. The status update then rewrites Current Work with the template's keys,
+# so Blocker becomes `None`, and adds `Depends on`, `Resume check` and the
+# "Where the work lives" table. P1 merged `record` but nobody built the call
+# from `save_booking`, so P1 is In progress, with an open question about the
+# call and a Log line for that surprise.
 CONVERTED_OLD_SHAPE_README = """# Audit log PLC
 
 Record who changed each berth booking, so support can answer "who changed
@@ -53,10 +54,10 @@ this?" without reading server logs.
 - Status: In progress
 - Owner: @alex
 - Last updated: 2026-11-03, `main` at `{merge}`
-- Next action: start P2
+- Next action: @alex answers the `save_booking` question below; then start P2 on a new branch from `main`.
 - Blocker: None
 - Depends on: None
-- Current state: P1 merged into `main` at `{merge}`. P2 not started.
+- Current state: `record` merged into `main` at `{merge}`; nothing calls it from `save_booking` yet. P2 not started.
 - Resume check: `git log --oneline -1 main` → the P1 merge
 
 Where the work lives:
@@ -69,12 +70,16 @@ Where the work lives:
 
 | Phase | Name | Requirements | Status |
 | --- | --- | --- | --- |
-| P1 | Record changes | AUD-001 | Merged — `{merge}`; nothing calls `record` from `save_booking` yet |
+| P1 | Record changes | AUD-001 | In progress — `record` merged @ `{merge}`; call from `save_booking` not started |
 | P2 | Audit command | AUD-002 | Not started |
 
 ## Done when
 
-The requirements and their checks are in [SRD.md](SRD.md).
+{done_when}
+
+## Open questions
+
+- Open question: No `save_booking` exists to call `record` from. Where does the booking code live? (blocks P1; waits on @alex)
 
 ## Summary
 
@@ -89,8 +94,12 @@ The record is written in the same transaction as the booking change.
 
 - 2026-10-20 Created.
 - 2026-11-03 Converted to the shared PLC template (format only).
-- 2026-11-03 P1 Merged @ `{merge}`.
+- 2026-11-03 Surprise: P1 merged @ `{merge}`, but nothing calls `record` from `save_booking`.
 """
+# Step M8's line for a repository with no README template of its own, and the
+# line step M5 leaves where the phase table was.
+DONE_WHEN_LINE = "The requirements and their checks are in [SRD.md](SRD.md)."
+POINTER_LINE = "Phase state lives in the README's [Phases](README.md#phases) table."
 
 
 def build(case: str, dest: Path, env: dict[str, str] = GIT_ENV) -> None:
@@ -306,12 +315,17 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         app = self.dest / "marina"
         packet = app / "docs/plans/audit-log"
         merge = git(app, "rev-parse", "--short", "HEAD")
-        (packet / "README.md").write_text(
-            CONVERTED_OLD_SHAPE_README.format(merge=merge), encoding="utf-8", newline="\n"
-        )
+        readme = CONVERTED_OLD_SHAPE_README.format(merge=merge, done_when=DONE_WHEN_LINE)
+        (packet / "README.md").write_text(readme, encoding="utf-8", newline="\n")
+        # M7 removes the Lifecycle status line; M5 moves the table out, removes
+        # its now-empty heading and leaves the pointer line in its place.
         plan = (packet / "IMPLEMENTATION_PLAN.md").read_text(encoding="utf-8")
         plan = plan.replace("Lifecycle status: In progress\n\n", "")
-        plan = plan[: plan.index("## Phase Status")] + plan[plan.index("## P1:") :]
+        plan = (
+            plan[: plan.index("## Phase Status")]
+            + f"{POINTER_LINE}\n\n"
+            + plan[plan.index("## P1:") :]
+        )
         (packet / "IMPLEMENTATION_PLAN.md").write_text(plan, encoding="utf-8", newline="\n")
         git(app, "worktree", "remove", str(self.dest / "marina-wt/audit-log/p1-record"))
         git(app, "branch", "-D", "plc/audit-log-p1")
@@ -320,7 +334,13 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertTrue(report["ok"], report)
         self.assertEqual(shipped_findings(packet), [])
         self.assertEqual(eval_only_problems(packet, owner=OWNER), [])
-        self.assertEqual(phase_state(CONVERTED_OLD_SHAPE_README, "P2"), "Planned")
+        self.assertEqual(phase_state(readme, "P1"), "In progress")
+        self.assertEqual(phase_state(readme, "P2"), "Planned")
+        self.assertIn("## Phases\n\n| Phase", readme)
+        self.assertIn(f"|\n\n## Done when\n\n{DONE_WHEN_LINE}\n\n## Open questions", readme)
+        self.assertIn("(blocks P1; waits on @alex)", readme)
+        self.assertIn(f"\n{POINTER_LINE}\n\n## P1: Record changes", plan)
+        self.assertNotIn("## Phase Status", plan)
 
     def test_plan_in_other_repo(self):
         build("plan-in-other-repo", self.dest)

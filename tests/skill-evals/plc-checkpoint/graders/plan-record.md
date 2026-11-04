@@ -38,20 +38,31 @@ Pass only if all of these hold:
    No other file gains a phase table with a State or Status column.
 5. **Log.** `## Log` is the last section. Lines it had before the run are
    unchanged, and the run added one dated line for each state change,
-   decision or surprise, newest last.
-6. **Evidence for Verified.** A phase marked Verified or Live names, after
-   ` — `, the check that passed and where it ran, as in
-   `Verified — run_tests.py → 3 passed @ abc1234`. A phase whose work is all
-   merged, but whose check did not run or does not exist yet, stays Merged,
-   with what is missing in its note. A phase with part of its work merged
-   and part not started is In progress, as `plc-planning`'s Words list says
-   for a phase whose parts differ: its note names the merge commit and the
-   missing work with its check. Merged or Planned fails for such a phase.
+   decision or surprise, newest last. A line about a merge names the merge
+   commit. A merge that leaves a phase's word unchanged, such as one that
+   stays In progress, may have its own line but needs none. This is the one
+   Log rule; case graders only say what it means for their case.
+6. **Phase words.** A part is a requirement or task a phase's plan lists for
+   it, as `plc-planning`'s Words list says.
+   - A phase marked Verified or Live names, after ` — `, the check that
+     passed and where it ran, as in
+     `Verified — run_tests.py → 3 passed @ abc1234`.
+   - A phase whose parts have all merged, but whose checks did not run or do
+     not exist yet, stays Merged, its note naming the checks still to pass.
+   - A phase that still holds a part not started (one not moved to its own
+     row) beside a merged part is In progress. Its note names what merged
+     and each missing part; naming the missing part's check is optional.
+     Merged, Planned or Verified fails for it.
+   - A gap moved to its own row leaves its old phase, whose note says
+     `moved to P<n>`. The old phase is then worded from the parts it still
+     holds, so Merged naming the merge commit passes, and so does Verified
+     with its evidence.
 7. **Gaps recorded.** When the shipped code does not meet a requirement, the
    gap becomes a new phase row (Planned, or Deferred only with the user's
-   approval) or an `Open question:` line naming whom it waits on. A
-   requirement is never marked met without evidence, and `SRD.md` is not
-   edited to match the code.
+   approval) or an `Open question:` line naming what it blocks and whom it
+   waits on, as in `(blocks P1; waits on @alex)`. A requirement is never
+   marked met without evidence, and `SRD.md` is not edited to match the
+   code.
 8. **Format check.** The planning skill's format check passes on the packet
    in strict mode. From the skills repository root, this exits 0 and prints
    nothing:

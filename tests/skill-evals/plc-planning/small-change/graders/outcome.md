@@ -22,8 +22,8 @@ only if all of these hold:
    and `- Last updated:` with the run's date, `main` and the current commit.
    It has every other template key: Next action, Blocker, Depends on,
    Current state and Resume check. The Next action is one concrete step:
-   it says what to do first and where, so the next person can start without
-   choosing, as in
+   it says what to do first and where, naming a file to change or a command
+   to run, so the next person can start without choosing, as in
    `Write a failing test for --limit 0 in tests/test_harbor.py`. A Next
    action that names the whole phase, such as `Implement P1`, is not
    concrete. The "Where the work lives" table is there, and lists no

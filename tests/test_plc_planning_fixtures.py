@@ -33,7 +33,7 @@ of printing nothing or dropping berths.
 - Status: Planned
 - Owner: @alex
 - Last updated: 2026-11-03, `main` at `{head}`
-- Next action: Write a failing test for `--limit 0`.
+- Next action: Write a failing test for `--limit 0` in `tests/test_harbor.py`.
 - Blocker: None
 - Depends on: None
 - Current state: Planned; no code changed.

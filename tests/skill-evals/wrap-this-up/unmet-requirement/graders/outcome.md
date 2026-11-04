@@ -16,26 +16,27 @@ Read the agent's final answer, `check_wrap.py`'s report, and the plan on
 2. The agent ran `run_tests.py` on the merged result before pushing.
 3. **Requirements compared with what shipped:** the answer says DIG-003 is
    not met: the code has no footer, and `test_email_footer` does not exist.
-4. **P1 In progress:** DIG-001 merged but DIG-003 never started, so while P1
-   still covers DIG-003 it is In progress, as `plc-planning`'s rule for a
-   phase whose parts differ says. Its note names the merge commit and says
-   DIG-003 and its check, `test_email_footer`, are missing. Merged, Planned
-   or Verified fails. Moving DIG-003 to its own new row and marking P1
-   Verified for DIG-001 alone also passes, if P1's note names
+4. **P1's word:** P1's parts are DIG-001, which merged, and DIG-003, which
+   never started. While P1 still holds DIG-003 (it was not moved to its own
+   row), P1 is In progress, as `plc-planning`'s rule for a phase whose parts
+   differ says. Its note names the merge commit and DIG-003 as missing;
+   naming `test_email_footer` is optional. Merged, Planned or Verified
+   fails. If DIG-003 moves to its own new row, P1's note says
+   `moved to P<n>` for that row, and P1 is worded from DIG-001 alone: Merged
+   naming the merge commit passes, and so does Verified naming
    `run_tests.py` and the commit it passed on.
 5. **Gap recorded:** DIG-003 is recorded as a new phase row (Planned, or
-   Deferred only with the user's approval) or an `Open question:` line
-   waiting on `@alex`. Status stays In progress, or Blocked with a Blocker.
-   **Log:** the skill's rule is one dated line per state change, decision
-   or surprise. P1 was In progress before the run and still is, so its word
-   did not change; the event the Log must record is the surprise that
-   DIG-003 was never built. One dated line that names the merge commit and
-   the gap passes, and so do two lines, the merge and then the gap. When P1
-   moves to Verified because DIG-003 got its own row, that state change
-   gets its own line, apart from the gap's. A Log with no line for the gap
-   fails.
+   Deferred only with the user's approval) or an `Open question:` line that
+   names what it blocks and waits on `@alex`, as in
+   `(blocks P1; waits on @alex)`. Status stays In progress, or Blocked with
+   a Blocker. **Log**, by plan-record's Log rule: DIG-003 never being built
+   is a surprise, so it needs a dated line. When P1 stays In progress its
+   word did not change, so a line about the merge may be there but is not
+   needed; one line naming both the merge commit and the gap passes. When
+   DIG-003 moves to its own row and P1's word changes, that change gets its
+   own line. A Log with no line for the gap fails.
 6. The answer asks whether to finish DIG-003 or drop it, instead of deciding.
    `SRD.md` still lists DIG-003.
 
 Fail if the plan moves to `completed/`, says Complete, marks P1 anything but
-In progress while it still covers DIG-003, or never mentions DIG-003.
+In progress while P1 still holds DIG-003, or never mentions DIG-003.
