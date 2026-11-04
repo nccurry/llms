@@ -1,6 +1,8 @@
 """Tests for plc-planning's format check, skills/plc-planning/scripts/format_check.py."""
 
+import contextlib
 import importlib.util
+import io
 import os
 import re
 import shutil
@@ -149,12 +151,14 @@ class PacketRulesTest(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
 
-    def check(self, readme=VALID, folder="planned", name="sample", plan=None, people=(), lifecycle=None):
+    def check(self, readme=VALID, folder="planned", name="sample", plan=None, people=(), lifecycle=None, files=None):
         packet = self.root / folder / name
         packet.mkdir(parents=True, exist_ok=True)
         (packet / "README.md").write_text(readme, encoding="utf-8")
         if plan is not None:
-            (packet / "IMPLEMENTATION_PLAN.md").write_text(plan, encoding="utf-8")
+            files = {**(files or {}), "IMPLEMENTATION_PLAN.md": plan}
+        for file_name, text in (files or {}).items():
+            (packet / file_name).write_text(text, encoding="utf-8")
         prefix = self.root.as_posix() + "/"
         found = fc.check_packet(packet, people, strict=True, lifecycle=lifecycle)
         return [line.removeprefix(prefix) for line in found]
@@ -178,6 +182,15 @@ class PacketRulesTest(unittest.TestCase):
             f"{R}:27: Current Work: State line belongs in ## Current Work, not ## Lifecycle",
         ])
 
+    def test_old_headings_flag_only_status_values(self):
+        not_status = "## Status codes\n\n- Status: 404 when the file is missing\n- Owner: Sam\n\n"
+        not_status += "## Lifecycle\n\n- Updated: when the owner signs off\n\n## Log"
+        self.assertEqual(self.check(edit("## Log", not_status)), [])
+        for heading in ("Status (2026-10)", "Status — 2026-10-01", "Current status"):
+            owner = edit("## Log", f"## {heading}\n\n- Owners: Sam\n\n## Log")
+            message = f"Current Work: Owners line belongs in ## Current Work, not ## {heading}"
+            self.assertEqual(self.check(owner), [f"{R}:20: {message}"])
+
     def test_status_word(self):
         unknown = edit("- Status: Planned", "- Status: Waiting")
         message = "Current Work: Status does not start with a packet status word: Waiting"
@@ -196,11 +209,32 @@ class PacketRulesTest(unittest.TestCase):
         partial = edit("- Owner: @alex", "- Owner: Al (@alsmith)")
         self.assertEqual(self.check(partial, people=people), [f"{R}:8: Current Work: Owner names Al without @al"])
         self.assertEqual(self.check(edit("- Owner: @alex", "- Owner: Al (@al)"), people=people), [])
+        self.assertEqual(self.check(edit("- Owner: @alex", "- Owner: Al (@al)."), people=people), [])
+        for longer in ("@al.smith", "@al-b"):
+            owner = edit("- Owner: @alex", f"- Owner: Al ({longer})")
+            self.assertEqual(self.check(owner, people=people), [f"{R}:8: Current Work: Owner names Al without @al"])
+        dotted = edit("- Owner: @alex", "- Owner: Alex (@alex.b)")
+        message = "Current Work: Owner names Alex without @alex"
+        self.assertEqual(self.check(dotted, people=[("Alex", "alex")]), [f"{R}:8: {message}"])
+
+    def test_people_handles_may_start_with_at(self):
+        named = edit("- Owner: @alex", "- Owner: Alex Kim (@alex)")
+        self.assertEqual(self.check(named, people=[("Alex Kim", "@alex")]), [])
+        unnamed = edit("- Owner: @alex", "- Owner: Alex Kim, @sam")
+        message = "Current Work: Owner names Alex Kim without @alex"
+        self.assertEqual(self.check(unnamed, people=[("Alex Kim", "@alex")]), [f"{R}:8: {message}"])
+
+    def test_at_most_twelve_keys(self):
+        extra = "".join(f"- Note {letter}: x\n" for letter in "abcdefgh")
+        self.assertEqual(self.check(edit("- Blocker: None\n", "- Blocker: None\n" + extra)), [])
+        thirteen = edit("- Blocker: None\n", "- Blocker: None\n" + extra + "- Note i: x\n")
+        self.assertEqual(self.check(thirteen), [f"{R}:5: Current Work: 13 keys; at most 12 are allowed"])
 
     def test_last_updated_starts_with_a_date(self):
-        late_date = edit("- Last updated: 2026-11-03", "- Last updated: today, 2026-11-03")
         message = "Current Work: Last updated does not start with a YYYY-MM-DD date"
-        self.assertEqual(self.check(late_date), [f"{R}:9: {message}"])
+        for value in ("today, 2026-11-03", "2026-11, later"):
+            late_date = edit("- Last updated: 2026-11-03", f"- Last updated: {value}")
+            self.assertEqual(self.check(late_date), [f"{R}:9: {message}"])
 
     def test_bold_keys(self):
         bold = edit("- Status: Planned", "- **Status:** Planned")
@@ -243,6 +277,51 @@ class PacketRulesTest(unittest.TestCase):
         self.assertEqual(self.check(plan=old_shape), [f"planned/sample/IMPLEMENTATION_PLAN.md:3: {OUTSIDE}"])
         details = "# Plan\n\n| Phase | Goal |\n| --- | --- |\n| P1 | Cap retries |\n\n### P1: Cap retries\n"
         self.assertEqual(self.check(plan=details, name="details"), [])
+
+    def test_tables_without_edge_pipes(self):
+        bare = "Phase | Name | Owner | State\n--- | --- | --- | ---\nP1 | Cap retries | | Planned"
+        self.assertEqual(self.check(edit(TABLE, bare)), [])
+        waiting = edit(TABLE, bare.replace("| Planned", "| Waiting"))
+        message = "Phases: State does not start with a phase state word: Waiting"
+        self.assertEqual(self.check(waiting), [f"{R}:16: {message}"])
+        plan = "# Plan\n\nPhase | Goal | Status\n:--- | --- | ---:\nP1 | Cap | Merged\n"
+        self.assertEqual(self.check(plan=plan, name="bare"), [f"planned/bare/IMPLEMENTATION_PLAN.md:3: {OUTSIDE}"])
+
+    def test_status_lines_in_other_files(self):
+        files = {
+            "IMPLEMENTATION_PLAN.md": "# Plan\n\n### P1: Cap\n\n- **Status:** Verified\n",
+            "SRD.md": "# Requirements\n\n- Status: 404 when the file is missing\n- State: Proposed\n",
+            "SADD.md": "# Design\n\n| Phase | State |\n| --- | --- |\n| P1 | Merged |\n\n```\n- Status: Merged\n```\n",
+        }
+        message = "line outside the README; status lives in its ## Current Work and ## Phases"
+        self.assertEqual(self.check(files=files), [
+            f"planned/sample/IMPLEMENTATION_PLAN.md:5: Phases: Status {message}",
+            f"planned/sample/SRD.md:4: Phases: State {message}",
+            f"planned/sample/SADD.md:3: {OUTSIDE}",
+        ])
+
+    def test_fenced_phase_table_in_the_plan(self):
+        plan = "# Plan\n\n```\n| Phase | State |\n| --- | --- |\n| P1 | Planned |\n```\n"
+        self.assertEqual(self.check(plan=plan), [])
+
+    def test_completed_packet_phase_words(self):
+        finished = edit("- Status: Planned", "- Status: Complete")
+        for state, allowed in [
+            ("Planned", False),
+            ("In progress", False),
+            ("Implemented", False),
+            ("Merged — !12 @ abc1234", False),
+            ("Blocked — waits on @sam", False),
+            ("Verified — task test → passed @ abc1234", True),
+            ("Live — deployed @ abc1234", True),
+            ("Deferred — waits on a library fix", True),
+            ("Dropped — obsolete", True),
+        ]:
+            with self.subTest(state=state):
+                found = self.check(edit("| Planned |", f"| {state} |", finished), folder="completed")
+                word = fc.lookup_word(fc.PHASE_WORDS, state)
+                expected = [] if allowed else [f"completed/sample/README.md:16: strict: {word} {NOT_FINISHED}"]
+                self.assertEqual(found, expected)
 
     def test_packet_folder_named_like_a_lifecycle_folder(self):
         message = "packet folder is named like the completed/ lifecycle folder; put it in a folder of its own"
@@ -339,6 +418,26 @@ class HelpersTest(unittest.TestCase):
     def test_paths_print_with_forward_slashes(self):
         self.assertEqual(fc.shown(PureWindowsPath("plans\\planned\\sample")), "plans/planned/sample")
 
+    def test_unfenced_closing_rules(self):
+        cases = [
+            (["```", "a", "~~~", "b", "```", "c"], 5),  # another fence character does not close
+            (["````", "a", "```", "b", "````", "c"], 5),  # a shorter fence does not close
+            (["```", "a", "``` x", "b", "```", "c"], 5),  # text after the fence does not close
+            (["~~~", "a", "~~~~~", "c"], 3),  # a longer fence closes
+            (["   ```", "a", "```", "c"], 3),  # up to three spaces of indent opens a fence
+        ]
+        for lines, blanked in cases:
+            with self.subTest(lines=lines):
+                self.assertEqual(fc.unfenced(lines), [""] * blanked + lines[blanked:])
+        self.assertEqual(fc.unfenced(["    ```", "a"]), ["    ```", "a"])  # four spaces is code, not a fence
+
+    def test_main_returns_exit_codes(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(fc.main(["--people", "Alex Kim"]), 2)
+            self.assertEqual(fc.main([]), 2)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(fc.main(["--help"]), 0)
+
 
 class CommandLineTest(unittest.TestCase):
     def setUp(self):
@@ -369,6 +468,21 @@ class CommandLineTest(unittest.TestCase):
         skipped = ("-srd.md", "-sadd.md", "plc-harbor-retry-plan.md")
         self.assertEqual([line for line in out if line.split(":")[0].endswith(skipped)], [])
         self.assertIn("packets/planned/plc-harbor-alerts-plan.md:1: Log: no ## Log section", out)
+
+    def test_plans_folder_discovery(self):
+        no_log = edit("## Log\n\n- 2026-11-03 Created.\n", "")
+        self.write("planned/plc-a.md", no_log)
+        self.write("planned/plc-a-plan.md", "A side file beside the one-file plan plc-a.md.\n")
+        self.write("planned/plc-b-implementation-plan.md", no_log)  # alone, so a one-file plan
+        self.write("planned/plc-c-prd.md", "A design file.\n")
+        self.write("planned/plc-d-sadd.md", "A design file.\n")
+        self.write("planned/plc-d-implementation-plan.md", "A side file beside plc-d-sadd.md.\n")
+        self.write("planned/images/diagram.png", b"not markdown")
+        code, out, _ = run(".", cwd=self.root)
+        self.assertEqual((code, out), (1, [
+            "planned/plc-a.md:1: Log: no ## Log section",
+            "planned/plc-b-implementation-plan.md:1: Log: no ## Log section",
+        ]))
 
     def test_several_packets(self):
         code, out, _ = run("--packet", "packets/planned/blocked", "--packet", "packets/planned/superseded", "--strict")

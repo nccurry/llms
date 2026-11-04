@@ -9,14 +9,16 @@ A plans folder: checks every packet in its planned/ and in-progress/ folders.
   It skips flat design files, such as plc-012-retry-srd.md.
 --packet: checks one packet folder or one-file plan, in any lifecycle folder.
 --people: NAME=HANDLE pairs. An Owner line that names NAME must also give
-  @HANDLE. Put plans folders before --people.
+  @HANDLE. HANDLE may start with @. Put plans folders before --people.
 --lifecycle: checks each --packet as if it were in this lifecycle folder, for
   example `completed` before a finished packet moves there.
 
 Default mode checks the structure every active packet needs: a summary under
 the title; one ## Current Work block that starts with Status, Owner and Last
-updated, uses known words and names an @handle; a ## Log section; and phase
-state only in the README's ## Phases table. Fenced code blocks are ignored.
+updated, uses known words and names an @handle; a ## Log section; and status
+only in the README. Phase state belongs in the README's ## Phases table, not
+in a phase table or a `- Status:` or `- State:` line in IMPLEMENTATION_PLAN.md,
+SRD.md or SADD.md. Fenced code blocks are ignored.
 
 --strict also checks the five rules across fields:
   1. Status matches the lifecycle folder.
@@ -43,6 +45,9 @@ Python API, for tools that load this file by path:
   is_packet(path) -> bool
       Whether an entry of a lifecycle folder is a packet: a folder with
       Markdown files, or a one-file plc-*.md plan that is not a side file.
+  unfenced(lines) -> list[str]
+      The lines with each fenced code block, fences included, replaced by
+      empty strings, so line numbers stay the same.
   main(argv=None) -> int
       The command line. Returns the exit code.
 """
@@ -88,13 +93,15 @@ NEEDS_REASON = ("Dropped", "Archived", "Superseded")
 REASON = re.compile(r"(superseded|duplicate|obsolete|won['’]?t do)\b", re.IGNORECASE)
 
 # Structure.
+OUTSIDE = "Phases: phase state outside the README ## Phases table"
 ACTIVE_FOLDERS = ("planned", "in-progress")
 FIRST_KEYS = ["status", "owner", "last updated"]
 MAX_KEYS = 12
-OLD_STATUS_KEYS = {"status", "state", "owner", "owners", "last updated", "updated"}
+STATE_KEYS = {"status", "state"}
 STATE_COLUMNS = ("state", "status")
 OLD_STATE_COLUMNS = {"implementation", "verification", "delivery"}
 MAX_BYTES = 4 * 1024 * 1024
+OTHER_FILES = ("IMPLEMENTATION_PLAN.md", "SRD.md", "SADD.md")
 
 # Flat design files sit beside a one-file plan, as plc-012-retry-srd.md sits
 # beside plc-012-retry.md. They are not packets, so a plans folder skips them.
@@ -104,10 +111,14 @@ SIDE_FILE = re.compile(r"-(?:srd|sadd|prd)\.md$")
 PLAN_SIDE_FILE = re.compile(r"-(?:implementation-)?plan\.md$")
 
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
-DIVIDER = re.compile(r"^\s*\|[\s:|-]+\|\s*$")
+DIVIDER = re.compile(r"^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$")
+PIPE = re.compile(r"(?<!\\)\|")
 KEY = re.compile(r"- (?:\*\*)?([A-Z][A-Za-z /-]*?)(?:\*\*)?:(?:\*\*)?(?:\s+(.*))?$")
-OLD_KEY = re.compile(r"\s*(?:[-*+]\s+)?(?:\*\*)?([A-Z][A-Za-z /-]*?)(?:\*\*)?:(?:\*\*)?(?:\s|$)")
-OLD_STATUS_HEADING = re.compile(r"(?:lifecycle|status)\b", re.IGNORECASE)
+OLD_KEY = re.compile(r"\s*(?:[-*+]\s+)?(?:\*\*)?([A-Z][A-Za-z /-]*?)(?:\*\*)?:(?:\*\*)?(?:\s+(.*))?$")
+# Old status sections: any heading that starts with Status, Lifecycle or
+# Current status. An Owner line counts only under one of the exact headings.
+OLD_STATUS_HEADING = re.compile(r"(?:status|lifecycle|current status)\b", re.IGNORECASE)
+OWNER_HEADING = re.compile(r"(?:status(?: \(.*\)| — .*)?|lifecycle|current status)", re.IGNORECASE)
 HANDLE = re.compile(r"(?<![\w@])@\w[\w.-]*")
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 EMPHASIS = re.compile(r"^[*_`\s]+")
@@ -231,21 +242,25 @@ def cells(line):
     line = line.strip()
     line = line[1:] if line.startswith("|") else line
     line = line[:-1] if line.endswith("|") and not line.endswith("\\|") else line
-    return [cell.strip() for cell in re.split(r"(?<!\\)\|", line)]
+    return [cell.strip() for cell in PIPE.split(line)]
+
+
+def is_row(line):
+    """True for a table row: a line with an unescaped pipe, with or without edge pipes."""
+    return bool(line.strip()) and bool(PIPE.search(line))
 
 
 def tables(lines, start=0, end=None):
-    """Each Markdown table between start and end."""
+    """Each Markdown table between start and end, with or without edge pipes."""
     end = len(lines) if end is None else end
     out, i = [], start
     while i < end:
-        is_row = lines[i].lstrip().startswith("|")
-        starts_table = is_row and i + 1 < end and DIVIDER.match(lines[i + 1])
-        if not starts_table:
+        has_divider = i + 1 < end and is_row(lines[i + 1]) and DIVIDER.match(lines[i + 1])
+        if not (is_row(lines[i]) and has_divider):
             i += 1
             continue
         rows, j = [], i + 2
-        while j < end and lines[j].lstrip().startswith("|"):
+        while j < end and is_row(lines[j]):
             rows.append((j + 1, cells(lines[j])))
             j += 1
         out.append(Table(i + 1, cells(lines[i]), rows))
@@ -281,6 +296,17 @@ def check_summary(readme, raw, lines):
     return [finding(readme, 1, "summary: no paragraph directly under the title")]
 
 
+def looks_like_status(key, value, heading):
+    """True when a key line under an old status heading gives the packet's status."""
+    if key in STATE_KEYS:
+        return lookup_word(PACKET_WORDS, value) is not None
+    if key in ("updated", "last updated"):
+        return bool(DATE.match(EMPHASIS.sub("", value)))
+    if key in ("owner", "owners"):
+        return bool(OWNER_HEADING.fullmatch(heading))
+    return False
+
+
 def current_work_keys(lines, block):
     keys = []
     for i in range(block.start + 1, block.end):
@@ -301,7 +327,7 @@ def check_current_work(readme, lines, parts, people, strict, lifecycle):
             continue
         for i in range(part.start + 1, part.end):
             key = OLD_KEY.match(lines[i])
-            if key and key[1].lower() in OLD_STATUS_KEYS:
+            if key and looks_like_status(key[1].lower(), key[2] or "", part.name):
                 message = f"Current Work: {key[1]} line belongs in ## Current Work, not ## {part.name}"
                 found.append(finding(readme, i + 1, message))
     if len(blocks) != 1:
@@ -335,6 +361,7 @@ def check_current_work(readme, lines, parts, people, strict, lifecycle):
         if not HANDLE.search(owner.value):
             found.append(finding(readme, owner.line, "Current Work: Owner names no @handle"))
         for name, handle in people:
+            handle = handle.removeprefix("@")
             names_person = re.search(rf"(?<![@\w]){re.escape(name)}\b", owner.value)
             gives_handle = re.search(rf"(?<![\w@])@{re.escape(handle)}(?![\w-]|\.\w)", owner.value)
             if names_person and not gives_handle:
@@ -418,23 +445,36 @@ def check_phases_section(readme, lines, part, lifecycle, strict):
     return found, True
 
 
-def check_phase_tables(readme, lines, parts, plan, plan_lines, lifecycle, strict):
+def check_phase_tables(readme, lines, parts, lifecycle, strict):
     phases = named(parts, "phases")
     found, has_phase_table = [], False
     if phases:
         found, has_phase_table = check_phases_section(readme, lines, phases[0], lifecycle, strict)
-    outside = "Phases: phase state outside the README ## Phases table"
     for table in tables(lines):
         inside = bool(phases) and phases[0].start < table.line - 1 < phases[0].end
         if inside or not is_phase_table(table):
             continue
         if holds_phase_state(table):
-            found.append(finding(readme, table.line, outside))
+            found.append(finding(readme, table.line, OUTSIDE))
         if not has_phase_table:
             found.append(finding(readme, table.line, "Phases: phase table is not under ## Phases"))
-    for table in tables(plan_lines):
-        if holds_phase_state(table):
-            found.append(finding(plan, table.line, outside))
+    return found
+
+
+def check_other_file(path, lines):
+    """Findings for status kept in IMPLEMENTATION_PLAN.md, SRD.md or SADD.md."""
+    found = [finding(path, table.line, OUTSIDE) for table in tables(lines) if holds_phase_state(table)]
+    for i, line in enumerate(lines):
+        key = KEY.match(line)
+        if not key or key[1].lower() not in STATE_KEYS:
+            continue
+        value = key[2] or ""
+        if lookup_word(PHASE_WORDS, value) or lookup_word(PACKET_WORDS, value):
+            message = (
+                f"Phases: {key[1]} line outside the README; "
+                "status lives in its ## Current Work and ## Phases"
+            )
+            found.append(finding(path, i + 1, message))
     return found
 
 
@@ -461,8 +501,12 @@ def check_packet(path, people=(), strict=False, lifecycle=None):
     lifecycle = lifecycle or target.resolve().parent.name
 
     raw = read_lines(readme)
-    plan = readme.with_name("IMPLEMENTATION_PLAN.md") if readme.name == "README.md" else None
-    plan_lines = unfenced(read_lines(plan)) if plan and plan.exists() else []
+    others = []
+    if readme.name == "README.md":
+        for name in OTHER_FILES:
+            other = readme.with_name(name)
+            if other.exists():
+                others.append((other, unfenced(read_lines(other))))
     lines = unfenced(raw)
     parts = sections(lines)
 
@@ -470,7 +514,9 @@ def check_packet(path, people=(), strict=False, lifecycle=None):
     found += check_current_work(readme, lines, parts, people, strict, lifecycle)
     if not named(parts, "log"):
         found.append(finding(readme, 1, "Log: no ## Log section"))
-    found += check_phase_tables(readme, lines, parts, plan, plan_lines, lifecycle, strict)
+    found += check_phase_tables(readme, lines, parts, lifecycle, strict)
+    for other, other_lines in others:
+        found += check_other_file(other, other_lines)
     return found
 
 
@@ -539,7 +585,10 @@ def main(argv=None):
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8")
-    args = parse_args(argv)
+    try:
+        args = parse_args(argv)
+    except SystemExit as error:  # argparse exits on --help (0) and on bad arguments (2)
+        return error.code if isinstance(error.code, int) else 2
     people = [tuple(pair.split("=", 1)) for pair in args.people]
     for path in [*args.plans, *args.packet]:
         if not Path(path).exists():
