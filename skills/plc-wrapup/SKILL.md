@@ -16,6 +16,12 @@ is left.
 Load [plain-english](../plain-english/SKILL.md) and
 [verify-before-claiming](../verify-before-claiming/SKILL.md) first.
 
+**Scope.** The work is what the user names, which may be several plans or
+branches. When they name none, it is all the work this session and its
+children started: every plan they changed and every branch or worktree they
+made. Ask only when that is unclear. Each plan in scope gets its own pass
+through the plan steps below.
+
 ## Reuse the owning workflow
 
 For PLC execution work, read `plc-execution`'s procedures for integration
@@ -38,9 +44,10 @@ Steps 7 and 8 then keep or remove the unfinished branches as
 ## 1. Checkpoint first
 
 Run [plc-checkpoint](../plc-checkpoint/SKILL.md) from "Find the work and its
-plan" through "Tidy what is finished": find the work and its plan, read the
-last Current Work block, gather what changed, and tidy what is already
-merged. Don't rewrite Current Work yet; step 6 writes it once, with the end
+plan" through "Tidy what is finished" for each plan in scope: read its last
+Current Work block, gather what changed, and tidy what is already merged.
+The scope above names the plans, so don't stop at the checkpoint's "several
+plans, none named" question when the session's own work identifies them. Don't rewrite Current Work yet; step 6 writes it once, with the end
 state.
 
 ## 2. Collect what's in flight
@@ -57,6 +64,8 @@ and integration branches, in the campaign folder or anywhere else
   changes that aren't this task's. Its branch doesn't merge. Say which, and
   why.
 - If which branches belong to this work is unclear, ask before merging any.
+- On every route, merge in dependency order: a branch, or a plan's work,
+  that builds on another merges after it.
 
 ## 3. Choose the route
 
@@ -119,6 +128,9 @@ keep it Merged and name the check that is left.
 
 ## 6. Finish the plan
 
+Do this for each plan in scope: its own Current Work and `## Phases`
+update, and, when it is finished, its own move to `completed/`.
+
 Rewrite Current Work and the README's `## Phases` table to the real end
 state, using the rewrite rules in `plc-checkpoint`'s
 [Rewrite Current Work](../plc-checkpoint/SKILL.md#5-rewrite-current-work)
@@ -176,9 +188,9 @@ ticket or comment on it.
 ## 7. Clean up this work
 
 Follow [clean-stale-worktrees](../clean-stale-worktrees/SKILL.md) for each
-removal and its verification. Only this work's checkouts and branches; other
-campaigns are untouched. Step 6 already recorded what stays. If a removal
-step 6 planned fails, record what is left: in an open plan, as a row in
+removal and its verification. Only the checkouts and branches in scope;
+work that other sessions started is untouched. Step 6 already recorded what
+stays. If a removal step 6 planned fails, record what is left: in an open plan, as a row in
 "Where the work lives"; in a finished plan, as the one dated follow-up Log
 line that `plc-planning`'s
 [Ending a packet](../plc-planning/SKILL.md#ending-a-packet) rule allows.
