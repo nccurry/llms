@@ -72,9 +72,11 @@ check passed on the merged code. Record each result once and link to it. If a
 record is missing, check existing results before running checks again. The
 optional `## Merge requests` table follows the planning skill's
 [Merge requests](../skills/plc-planning/SKILL.md#merge-requests) rule. A
-finished plan moves to `completed/`; plans finished earlier into another folder
-stay where they are. The full rules and the format check are in
-[plc-planning](../skills/plc-planning/SKILL.md#shared-template).
+diagram is welcome where it explains faster than prose, and never required;
+the [Visual aids](../skills/plc-planning/SKILL.md#visual-aids) rule says which
+kind fits and where it goes. A finished plan moves to `completed/`; plans
+finished earlier into another folder stay where they are. The full rules and
+the format check are in [plc-planning](../skills/plc-planning/SKILL.md#shared-template).
 
 ## Choose an execution model
 

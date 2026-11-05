@@ -853,14 +853,77 @@ class TemplateTest(unittest.TestCase):
     def check(self, path):
         return run("--packet", str(path), "--strict", *PEOPLE)
 
-    def test_default_packet_passes_when_filled(self):
+    def write_filled_packet(self, sadd=lambda text: text):
+        """Fill every default-packet template into the packet, passing the
+        SADD template through sadd first."""
         for source in sorted((SKILL / "assets" / "default-packet").glob("*.md")):
-            (self.packet / source.name).write_text(fill(source.read_text(encoding="utf-8")), encoding="utf-8")
+            text = source.read_text(encoding="utf-8")
+            if source.name == "SADD.md":
+                text = sadd(text)
+            (self.packet / source.name).write_text(fill(text), encoding="utf-8")
         # With SRD.md, the requirements leave ## Done when for the pointer line.
         readme = self.packet / "README.md"
         text = readme.read_text(encoding="utf-8")
         requirement = re.search(r"^- REQ-001: .*$", text, flags=re.MULTILINE)[0]
         readme.write_text(edit(requirement, POINTER, text), encoding="utf-8")
+
+    def test_default_packet_passes_when_filled(self):
+        self.write_filled_packet()
+        self.assertEqual(self.check(self.packet), (0, [], ""))
+
+    def test_visual_aids_rule(self):
+        """plc-planning states the visual aids rule once, among its rules:
+        encouraged, not required, which kind for which information, and where
+        each lives."""
+        text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        self.assertEqual(text.count("#### Visual aids\n"), 1)
+        rules = text.split("### Rules\n", 1)[1]
+        rule = " ".join(rules.split("#### Visual aids\n", 1)[1].split("\n#### ", 1)[0].split())
+        for phrase in (
+            "encouraged",
+            "never required",
+            "one-file plan usually needs none",
+            "plain-text tree",
+            "Mermaid",
+            "flowchart",
+            "sequence diagram",
+            "ER diagram",
+            "class diagram",
+            "state diagram",
+            "deployment diagram",
+            "decision logic",
+            "mostly SADD.md",
+            "SRD.md's Expected Experience",
+            "at most one overview diagram",
+            "the section it explains",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, rule)
+
+    def test_sadd_diagram_examples_stay_in_comments(self):
+        """The SADD template's Mermaid examples sit in HTML comments, so an
+        unfilled diagram is not copied into a plan, and a plan that takes them
+        out of their comments still passes the strict check."""
+        text = (SKILL / "assets" / "default-packet" / "SADD.md").read_text(encoding="utf-8")
+        lines = text.splitlines()
+        self.assertFalse(any("```mermaid" in line for line in fc.uncommented(lines)))
+        examples = {
+            section.name: sum(line == "```mermaid" for line in lines[section.start:section.end])
+            for section in fc.sections(lines)
+        }
+        self.assertEqual(
+            {name: count for name, count in examples.items() if count},
+            {"Context And Boundaries": 1, "Runtime And Data Flow": 2},
+        )
+
+        def uncomment(sadd):
+            out = re.sub(r"<!--.*?\n\n(```mermaid.*?```)\n-->", r"\1", sadd, flags=re.DOTALL)
+            self.assertEqual(out.count("<!--"), 0)
+            return out
+
+        self.write_filled_packet(uncomment)
+        filled = (self.packet / "SADD.md").read_text(encoding="utf-8")
+        self.assertEqual(filled.count("```mermaid"), 3)
         self.assertEqual(self.check(self.packet), (0, [], ""))
 
     def test_compact_plan_passes_when_filled(self):

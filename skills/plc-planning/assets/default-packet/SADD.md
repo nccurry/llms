@@ -9,6 +9,21 @@ State the chosen design and its main tradeoff.
 Name the affected components. State what each owns and what remains outside its
 responsibility. Link to the public contracts in `SRD.md` or their existing source.
 
+<!-- Optional: a small diagram of the components and their boundaries.
+Copy it out of this comment with the plan's own names, or delete the comment.
+Arrows here are ==> because the usual thin arrow would end this comment;
+either works in a plan.
+
+```mermaid
+flowchart LR
+  user([User]) ==> web[Web app]
+  subgraph orders[Order service]
+    api[API] ==> db[(Database)]
+  end
+  web ==> api
+```
+-->
+
 ## Decisions And Alternatives
 
 | Decision or option | Status | Reason |
@@ -32,6 +47,26 @@ them. Distinguish a suggested implementation from a required design decision.
 Describe the main path from input to result. Include failure, retry, restart,
 or recovery paths when they change behavior. Explain internal data and state
 ownership without repeating public contract definitions or experience examples.
+
+<!-- Optional: a sequence diagram for a flow across parts, or an ER diagram
+for stored data. Copy one out of this comment with the plan's own names, or
+delete the comment.
+
+```mermaid
+sequenceDiagram
+  participant Web as Web app
+  participant API
+  participant DB as Database
+  Web->>API: POST /orders
+  API->>DB: insert order
+  API->>Web: 201 Created
+```
+
+```mermaid
+erDiagram
+  CUSTOMER ||--o{ ORDER : places
+```
+-->
 
 ## Quality And Safety
 

@@ -7,7 +7,7 @@ Markdown graders.
 
 | Case | What it checks |
 | --- | --- |
-| [small-change](small-change/case.yaml) | A durable plan for a small, bounded change is one file, `plc-<slug>.md`, in the shared PLC template: no SRD, SADD or implementation plan, and no code changes |
+| [small-change](small-change/case.yaml) | A durable plan for a small, bounded change is one file, `plc-<slug>.md`, in the shared PLC template: no SRD, SADD or implementation plan, no code changes, and no diagrams padding the plan |
 
 `check_plan.py` compares the fixture with the `_snapshot.json` its build
 script wrote. The run must add exactly one plan, a one-file `docs/plans/planned/plc-<slug>.md`,

@@ -131,6 +131,7 @@ Record the check's actual result only after running it.
      data flow, interfaces, and test design. Identify fixed contracts, safety
      rules, and ownership boundaries; distinguish suggested implementations
      from required decisions and leave routine internal choices open.
+     [Visual aids](#visual-aids) says when a diagram helps.
    - Use plain English and names that identify the actor, action, system part,
      and result. Replace vague claims such as "works well" with pass/fail measures.
 
@@ -399,6 +400,31 @@ this skill's `assets/default-packet/`.
 
 A packet in `completed/` never grows; new scope opens a new packet, as
 [Ending a packet](#ending-a-packet) says.
+
+#### Visual aids
+
+A diagram is encouraged where it explains faster than prose, and never
+required. A small one-file plan usually needs none, and a plan never gets a
+diagram just to fill it out.
+
+- **Which kind.** A plain-text tree in a `text` code block for files and
+  folders. Otherwise a Mermaid diagram in a `mermaid` code block:
+  - components and their boundaries: a flowchart of boxes, with a
+    `subgraph` for each boundary;
+  - a flow across parts, such as a request through two services: a
+    sequence diagram;
+  - stored data: an ER diagram;
+  - types and how they relate: a class diagram;
+  - a lifecycle, such as the states of an order: a state diagram;
+  - hosts and services: a flowchart laid out as a deployment diagram;
+  - decision logic: a flowchart.
+- **Where it lives.** With the design it explains, which is mostly SADD.md.
+  A UI or CLI sketch goes in SRD.md's Expected Experience. The README holds
+  at most one overview diagram. In a one-file plan, a diagram sits in the
+  section it explains.
+- Keep each diagram small and use the plan's own names. The
+  [SADD template](assets/default-packet/SADD.md) shows examples in HTML
+  comments.
 
 #### Independent review
 

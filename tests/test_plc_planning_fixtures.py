@@ -160,6 +160,20 @@ class SmallChangeFixtureTest(unittest.TestCase):
         self.assertTrue(report["ok"], report)
         self.assertEqual(report["plan"], PLAN_PATH)
 
+    def test_one_small_diagram_passes(self):
+        # The skill encourages diagrams without requiring them. The checker
+        # accepts one small, apt diagram; the grader judges padding.
+        self.write_good_plan()
+        plan = self.app / PLAN_PATH
+        tree = "```text\nharbor.py\ntests/\n  test_harbor.py\n```"
+        text = plan.read_text(encoding="utf-8")
+        row = "| P1 | Reject limits below 1 | | Planned |\n"
+        text = text.replace(row, f"{row}\nP1 changes these files:\n\n{tree}\n", 1)
+        plan.write_text(text, encoding="utf-8")
+        self.assertIn(tree, plan.read_text(encoding="utf-8"))
+        self.assertEqual(format_check().check_packet(plan, strict=True), [])
+        self.assertTrue(check(self.dest)["ok"])
+
     def test_committed_plan_passes(self):
         self.write_good_plan()
         git(self.app, "add", "--all")
