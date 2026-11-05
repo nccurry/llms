@@ -71,7 +71,7 @@ def ci_for(sha: str) -> dict:
     state = load()
     cache = state.setdefault("ci", {})
     if sha not in cache:
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=HOST_DIR) as tmp:
             archive = subprocess.run(
                 ["git", "--git-dir", state["remote"], "archive", sha],
                 capture_output=True,
@@ -463,6 +463,10 @@ def gh(args: list[str]) -> None:
     fail(f"fake gh does not know: {' '.join(args)}")
 
 
+# `jira issue <verb>` commands that change a ticket.
+JIRA_WRITES = {"create", "move", "transition", "edit", "assign", "link", "unlink", "delete", "clone", "worklog"}
+
+
 def jira(args: list[str]) -> None:
     state = load()
     tickets = state.get("jira", [])
@@ -477,10 +481,17 @@ def jira(args: list[str]) -> None:
         return
     if args[:1] == ["me"]:
         return print(f"{USER}@example.com")
-    # Every other command is a write; record it for the checker and accept it.
-    state.setdefault("jira_writes", []).append(args)
-    save(state)
-    print("ok")
+    # Known writes are recorded for the checker and accepted; anything else
+    # is an error and is not recorded as a write.
+    if args[:1] == ["issue"] and len(args) > 1 and args[1] in JIRA_WRITES:
+        state.setdefault("jira_writes", []).append(args)
+        save(state)
+        return print("ok")
+    if args[:2] == ["issue", "comment"] and args[2:3] == ["add"]:
+        state.setdefault("jira_writes", []).append(args)
+        save(state)
+        return print("ok")
+    fail(f"fake jira does not know: {' '.join(args)}")
 
 
 def main() -> None:

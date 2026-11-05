@@ -1,6 +1,6 @@
 ---
 name: plc-mr-review
-description: "Gets open merge requests or pull requests ready for review: CI green, review threads handled, descriptions current, stacks worked bottom up. Leaves them unmerged by default; merges, sets merge-when-green, or adds them to a merge train only when the user asks, then updates any linked plan. Works with or without a plan. Use when the user says 'get these MRs ready', 'get CI green and resolve comments', 'clean up my open PRs', or 'merge them when green'."
+description: "Gets existing open merge requests or pull requests ready for review: CI green, review threads handled, descriptions current, stacks worked bottom up. Leaves them unmerged by default; merges, sets merge-when-green, or adds them to a merge train only when the user asks, then updates any linked plan. Works with or without a plan. For landing and cleaning up a session's in-flight work, use plc-wrapup instead. Use when the user says 'get these MRs ready', 'get CI green and resolve comments', 'clean up my open PRs', or 'merge them when green'."
 ---
 
 # PLC MR Review
@@ -63,18 +63,20 @@ For a stack, merge bottom up, and retarget or rebase each next MR as the
 host requires before merging it.
 
 When this work has a ticket or the project uses tickets, run
-[manage-tickets](../manage-tickets/SKILL.md) for each MR event: opened,
-updated or merged.
+[manage-tickets](../manage-tickets/SKILL.md) for each MR it merges.
 
 ## 6. Update a linked plan after a merge
 
 When a merged MR belongs to a plan, update the plan's Current Work and
 `## Phases` table with the rewrite rules in `plc-checkpoint`'s
 [Rewrite Current Work](../plc-checkpoint/SKILL.md#5-rewrite-current-work)
-step: the phase's note names the MR and the merge commit, and its word
-becomes Merged. Leave Verified to the plan's checks on the merged code, as
-[plc-wrapup](../plc-wrapup/SKILL.md) step 5 or a later checkpoint runs
-them. With no plan, skip this step.
+step. The phase's note names the MR and the merge commit, and the phase
+gets its word from `plc-planning`'s [Words](../plc-planning/SKILL.md#words)
+rules: it is Merged only when all its parts are on the branch the work is
+delivered to, and a merge into another target, such as the next MR down a
+stack, leaves it Implemented. Leave Verified to the plan's checks on the
+merged code, as [plc-wrapup](../plc-wrapup/SKILL.md) step 5 or a later
+checkpoint runs them. With no plan, skip this step.
 
 ## 7. Report
 

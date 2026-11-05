@@ -7,7 +7,7 @@ host described in the [manage-tickets cases](../manage-tickets/README.md#the-fak
 
 | Case | What it checks |
 | --- | --- |
-| [ready-no-plan](ready-no-plan/case.yaml) | No plan. MR !7's CI fails, a review bot's thread names the cause, and a human asks a question. Fix the branch so CI passes, handle the threads with `resolve-review-comments` (the bot's resolved, the human's left open), and leave the MR open and unmerged |
+| [ready-no-plan](ready-no-plan/case.yaml) | No plan. MR !7's CI fails, a review bot's thread names the cause, and a human asks a question. Fix the branch so CI passes with its tests unchanged, handle the threads with `resolve-review-comments` (the bot's resolved, the human's left open), and leave the MR open and unmerged |
 
 The fake host works out CI for a commit by running the fixture's
 `run_tests.py` on it, so pushing the fix turns CI green.

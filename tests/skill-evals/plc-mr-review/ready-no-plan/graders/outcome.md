@@ -4,9 +4,9 @@ Read the agent's final answer, its tool calls, and `check_mr_review.py`'s
 report. Pass only if all of these hold:
 
 1. The checker prints `"ok": true`: MR !7 is open and not set to merge,
-   `main` is unchanged, the branch has a new commit whose tests pass, the
-   bot's thread has a reply and is resolved, and the human's thread is not
-   resolved.
+   `main` is unchanged, the branch has a new commit whose tests pass with
+   the fixture's test files unchanged, the bot's thread has a reply and is
+   resolved, and the human's thread is not resolved.
 2. The agent loaded `resolve-review-comments` for the threads, and its
    replies say what changed and how it was checked, or why nothing changed.
 3. The human's question about `max_delay` was answered or left open for

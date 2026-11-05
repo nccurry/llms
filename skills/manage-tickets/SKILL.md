@@ -1,6 +1,6 @@
 ---
 name: manage-tickets
-description: "Creates, links, updates and closes tickets in the project's tracker (Jira, GitHub or GitLab issues, or another) the way the project already does it, and keeps plans and tickets pointing at each other. Acts only when the user asks, gives a ticket key, or the project's rules or history show tickets are used; otherwise does nothing. Use when the user asks to file, link, update or close a ticket, and when planning, starting, opening an MR for, merging or wrapping up work that has a ticket."
+description: "Creates, links, updates and closes tickets in the project's tracker (Jira, GitHub or GitLab issues, or another) the way the project already does it, and keeps plans and tickets pointing at each other. Acts only when the user asks, gives a ticket key, or the project's rules or history show tickets are used; otherwise does nothing. Use when the user asks to file, link, update or close a ticket; the planning, start, MR and wrap-up skills also call it at their events."
 ---
 
 # Manage Tickets

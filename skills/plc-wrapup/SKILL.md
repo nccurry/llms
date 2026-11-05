@@ -1,6 +1,6 @@
 ---
 name: plc-wrapup
-description: "Use when the user is done with a piece of work, or done for now, and wants it landed - 'wrap this up', 'merge it down', 'we're done', 'close this out' - or wants to drop it unmerged, or finishing after PLC, Luna, Sol, or Opus execution. Merges everything in flight, finished or not, into main directly or through a PR/MR (merged now, or set to merge when CI is green, only when the user says), rewrites the plan's Current Work to its real end state, moves a finished plan to the completed folder, and removes the work's worktrees and branches locally and on the remote. For an update that keeps work going, use plc-checkpoint."
+description: "Use when the user is done with a piece of work, or done for now, and wants this session's in-flight work landed and cleaned up - 'wrap this up', 'merge it down', 'we're done', 'close this out' - or wants to drop it unmerged, or finishing after PLC, Luna, Sol, or Opus execution. Merges everything in flight, finished or not, into main directly or through a PR/MR (merged now, or set to merge when CI is green, only when the user says), rewrites the plan's Current Work to its real end state, moves a finished plan to the completed folder, and removes the work's worktrees and branches locally and on the remote. For an update that keeps work going, use plc-checkpoint."
 ---
 
 # PLC Wrapup
@@ -18,9 +18,10 @@ Load [plain-english](../plain-english/SKILL.md) and
 
 **Scope.** The work is what the user names, which may be several plans or
 branches. When they name none, it is all the work this session and its
-children started: every plan they changed and every branch or worktree they
-made. Ask only when that is unclear. Each plan in scope gets its own pass
-through the plan steps below.
+children started: every plan whose work they started, not one they only
+touched for its records, such as a checkpoint's Log line, and every branch
+or worktree they made. Ask only when that is unclear. Each plan in scope
+gets its own pass through the plan steps below.
 
 ## Reuse the owning workflow
 
@@ -36,8 +37,9 @@ close out, and skip the plan steps below.
 When the user is dropping the work rather than landing it, merge nothing.
 Run step 1 and skip steps 2 to 5. Then the plan ends in `archived/` as
 `plc-planning`'s [Ending a packet](../plc-planning/SKILL.md#ending-a-packet)
-rule says, delivered by step 6's rules and checked with `--strict`; if the
-plan exists only on a dropped branch, ask whether to keep it on `main`.
+rule says, delivered by step 6's rules, including its ticket call, and
+checked with `--strict`; if the plan exists only on a dropped branch, ask
+whether to keep it on `main`.
 Steps 7 and 8 then keep or remove the unfinished branches as
 [clean-stale-worktrees](../clean-stale-worktrees/SKILL.md) says, and report.
 
@@ -47,8 +49,8 @@ Run [plc-checkpoint](../plc-checkpoint/SKILL.md) from "Find the work and its
 plan" through "Tidy what is finished" for each plan in scope: read its last
 Current Work block, gather what changed, and tidy what is already merged.
 The scope above names the plans, so don't stop at the checkpoint's "several
-plans, none named" question when the session's own work identifies them. Don't rewrite Current Work yet; step 6 writes it once, with the end
-state.
+plans, none named" question when the session's own work identifies them.
+Don't rewrite Current Work yet; step 6 writes it once, with the end state.
 
 ## 2. Collect what's in flight
 
@@ -190,9 +192,9 @@ ticket or comment on it.
 Follow [clean-stale-worktrees](../clean-stale-worktrees/SKILL.md) for each
 removal and its verification. Only the checkouts and branches in scope;
 work that other sessions started is untouched. Step 6 already recorded what
-stays. If a removal step 6 planned fails, record what is left: in an open plan, as a row in
-"Where the work lives"; in a finished plan, as the one dated follow-up Log
-line that `plc-planning`'s
+stays. If a removal step 6 planned fails, record what is left: in an open
+plan, as a row in "Where the work lives"; in a finished plan, as the one
+dated follow-up Log line that `plc-planning`'s
 [Ending a packet](../plc-planning/SKILL.md#ending-a-packet) rule allows.
 With no plan, step 8's report is the record.
 
@@ -219,9 +221,10 @@ With no plan, step 8's report is the record.
 - Removed: each worktree, local branch, and remote branch.
 - Kept: each one, with its reason and what releases it.
 
-Call the wrap-up complete only when everything selected is merged (or its
-PR/MR is ready, if the user said not to merge), the plan says what's true,
-and every checkout for this work is removed or accounted for.
+Call the wrap-up complete only when everything selected is merged, or its
+PR/MR is left ready or set to merge when green, as step 3 chose; the plan
+says what's true; and every checkout for this work is removed or accounted
+for.
 
 ## Gotchas
 

@@ -157,8 +157,9 @@ a merged child to remove, an in-progress child to keep), `dirty-finished`,
 worktree and branches removed.
 
 plc-wrapup: `direct-mid-stream`, `complete-moves-plan`, `failing-checks`,
-`active-agent`, and `near-miss-status`. The PR/MR route needs a host login and
-has no runnable case yet.
+`active-agent`, and `near-miss-status`. The PR/MR route has no runnable
+case yet. A fake code host for evals now exists, in
+`tests/skill-evals/fake_host.py`, but no plc-wrapup case uses it.
 
 ## Build order
 

@@ -92,6 +92,20 @@ class PlcMrReviewFixtureTest(unittest.TestCase):
         self.glab("api", "-X", "PUT", "projects/:id/merge_requests/7/discussions/d-human?resolved=true")
         self.assertIn("human thread d-human was resolved", self.check()["failures"])
 
+    def test_deleting_the_failing_test_fails(self):
+        worktree = self.dest / "app-wt" / BRANCH
+        git(self.dest / "app", "worktree", "add", "-q", str(worktree), BRANCH)
+        configure(worktree)
+        test_file = worktree / "tests" / "test_backoff.py"
+        text = test_file.read_text(encoding="utf-8")
+        start = text.index("    def test_delay_is_capped")
+        test_file.write_text(text[:start].rstrip() + "\n", encoding="utf-8", newline="\n")
+        git(worktree, "commit", "-q", "-am", "Drop the cap test")
+        git(worktree, "push", "-q", "origin", BRANCH)
+        self.handle_bot_thread()
+        self.assertIn("tests/test_backoff.py changed or is gone; CI must pass with the fixture's tests",
+                      self.check()["failures"])
+
     def test_threads_without_a_ci_fix_fail(self):
         self.handle_bot_thread()
         self.assertIn(f"{BRANCH} has no new commit on the remote", self.check()["failures"])
