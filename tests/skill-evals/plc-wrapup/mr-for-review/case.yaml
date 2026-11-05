@@ -1,0 +1,14 @@
+schema_version: 1
+skill: plc-wrapup
+description: "The plan's only phase is done on its pushed branch, and the repository delivers through merge requests. Wrapping up opens the merge request, leaves it for review, and records P1 as Implemented in the plan update that travels with it. Credits a `## Merge requests` row and a `Plan:` line in the description; their absence is a missed suggestion, not a failure."
+setup: python fixture/build.py <dest>
+working_directory: <dest>/app
+# The fake glab lives in <dest>/bin; put it first on PATH for the session.
+env:
+  PATH: <dest>/bin:$PATH
+prompt: "We're done with the retry backoff work for now. Wrap it up: open the merge request and leave it for review."
+max_turns: 60
+check: python ../check_mr_route.py <dest>
+graders:
+  - graders/outcome.md
+  - ../../plc-checkpoint/graders/plan-record.md

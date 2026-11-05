@@ -1,10 +1,14 @@
 # plc-wrapup eval cases
 
-Six runnable cases for [`plc-wrapup`](../../../skills/plc-wrapup/SKILL.md).
-All build the same `notify` repository from
+Seven runnable cases for [`plc-wrapup`](../../../skills/plc-wrapup/SKILL.md).
+Six build the same `notify` repository from
 [digest_fixture.py](digest_fixture.py): a bare `notify.git` remote, a primary
 checkout, and child worktrees under `notify-wt/digest/`. Its `AGENTS.md` says
-to merge straight into `main`, push, and run `run_tests.py`.
+to merge straight into `main`, push, and run `run_tests.py`. The
+mr-for-review case builds the `app` repository and fake GitLab host from
+[host_fixture.py](../host_fixture.py), described in the
+[manage-tickets cases](../manage-tickets/README.md#the-fake-host), and its
+`AGENTS.md` says every change goes through a merge request.
 
 | Case | What it checks |
 | --- | --- |
@@ -14,6 +18,7 @@ to merge straight into `main`, push, and run `run_tests.py`.
 | [failing-checks](failing-checks/case.yaml) | Each branch passes alone but not together: stop and ask |
 | [active-agent](active-agent/case.yaml) | P2 is locked by another session: merge and clean up P1 only |
 | [near-miss-status](near-miss-status/case.yaml) | "Where are we?" must go to `plc-checkpoint`, and nothing merges |
+| [mr-for-review](mr-for-review/case.yaml) | The repository delivers through merge requests: open one for P1 and leave it for review, mark P1 Implemented in the plan update on its branch, remove the worktree, push nothing to `main`. A `## Merge requests` row for P1 and a `Plan:` line in the description are credited; their absence is a missed suggestion, not a failure |
 
 `check_wrap.py` reads the `_expect.json` each build script writes: commits that
 must or must not be on `origin/main`, worktrees and branches that must be gone
@@ -44,12 +49,18 @@ planning skill's shipped format check on the plan in strict mode.
 The digest packet uses the shared PLC template, owned by `@alex`, and is built
 with the shared [fixture_lib.py](../fixture_lib.py).
 
-The PR/MR route needs a host login, so it has no runnable case yet.
+`check_mr_route.py` checks the mr-for-review case against the fake host's
+state and the plan on the merge request's branch; its docstring lists the
+rules. It prints JSON with `ok`, `failures`, the two `suggestions` it
+credits and `missed_suggestions`, and exits 1 only when a rule fails. Run
+that case with `<dest>/bin` first on `PATH`.
 
 Run cases the same way as the [plc-checkpoint cases](../plc-checkpoint/README.md#run-a-case).
 `tests/test_plc_wrapup_fixtures.py` checks that each fixture's tests pass or
 fail as intended, that each packet has the shared shape, and that a correct
-wrap-up satisfies the checker while a wrong one fails it.
+wrap-up satisfies the checker while a wrong one fails it. For mr-for-review,
+it also checks that a run without the row and `Plan:` line still passes,
+with both listed as missed suggestions.
 
 ## Results
 

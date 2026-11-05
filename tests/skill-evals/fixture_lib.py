@@ -522,7 +522,7 @@ def _readme_and_plan(packet: Path) -> tuple[str, str]:
 
 # The shared sections, in template order. Other sections go after them and
 # before `## Log`, which is last.
-SECTION_ORDER = ("Current Work", "Phases", "Done when", "Open questions")
+SECTION_ORDER = ("Current Work", "Phases", "Done when", "Open questions", "Merge requests")
 # The template's Current Work keys after Status, Owner and Last updated, which
 # the shipped check already requires.
 MORE_TEMPLATE_KEYS = ("Next action", "Blocker", "Depends on", "Current state", "Resume check")

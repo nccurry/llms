@@ -929,5 +929,134 @@ class PhaseRuleTest(unittest.TestCase):
         )
 
 
+MR_CASE = CASES / "mr-for-review"
+MR_PLAN = "docs/plans/in-progress/retry-backoff"
+MR_WORKTREE = "app-wt/retry-backoff/p1"
+MR_ROW = (
+    "## Merge requests\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n"
+    "| P1 | !3 | Open | |\n\n## Log"
+)
+
+
+class MrForReviewFixtureTest(unittest.TestCase):
+    """The mr-for-review fixture sets up an unopened merge request, and
+    check_mr_route.py fails what breaks a rule, while a missing
+    `## Merge requests` row or `Plan:` line is only a missed suggestion."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dest = Path(self.tmp.name) / "fixture"
+        subprocess.run(
+            [sys.executable, str(MR_CASE / "fixture" / "build.py"), str(self.dest)],
+            check=True, capture_output=True, env=GIT_ENV,
+        )
+        self.app = self.dest / "app"
+        self.worktree = self.dest / MR_WORKTREE
+
+    def glab(self, *args: str) -> str:
+        env = dict(GIT_ENV, PYTHONDONTWRITEBYTECODE="1")
+        result = subprocess.run(
+            [str(self.dest / "bin" / "glab"), *args], cwd=self.app,
+            capture_output=True, text=True, encoding="utf-8", env=env,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout
+
+    def check(self) -> dict:
+        result = subprocess.run(
+            [sys.executable, str(CASES / "check_mr_route.py"), str(self.dest)],
+            capture_output=True, text=True, encoding="utf-8", env=GIT_ENV,
+        )
+        return json.loads(result.stdout)
+
+    def open_mr(self, plan_line: bool) -> None:
+        body = "Adds a capped backoff delay between retries. `python run_tests.py` passes."
+        if plan_line:
+            body += "\n\nPlan: PLC-004 P1"
+        self.glab("mr", "create", "--title", "Add a capped backoff delay", "--source-branch", "retry-backoff",
+                  "--target-branch", "main", "--description", body)
+
+    def update_plan(self, readme_edits: list[tuple[str, str]]) -> None:
+        """Commit the plan update on the branch, push it, and remove the worktree."""
+        readme = self.worktree / MR_PLAN / "README.md"
+        text = readme.read_text(encoding="utf-8")
+        edits = [
+            ("| In progress |\n\n## Done", "| Implemented — !3 open for review |\n\n## Done"),
+            ("- Next action: open the merge request for P1", "- Next action: review and merge !3"),
+            (f"| `{MR_WORKTREE}` | `retry-backoff` | p1 child | in progress |", "| None | | | |"),
+            ("- 2026-11-04 Created.\n", "- 2026-11-04 Created.\n- 2026-11-05 P1 Implemented: !3 open.\n"),
+            *readme_edits,
+        ]
+        for old, new in edits:
+            self.assertEqual(text.count(old), 1, old)
+            text = text.replace(old, new)
+        readme.write_text(text, encoding="utf-8", newline="\n")
+        git(self.worktree, "commit", "-q", "-am", "docs(plan): P1 is in review in !3")
+        git(self.worktree, "push", "-q", "origin", "retry-backoff")
+        git(self.app, "worktree", "remove", str(self.worktree))
+
+    def test_fixture_packet_and_tests(self):
+        packet = self.app / MR_PLAN
+        self.assertEqual(format_check().check_packet(packet, strict=True), [])
+        self.assertEqual(eval_only_problems(packet, owner=OWNER), [])
+        self.assertTrue(tests_pass(self.worktree))
+        self.assertEqual(json.loads((self.dest / "_host" / "state.json").read_text())["mrs"], [])
+
+    def test_untouched_fixture_fails(self):
+        report = self.check()
+        self.assertEqual(report["failures"], [
+            "no merge request from retry-backoff to main",
+            f"plan {MR_PLAN} on retry-backoff: phase P1 is In progress, expected Implemented",
+            f"worktree {MR_WORKTREE} is still registered",
+            f"worktree {MR_WORKTREE} folder still exists",
+        ])
+        self.assertEqual(report["missed_suggestions"], ["merge_requests_row", "plan_line"])
+
+    def test_row_and_plan_line_are_credited(self):
+        self.open_mr(plan_line=True)
+        self.update_plan([("## Log", MR_ROW)])
+        self.assertEqual(self.check(), {
+            "ok": True, "failures": [],
+            "suggestions": {"merge_requests_row": True, "plan_line": True},
+            "missed_suggestions": [],
+        })
+
+    def test_missing_row_and_plan_line_are_only_missed_suggestions(self):
+        self.open_mr(plan_line=False)
+        self.update_plan([])
+        report = self.check()
+        self.assertTrue(report["ok"], report["failures"])
+        self.assertEqual(report["missed_suggestions"], ["merge_requests_row", "plan_line"])
+
+    def test_row_for_another_mr_is_not_credited(self):
+        self.open_mr(plan_line=True)
+        self.update_plan([("## Log", MR_ROW.replace("!3", "!4"))])
+        report = self.check()
+        self.assertTrue(report["ok"], report["failures"])
+        self.assertEqual(report["missed_suggestions"], ["merge_requests_row"])
+
+    def test_malformed_row_fails_the_format_check(self):
+        self.open_mr(plan_line=True)
+        self.update_plan([("## Log", MR_ROW.replace("| Open |", "| open |"))])
+        failures = self.check()["failures"]
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("State is not Open, Merged @ <commit> or Closed — <reason>: open", failures[0])
+
+    def test_merging_fails(self):
+        self.open_mr(plan_line=True)
+        self.update_plan([("## Log", MR_ROW)])
+        self.glab("mr", "merge", "3")
+        self.assertIn("merge request !3 was merged or set to merge, but the user asked to leave it for review",
+                      self.check()["failures"])
+
+    def test_pushing_to_main_fails(self):
+        self.open_mr(plan_line=True)
+        self.update_plan([("## Log", MR_ROW)])
+        git(self.app, "push", "-q", "origin", "origin/retry-backoff:refs/heads/main")
+        self.assertIn("main on the remote moved; the work must reach it through the merge request",
+                      self.check()["failures"])
+
+
 if __name__ == "__main__":
     unittest.main()
