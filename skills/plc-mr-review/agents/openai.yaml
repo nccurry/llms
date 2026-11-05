@@ -1,0 +1,4 @@
+interface:
+  display_name: "PLC MR Review"
+  short_description: "Get open MRs or PRs green, resolved, and ready"
+  default_prompt: "Use $plc-mr-review to get these merge requests ready for review: CI green, review threads handled, descriptions current. Leave them unmerged unless I ask."

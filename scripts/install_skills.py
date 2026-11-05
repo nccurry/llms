@@ -58,6 +58,7 @@ MANAGED_SKILLS = [
     "plc-planning",
     "plc-checkpoint",
     "plc-feature-start",
+    "plc-mr-review",
     "plc-wrapup",
     "review-and-fix-plc",
     "release-readiness",

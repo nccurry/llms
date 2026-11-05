@@ -171,6 +171,14 @@
     ],
     "plc-planning": [
       "review-and-fix-plc"
+    ],
+    "plc-mr-review": [
+      "plain-english",
+      "verify-before-claiming",
+      "resolve-review-comments",
+      "create-mr-description",
+      "plc-checkpoint",
+      "plc-wrapup"
     ]
   }
 }
