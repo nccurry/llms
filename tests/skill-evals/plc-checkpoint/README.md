@@ -266,4 +266,25 @@ graders.
   stderr) block approved behavior; run 1 named TIDE-003 as the Blocker,
   runs 2 and 3 contradicted `Blocker: None`. This also showed on
   2026-11-04. `plc-planning`'s open-questions rule now says a question on
-  a detail blocks only that detail, and point 10 grades it; not yet rerun.
+  a detail blocks only that detail, and point 10 grades it.
+
+### 2026-11-05, grow-plan reruns after the open-questions fix
+
+Three more runs on fresh fixtures, same setup, at llms `35d503e`. A
+separate Opus subagent graded them with all the graders, including the new
+point 10.
+
+| Run | Skills loaded | Tool uses | Tokens | Checker | Grade |
+| --- | --- | --- | --- | --- | --- |
+| 1 | plc-checkpoint, review-and-fix-plc | 17 | 89759 | ok | pass |
+| 2 | plc-checkpoint, plain-english, verify-before-claiming, plc-planning, review-and-fix-plc | 18 | 98364 | ok | pass |
+| 3 | plc-checkpoint, plain-english, verify-before-claiming, review-and-fix-plc | 19 | 96700 | ok | pass |
+
+- Point 10 passes in all three: `Blocker: None`, and every open question
+  blocks only its detail (run 2: "whole-second handling can be built
+  now"; run 3 states a temporary assumption until it is answered).
+- Still uncaught by any point: runs 2 and 3 each wrote a small detail
+  nobody approved as a firm requirement (run 3: "the feed is not read" on
+  a bad value; run 2: no argparse usage line, while also asking about it).
+  `plc-planning`'s "Approved" rule already says such additions are open
+  questions.
