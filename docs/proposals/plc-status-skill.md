@@ -1,9 +1,9 @@
 # Proposal: `plc-status` skill
 
-Status, 2026-10-27: **superseded** by [checkpoint-and-wrap-up.md](checkpoint-and-wrap-up.md). `plc-status` is now `plc-checkpoint`, and `wrap-this-up` merges unfinished work too.
+Status, 2026-10-27: **superseded** by [checkpoint-and-wrap-up.md](checkpoint-and-wrap-up.md). `plc-status` is now `plc-checkpoint`, and `plc-wrapup` merges unfinished work too.
 Earlier status, 2026-10-24: built.
 - `plc-status` reports, then brings the PLC records up to date.
-- `wrap-this-up` handles closing only; its Checkpoint mode is removed.
+- `plc-wrapup` handles closing only; its Checkpoint mode is removed.
 - Seven runnable eval cases, with results, are in
   `tests/skill-evals/plc-status/README.md`.
 
@@ -49,7 +49,7 @@ two things, in order:
    stale.
 
 It never closes work. Closing (merging, pushing, removing worktrees and
-branches) stays with `wrap-this-up`.
+branches) stays with `plc-wrapup`.
 
 ### How it fits with the other skills
 
@@ -58,12 +58,12 @@ branches) stays with `wrap-this-up`.
 | Know where we are, what's left, and whether I can close this session | `plc-status` |
 | Make sure the PLC is up to date | `plc-status` |
 | Just see the status, change nothing ("just tell me", "don't touch anything") | `plc-status`, report only |
-| Finish: deliver, merge, clean up | `wrap-this-up` |
+| Finish: deliver, merge, clean up | `plc-wrapup` |
 | Remove stale worktrees and branches | `clean-stale-worktrees` |
 | Check the code against the completed requirements, as a review | `plc-alignment-audit` |
 | Know whether one command finished | No skill; answer directly |
 
-`wrap-this-up` loses its Checkpoint mode. Its closeout still reconciles the
+`plc-wrapup` loses its Checkpoint mode. Its closeout still reconciles the
 records as its first step, following the same rules as `plc-status`. Its
 cleanup-only mode stays.
 
@@ -114,7 +114,7 @@ Fixed order. Every section is always present, with "None" when empty.
 7. **Decisions since the work started:** each marked recorded or not.
 8. **Open questions and blockers,** with questions for you first.
 9. **What you can try now.**
-10. **To close out:** a checklist, ending with an offer to run `wrap-this-up`
+10. **To close out:** a checklist, ending with an offer to run `plc-wrapup`
     when the work is ready.
 11. **Drift and blind spots:** where the packet disagreed with the evidence,
     and what couldn't be checked.
@@ -180,7 +180,7 @@ skills/plc-status/
 ```yaml
 ---
 name: plc-status
-description: Use when the user asks where a PLC or planned piece of work stands or wants its records brought up to date - "where are we", "what have we done", "what's left", "is the PLC up to date", "what are we blocked on", "can I close this session". Reports progress checked against git and PRs, then updates stale status, evidence and decisions in the packet. Does not merge, push, or clean up; wrap-this-up closes work.
+description: Use when the user asks where a PLC or planned piece of work stands or wants its records brought up to date - "where are we", "what have we done", "what's left", "is the PLC up to date", "what are we blocked on", "can I close this session". Reports progress checked against git and PRs, then updates stale status, evidence and decisions in the packet. Does not merge, push, or clean up; plc-wrapup closes work.
 argument-hint: "[plc-path-or-id]"
 ---
 ```
@@ -220,7 +220,7 @@ was the shape and the close-out steps.
 | origin-ahead | Reports P1 merged. The local packet is behind `origin`, so it says to pull rather than editing an old copy |
 | chat-decision | Records both chat decisions in the Decisions table as accepted, since you said "ok, merge it". Adds an open question about the cost requirement. Requirement text is not changed |
 | cross-repo-wait | Marks P2 no longer blocked, citing the timekit commit |
-| near-miss-wrap-up | Unchanged: "Wrap this up" goes to `wrap-this-up` |
+| near-miss-wrap-up | Unchanged: "Wrap this up" goes to `plc-wrapup` |
 | new: report only | "Where are we? Don't change anything" changes no files |
 | new: active writer | Another agent is editing the worktree's packet: report only, and say why |
 
@@ -230,7 +230,7 @@ pushes, branch changes, or added or removed worktrees. A new grader checks
 that requirement and design text are unchanged.
 
 In `tests/skill-evals.md`, "Make sure the PLC is up to date" moves from
-`wrap-this-up` to `plc-status`. The `wrap-this-up` checkpoint rows are
+`plc-wrapup` to `plc-status`. The `plc-wrapup` checkpoint rows are
 rewritten as `plc-status` update rows.
 
 ## Decisions
@@ -238,7 +238,7 @@ rewritten as `plc-status` update rows.
 | Question | Decision |
 | --- | --- |
 | Name | `plc-status` |
-| Does it update the PLC? | Yes, by default. It takes over checkpoint from `wrap-this-up` |
+| Does it update the PLC? | Yes, by default. It takes over checkpoint from `plc-wrapup` |
 | Where do decisions come from? | This conversation and child reports. Other transcripts are left out: slower and noisier |
 | Read-only enforcement | Not applicable now. Its limits (no closing actions) are enforced by instructions and evals |
 
@@ -254,7 +254,7 @@ rewritten as `plc-status` update rows.
 1. **`plc-status`:** add the record-update step, the 12th report section,
    the report-only switch, and the new description. Call `uv.exe` by its
    absolute path.
-2. **`wrap-this-up`:** remove Checkpoint mode, and point record reconciliation
+2. **`plc-wrapup`:** remove Checkpoint mode, and point record reconciliation
    at the shared rules.
 3. **Evals:** update the five cases and graders, add the two new cases, and
    rewrite the related rows in `tests/skill-evals.md`.

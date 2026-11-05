@@ -212,7 +212,7 @@ commit(
         ONE_FILE_PLAN: plan(
             current_work(
                 last_updated=f"2026-11-03, `main` at `{merge}`",
-                next_action="Finish the plan with `wrap-this-up`.",
+                next_action="Finish the plan with `plc-wrapup`.",
                 current_state=f"P1 merged into `main` at `{merge}` and verified: {TEST_RESULT}.",
                 resume_check=TEST_RESULT,
             ),

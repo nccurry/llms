@@ -1,9 +1,13 @@
 ---
-name: start-this-up
-description: Prepare isolated git work by creating a feature branch and linked worktree from main, or by resuming a backlog plan's existing branch and bringing it up to date with main, without disturbing ongoing work in the current checkout. Runs the tests first so later failures aren't blamed on the new work, and records the worktree in the plan's Current Work block. Use when the user says "start this up", "start a new branch/worktree", "create a feature worktree", "set up isolated work for this task", "pick up where we left off on this plan", or asks to begin or resume work that should later merge back into main.
+name: plc-feature-start
+description: Starts a single feature by hand, outside plc-execution, which sets up its own worktrees. Creates a feature branch and linked worktree from main, or resumes a backlog plan's existing branch and brings it up to date with main, without disturbing ongoing work in the current checkout. Runs the tests first so later failures aren't blamed on the new work, and records the worktree in the plan's Current Work block when there is a plan; works the same without one. Use when the user says "start this up", "start a new branch/worktree", "create a feature worktree", "set up isolated work for this task", "pick up where we left off on this plan", or asks to begin or resume one feature that should later merge back into main.
 ---
 
-# Start This Up
+# PLC Feature Start
+
+Use this for the rare case of starting one feature by hand. Work that
+`plc-execution` runs gets its worktrees from that workflow instead. A plan
+is optional: without one, skip the plan steps.
 
 ## Operating Rules
 

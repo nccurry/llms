@@ -20,7 +20,7 @@ installer copies the whole skill folder into each agent.
 | [active-writer](active-writer/case.yaml) | Another agent's uncommitted packet edits must be left alone |
 | [old-shape](old-shape/case.yaml) | The packet is in an older shape: convert it to the shared template first, ending with one `## Current Work`, then update it. P1 stays In progress, because nobody built its call from `save_booking`; if that call moves to its own row, P1 must be Merged or Verified |
 | [grow-plan](grow-plan/case.yaml) | The user approved a new `--max-age` CLI flag for an in-progress one-file plan. The flag is a public contract, so the plan becomes a `tide-cache/` folder whose `SRD.md` holds TIDE-001, moved unchanged, and the new flag's requirements with their checks, `## Done when` keeps only the pointer line, and a dated Log line names `SRD.md` |
-| [near-miss-wrap-up](near-miss-wrap-up/case.yaml) | "Wrap this up" must go to `wrap-this-up` |
+| [near-miss-wrap-up](near-miss-wrap-up/case.yaml) | "Wrap this up" must go to `plc-wrapup` |
 
 `check_state.py` compares a fixture with the `_snapshot.json` and
 `_expect.json` its build script wrote:
@@ -56,7 +56,7 @@ python3 skills/plc-planning/scripts/format_check.py --packet <packet folder> --s
 Every fixture packet uses the shared PLC template, owned by `@alex`, except
 the old-shape case, whose packet is old on purpose. The shared
 [fixture_lib.py](../fixture_lib.py) builds the packets for this folder and the
-[wrap-this-up](../wrap-this-up/README.md) and
+[plc-wrapup](../plc-wrapup/README.md) and
 [plc-planning](../plc-planning/README.md) cases. It checks a packet with the
 shipped format check in strict mode, plus the rules the evals hold only new
 packets to, such as section order and dated Log lines; its docstring lists
@@ -176,7 +176,7 @@ a catalog of skill paths with one-line descriptions, and chose skills itself.
 | ad-hoc | ok | pass: done, in progress, and left from chat and git; no plan file; offered a one-page plan |
 | report-only | ok, `--strict` | pass: changed nothing, listed the edits it would make |
 | active-writer | ok, `--protect` | pass: left the other agent's edits alone, listed the Status it would write |
-| near-miss-wrap-up | no push | pass: `wrap-this-up` handled it, loading `plc-checkpoint` as its first step |
+| near-miss-wrap-up | no push | pass: `plc-wrapup` handled it, loading `plc-checkpoint` as its first step |
 
 - Every status case chose `plc-checkpoint` without being told to.
 - Agents ran tests by calling test functions directly, because pytest isn't
@@ -201,7 +201,7 @@ setup as before: Claude Opus 5.5 subagents, Windows, no PR host login, no
 | cross-repo-wait | ok | 6/6: "Blocked" entries cleared with the timekit commit, uncommitted on `main`, asked |
 | report-only | ok, `--strict` | 3/3: nothing changed, listed what an update would change |
 | active-writer | ok, `--protect` | 5/5: left the other agent's packet edits alone, listed the edits it would make |
-| near-miss-wrap-up | no push | pass: chose `wrap-this-up` |
+| near-miss-wrap-up | no push | pass: chose `plc-wrapup` |
 
 - Every status case chose `plc-status` without being told to.
 - No run could use `worktree_report.py`, because `uv` was missing.
@@ -220,9 +220,9 @@ path. The "with" list included `plc-status`; the "without" list did not.
 | --- | --- | --- |
 | packet-drift | 6/6 | 5.5/6: no answer to "can I close this session?" |
 | origin-ahead | 6/6 | 6/6 |
-| chat-decision | 5/5 | 4.5/5: did not offer `wrap-this-up` |
+| chat-decision | 5/5 | 4.5/5: did not offer `plc-wrapup` |
 | cross-repo-wait | 5/5 | 5/5 |
-| near-miss-wrap-up | pass: chose `wrap-this-up` | pass |
+| near-miss-wrap-up | pass: chose `plc-wrapup` | pass |
 
 - The eight status runs left local branches, files and worktrees unchanged.
   The two wrap-up runs pushed nothing.

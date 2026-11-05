@@ -3,7 +3,7 @@
 Check which skills the agent loaded, from the session record, and run
 `check_wrap.py`. Pass only if all of these hold:
 
-1. `plc-checkpoint` handled the request; `wrap-this-up` did not. Loading it
+1. `plc-checkpoint` handled the request; `plc-wrapup` did not. Loading it
    briefly and handing off is a partial pass; record it.
 2. The checker prints `"ok": true`: nothing merged, both worktrees and
    branches kept.

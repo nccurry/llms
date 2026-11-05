@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 EVALS = Path(__file__).resolve().parent / "skill-evals"
-CASES = EVALS / "wrap-this-up"
+CASES = EVALS / "plc-wrapup"
 sys.path.insert(0, str(EVALS))
 from fixture_lib import (  # noqa: E402
     GIT_ENV,
@@ -35,7 +35,7 @@ PLAN = "docs/plans/digest"
 COMPLETED = "docs/plans/completed/digest"
 P1_WORKTREE = "notify-wt/digest/p1-email"
 P2_WORKTREE = "notify-wt/digest/p2-slack"
-# The checkout wrap-this-up merges in on the direct route.
+# The checkout plc-wrapup merges in on the direct route.
 MERGE_WORKTREE = "notify-wt/digest/_merge"
 OK = {"ok": True, "failures": []}
 

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Wrap This Up"
-  short_description: "Merge in-flight work into main, finish the plan, and clean up"
-  default_prompt: "Use $wrap-this-up to merge this work's in-flight branches into main, update the plan to its real end state, and remove its worktrees and branches."

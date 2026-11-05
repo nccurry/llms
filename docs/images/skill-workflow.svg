@@ -43,7 +43,7 @@
       <text x="380" y="328">review-and-fix-plc</text>
       <text x="380" y="402">monitored-*-plc-execution</text>
       <text x="380" y="476">audit-codebase · focused specialists</text>
-      <text x="380" y="550">wrap-this-up · clean-stale-worktrees</text>
+      <text x="380" y="550">plc-wrapup · clean-stale-worktrees</text>
     </g>
     <path d="M40 596H920" stroke="#354d67"/>
     <text x="40" y="627" fill="#70e1c2" font-size="14" font-weight="700">THROUGHOUT</text>

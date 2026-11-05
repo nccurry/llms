@@ -1,6 +1,6 @@
 ---
 name: plc-checkpoint
-description: Use when the user wants an update on planned or ad-hoc implementation work they will keep working on - "where are we", "catch me up", "what's left", "checkpoint", "is the plan up to date", "tidy up what's done". Reads the plan's Current Work block, checks what changed since in git and PRs, rewrites it where the plan is tracked (including another repo), and removes worktrees and branches already merged. Leaves in-progress work in place and never merges; to merge everything and finish, use wrap-this-up.
+description: Use when the user wants an update on planned or ad-hoc implementation work they will keep working on - "where are we", "catch me up", "what's left", "checkpoint", "is the plan up to date", "tidy up what's done". Reads the plan's Current Work block, checks what changed since in git and PRs, rewrites it where the plan is tracked (including another repo), and removes worktrees and branches already merged. Leaves in-progress work in place and never merges; to merge everything and finish, use plc-wrapup.
 ---
 
 # PLC Checkpoint
@@ -14,7 +14,7 @@ Three jobs, in this order:
 3. Rewrite Current Work, so the next session starts from current state.
 
 It never merges, rebases, switches branches, or touches work in progress.
-Finishing work is `wrap-this-up`'s job.
+Finishing work is `plc-wrapup`'s job.
 
 **Report only** when the user says so, for example "just tell me" or "don't
 change anything": skip steps 4 and 5 below and list what they would have
@@ -25,7 +25,7 @@ Load [plain-english](../plain-english/SKILL.md) and
 
 Use a different skill when the request is something else:
 
-- "Wrap this up", "merge it", "we're done": `wrap-this-up`.
+- "Wrap this up", "merge it", "we're done": `plc-wrapup`.
 - Clean up old worktrees across campaigns or repos: `clean-stale-worktrees`.
 - "Does the code match the plan?" as a review: `plc-alignment-audit`.
 - One narrow fact, such as whether a command finished: answer directly.
@@ -170,7 +170,7 @@ changes them. Replace the old content; history goes to the Log. When Status
 changes between Planned and In progress, follow `plc-planning`'s
 [lifecycle folders](../plc-planning/SKILL.md#lifecycle-folders) rule. Never
 set Status to Complete or move the packet to `completed/`; finishing is
-`wrap-this-up`'s job. When the work looks finished, say so and offer it.
+`plc-wrapup`'s job. When the work looks finished, say so and offer it.
 
 Grow the plan first, following `plc-planning`'s
 [Growing a packet](../plc-planning/SKILL.md#growing-a-packet) rule: when a
@@ -257,7 +257,7 @@ can try now, tidied, drift and blind spots, records updated.
   next step, left, blockers, and records updated.
 
 When everything selected is done, or the user sounds ready to stop, offer
-`wrap-this-up`.
+`plc-wrapup`.
 
 ## Gotchas
 

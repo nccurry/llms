@@ -49,7 +49,7 @@ run removal from outside it. A worktree lock is a hold: honor it and report its
 reason; never bypass it or an access failure. A hold stated only in a plan or
 handoff does not protect a clean checkout, because removing that checkout keeps
 its branch. Checkout layout, holds, and output locations follow
-[worktree layout](../start-this-up/references/worktree-layout.md).
+[worktree layout](../plc-feature-start/references/worktree-layout.md).
 
 ## Remove idle clean checkouts, keep their branches
 
@@ -161,7 +161,7 @@ uses it. Prefer `git branch -d <name>` for history-merged branches. Use `-D` onl
 after independently confirming delivery or an authorized source disposition;
 never escalate a refusal without understanding it. A recovery copy alone is not
 proof of delivery. Remote branch deletion needs separate authorization, except
-that `plc-checkpoint` and `wrap-this-up` delete their own work's remote
+that `plc-checkpoint` and `plc-wrapup` delete their own work's remote
 branches once proven merged into the remote's main.
 
 Finish by checking registrations, refs, and the original checkout's status.

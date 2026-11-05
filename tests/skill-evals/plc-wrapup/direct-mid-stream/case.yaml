@@ -1,5 +1,5 @@
 schema_version: 1
-skill: wrap-this-up
+skill: plc-wrapup
 description: "P1 is done and pushed; P2 has its Slack text but not channel posting. The user wants everything merged now and P2 finished later."
 setup: python fixture/build.py <dest>
 working_directory: <dest>/notify

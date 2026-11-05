@@ -60,7 +60,7 @@ or waiting for the user's go-ahead to commit on the default branch.
 ```
 
 When everything selected is done, or the user sounds ready to stop, offer
-`wrap-this-up`.
+`plc-wrapup`.
 
 ## Filled example
 

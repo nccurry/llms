@@ -12,7 +12,7 @@ purpose and final target ref/hash after ` — `.
 Include planning, child, integration, repair, replaced-child, review, and
 verification checkouts. Record the source of any user keep instruction.
 Create them under the PLC's campaign folder per
-[worktree layout](../../start-this-up/references/worktree-layout.md).
+[worktree layout](../../plc-feature-start/references/worktree-layout.md).
 Useful implementation notes and concise validation outcomes belong in the
 committed PLC packet, which may live in another repository. Other evidence goes
 where the repository's AGENTS.md says; untracked output stays under the campaign

@@ -1,6 +1,9 @@
-# Proposal: one Status section, plc-checkpoint, and wrap-this-up
+# Proposal: one Status section, plc-checkpoint, and plc-wrapup
 
 Status: built, 2026-10-27. Replaces [plc-status-skill.md](plc-status-skill.md).
+
+The start and wrap-up skills have since been renamed; this proposal uses
+their current names, `plc-feature-start` and `plc-wrapup`.
 
 **Update, 2026-10-28:** `main` gained its own replaceable "Current Work"
 block and a compact plan while this was being built. The two were merged: the
@@ -29,10 +32,10 @@ finished plans move to `completed/`. See
 | --- | --- |
 | Explore | `repo-navigation` and the audit skills |
 | Plan | `plc-planning`: a full PLC, or a one-page plan for ad-hoc work that will run past one session |
-| Start or resume work | `start-this-up` |
+| Start or resume work | `plc-feature-start` |
 | Do the work | `plc-execution` and the monitored-* skills |
 | Get an update, mid-flight or the next morning | `plc-checkpoint` (renamed from `plc-status`) |
-| Merge into main and finish | `wrap-this-up` |
+| Merge into main and finish | `plc-wrapup` |
 | Sweep abandoned work | `clean-stale-worktrees` |
 
 ## Shared rules
@@ -51,9 +54,9 @@ Decisions and open questions keep their own tables. The phase table in
 `IMPLEMENTATION_PLAN.md` loses its Status column, so state is never recorded
 twice.
 
-Four skills write it: `plc-execution` after each merge and phase, `start-this-up`
+Four skills write it: `plc-execution` after each merge and phase, `plc-feature-start`
 when it creates or resumes a worktree, `plc-checkpoint` when you ask, and
-`wrap-this-up` at the end.
+`plc-wrapup` at the end.
 
 **States** stay as they are: planned, in progress, implemented, merged,
 verified, live, plus blocked, deferred and dropped.
@@ -61,10 +64,10 @@ verified, live, plus blocked, deferred and dropped.
 **Merged into main means finished, locally and on the remote.**
 
 **Cleanup is split three ways:** checkpoint tidies what's already merged;
-wrap-this-up cleans up everything for the work it lands; clean-stale-worktrees
+plc-wrapup cleans up everything for the work it lands; clean-stale-worktrees
 sweeps abandoned work.
 
-**Finished plans move.** When wrap-this-up completes a plan, it moves to the
+**Finished plans move.** When plc-wrapup completes a plan, it moves to the
 repo's completed folder (`<plans folder>/completed/` unless the repo has its
 own convention). A partly finished plan stays where it is.
 
@@ -92,7 +95,7 @@ For when you want an update and will keep working. It doesn't merge.
 
 "Just tell me" skips steps 4 and 5.
 
-## wrap-this-up
+## plc-wrapup
 
 For when you're done, or done for now, and want it on main.
 
@@ -116,7 +119,7 @@ For when you're done, or done for now, and want it on main.
 8. **Report** the route, merge commit, checks, what's left, and what was
    removed or kept.
 
-## start-this-up
+## plc-feature-start
 
 - Record the new worktree and branch in the plan's Status.
 - Run the repo's tests in the fresh worktree before work starts, so a later
@@ -135,7 +138,7 @@ child merged into the integration branch, may be deleted. Nothing is lost.
 
 | Question | Answer |
 | --- | --- |
-| Rename `start-this-up` / `wrap-this-up`? | No. The names match what you say, and both serve ad-hoc work |
+| Rename the start and wrap-up skills? | Not then: the names matched what you say, and both serve ad-hoc work. They were renamed later, to `plc-feature-start` and `plc-wrapup` |
 | Prefix like `my:`? | No. Skill names allow only lowercase letters, digits and hyphens. Packaging as a plugin later gives `my:` in Claude Code for free |
 | Push a plan kept in another repo? | Only when that repo's `AGENTS.md` says plans go straight to main |
 | Push after a direct-route wrap-up? | Yes; skip it when there's no remote |
@@ -144,7 +147,7 @@ child merged into the integration branch, may be deleted. Nothing is lost.
 ## Evals
 
 Cases live in `tests/skill-evals/plc-checkpoint/` and
-`tests/skill-evals/wrap-this-up/`. Each fixture writes `_expect.json` saying
+`tests/skill-evals/plc-wrapup/`. Each fixture writes `_expect.json` saying
 which worktrees and branches must be gone; the checker fails on missing
 removals and on any removal not listed.
 
@@ -153,7 +156,7 @@ a merged child to remove, an in-progress child to keep), `dirty-finished`,
 `ad-hoc`, and `plan-in-other-repo`. `origin-ahead` now expects its merged
 worktree and branches removed.
 
-wrap-this-up: `direct-mid-stream`, `complete-moves-plan`, `failing-checks`,
+plc-wrapup: `direct-mid-stream`, `complete-moves-plan`, `failing-checks`,
 `active-agent`, and `near-miss-status`. The PR/MR route needs a host login and
 has no runnable case yet.
 
@@ -161,6 +164,6 @@ has no runnable case yet.
 
 1. plc-checkpoint evals, the Status format in `plc-planning`, plc-checkpoint,
    and the `plc-execution` update.
-2. wrap-this-up evals, then the skill.
-3. `start-this-up` resume and clean test run; the `clean-stale-worktrees` rule.
+2. plc-wrapup evals, then the skill.
+3. `plc-feature-start` resume and clean test run; the `clean-stale-worktrees` rule.
 4. Installer, dependency list and docs; run the evals.

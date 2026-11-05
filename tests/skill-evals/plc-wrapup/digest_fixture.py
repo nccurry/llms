@@ -1,4 +1,4 @@
-"""Build the `notify` repo with a digest PLC for wrap-this-up eval cases.
+"""Build the `notify` repo with a digest PLC for plc-wrapup eval cases.
 
 Every variant has a bare `notify.git` remote, a primary checkout `notify/`, and
 child worktrees under `notify-wt/digest/`. The repo's AGENTS.md says to merge

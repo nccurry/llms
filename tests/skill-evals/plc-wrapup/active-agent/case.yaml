@@ -1,9 +1,9 @@
 schema_version: 1
-skill: wrap-this-up
-description: "Each branch passes its tests alone, but P2's test fails once P1 is merged in. The merge must stop and the agent must ask."
+skill: plc-wrapup
+description: "Another session holds a worktree lock on P2. Only P1 can be merged and cleaned up; the PLC stays open."
 setup: python fixture/build.py <dest>
 working_directory: <dest>/notify
-prompt: "Wrap this up - merge both branches into main."
+prompt: "Wrap up the digest PLC and merge what's ready."
 max_turns: 60
 check: python ../check_wrap.py <dest>
 graders:

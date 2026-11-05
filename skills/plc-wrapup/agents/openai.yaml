@@ -1,0 +1,4 @@
+interface:
+  display_name: "PLC Wrapup"
+  short_description: "Merge in-flight work into main, finish the plan, and clean up"
+  default_prompt: "Use $plc-wrapup to merge this work's in-flight branches into main, update the plan to its real end state, and remove its worktrees and branches."

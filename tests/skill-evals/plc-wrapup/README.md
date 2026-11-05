@@ -1,6 +1,6 @@
-# wrap-this-up eval cases
+# plc-wrapup eval cases
 
-Six runnable cases for [`wrap-this-up`](../../../skills/wrap-this-up/SKILL.md).
+Six runnable cases for [`plc-wrapup`](../../../skills/plc-wrapup/SKILL.md).
 All build the same `notify` repository from
 [digest_fixture.py](digest_fixture.py): a bare `notify.git` remote, a primary
 checkout, and child worktrees under `notify-wt/digest/`. Its `AGENTS.md` says
@@ -47,7 +47,7 @@ with the shared [fixture_lib.py](../fixture_lib.py).
 The PR/MR route needs a host login, so it has no runnable case yet.
 
 Run cases the same way as the [plc-checkpoint cases](../plc-checkpoint/README.md#run-a-case).
-`tests/test_wrap_this_up_fixtures.py` checks that each fixture's tests pass or
+`tests/test_plc_wrapup_fixtures.py` checks that each fixture's tests pass or
 fail as intended, that each packet has the shared shape, and that a correct
 wrap-up satisfies the checker while a wrong one fails it.
 
@@ -68,9 +68,9 @@ with the grader as it was then.
 
 | Run | Skills loaded | Tool uses | Tokens | Checker | Grade |
 | --- | --- | --- | --- | --- | --- |
-| 1 | wrap-this-up | 24 | 106276 | ok | fail: point 4 |
-| 2 | wrap-this-up | 25 | 111724 | ok | fail: points 4 and 5 |
-| 3 | wrap-this-up | 26 | 116267 | ok | fail: point 4 |
+| 1 | plc-wrapup | 24 | 106276 | ok | fail: point 4 |
+| 2 | plc-wrapup | 25 | 111724 | ok | fail: points 4 and 5 |
+| 3 | plc-wrapup | 26 | 116267 | ok | fail: point 4 |
 
 - Point 4, runs 1 and 2: P1 read
   `In progress — DIG-001 merged @ <merge>; DIG-003 not started`, and the

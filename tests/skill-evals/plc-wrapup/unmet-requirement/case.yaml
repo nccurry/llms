@@ -1,6 +1,6 @@
 schema_version: 1
-skill: wrap-this-up
-description: "The PLC's only phase is done on its branch. Wrapping it up completes the PLC, so the plan moves to the completed folder with the historical-record line."
+skill: plc-wrapup
+description: "The PLC's only phase passes its tests, but its branch never implemented DIG-003. Wrapping up merges P1, but must not mark it Verified while it still holds DIG-003, or complete the PLC: the gap is recorded and the plan stays open."
 setup: python fixture/build.py <dest>
 working_directory: <dest>/notify
 prompt: "We're done with the digest PLC. Wrap it up."

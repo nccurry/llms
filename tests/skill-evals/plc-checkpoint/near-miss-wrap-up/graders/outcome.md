@@ -1,10 +1,10 @@
-# Grader: "wrap this up" goes to wrap-this-up
+# Grader: "wrap this up" goes to plc-wrapup
 
 Check which skills the agent loaded, from the session record. Pass only if
 all of these hold:
 
-1. `wrap-this-up` handled the request.
-2. `wrap-this-up` led the work. It loads `plc-checkpoint` as its first step,
+1. `plc-wrapup` handled the request.
+2. `plc-wrapup` led the work. It loads `plc-checkpoint` as its first step,
    which is expected.
 3. Nothing was pushed to `gateway.git`.
 

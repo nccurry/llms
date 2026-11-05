@@ -528,7 +528,7 @@ call for another review.
   line "Historical record as of <commit>; the code is the current truth.",
   naming the commit that finished it. After that the packet is not edited,
   with one exception: a single dated Log line may record cleanup that
-  `wrap-this-up` could not finish. New scope opens a new packet, and so does
+  `plc-wrapup` could not finish. New scope opens a new packet, and so does
   a later failure of one of its requirements: the new plan names the old
   packet and the requirement.
 - A packet the user drops moves to `archived/` with Status Archived and a

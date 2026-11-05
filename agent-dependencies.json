@@ -144,7 +144,7 @@
       "verify-before-claiming",
       "audit-codebase"
     ],
-    "wrap-this-up": [
+    "plc-wrapup": [
       "create-mr-description",
       "plain-english",
       "verify-before-claiming",
@@ -164,9 +164,9 @@
       "plc-planning",
       "clean-stale-worktrees",
       "plc-alignment-audit",
-      "wrap-this-up"
+      "plc-wrapup"
     ],
-    "start-this-up": [
+    "plc-feature-start": [
       "plc-planning"
     ],
     "plc-planning": [

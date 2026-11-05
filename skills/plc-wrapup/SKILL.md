@@ -1,9 +1,9 @@
 ---
-name: wrap-this-up
-description: "Use when the user is done with a piece of work, or done for now, and wants it landed - 'wrap this up', 'merge it down', 'we're done', 'close this out' - or wants to drop it unmerged, or finishing after PLC, Luna, Sol, or Opus execution. Merges everything in flight, finished or not, into main directly or through a PR/MR (merged only when the user says), rewrites the plan's Current Work to its real end state, moves a finished plan to the completed folder, and removes the work's worktrees and branches locally and on the remote. For an update that keeps work going, use plc-checkpoint."
+name: plc-wrapup
+description: "Use when the user is done with a piece of work, or done for now, and wants it landed - 'wrap this up', 'merge it down', 'we're done', 'close this out' - or wants to drop it unmerged, or finishing after PLC, Luna, Sol, or Opus execution. Merges everything in flight, finished or not, into main directly or through a PR/MR (merged now, or set to merge when CI is green, only when the user says), rewrites the plan's Current Work to its real end state, moves a finished plan to the completed folder, and removes the work's worktrees and branches locally and on the remote. For an update that keeps work going, use plc-checkpoint."
 ---
 
-# Wrap This Up
+# PLC Wrapup
 
 Land everything this work has in flight on `main`, record exactly what is
 finished and what isn't, and leave nothing behind on disk. Use it at the end
@@ -82,8 +82,10 @@ Use the user's words, then the plan's recorded route, then the repo's
   [merge-request-integration](../plc-execution/references/merge-request-integration.md).
   Use `create-mr-description` to draft or refresh each description before
   opening it and after the source, target, or checks change.
-  Merge only when the user says to ("merge it"). Otherwise leave it ready for
-  review, and say so.
+  Do what the user asks: merge now ("merge it"), set the host's
+  merge-when-pipeline-succeeds or auto-merge so it merges once CI is green
+  ("merge it when green"), or, by default, leave it ready for review, and
+  say so. Until the merge happens, treat it as left open.
 
 Unfinished work merges as it stands. That is the point of wrapping up for
 now: the plan records what's left, and the next session starts from `main`.

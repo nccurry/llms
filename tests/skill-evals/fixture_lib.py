@@ -1,4 +1,4 @@
-"""Shared helpers for the plc-checkpoint, wrap-this-up and plc-planning eval cases.
+"""Shared helpers for the plc-checkpoint, plc-wrapup and plc-planning eval cases.
 
 Each case's fixture/build.py calls these helpers to create, under a destination
 folder: a bare `<name>.git` remote, a primary checkout `<name>/`, and campaign

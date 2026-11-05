@@ -102,7 +102,7 @@ scope, with `review-and-fix-plc` before handing it off. Ask for
 After approval to merge:
 
 ```text
-$wrap-this-up Complete the agreed PR delivery after required checks pass.
+$plc-wrapup Complete the agreed PR delivery after required checks pass.
 Verify main, update the PLC, and remove eligible task-owned worktrees.
 ```
 

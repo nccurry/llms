@@ -149,7 +149,7 @@ unresolved design choice.
 
 The parent creates and checks each child worktree; spawning may reuse the
 caller folder. Use a distinct branch and a new folder under the PLC's campaign
-folder per [worktree layout](../start-this-up/references/worktree-layout.md);
+folder per [worktree layout](../plc-feature-start/references/worktree-layout.md);
 never reuse a folder for another branch. Record the immutable base and read
 status in that exact checkout:
 
@@ -239,7 +239,7 @@ Apply existing authorization without another cleanup question. This permission
 does not extend to unrelated checkouts, remote branches, or final integration.
 
 Before creating worktrees, read [the cleanup procedure](references/worktree-cleanup.md)
-and [worktree layout](../start-this-up/references/worktree-layout.md). Keep every
+and [worktree layout](../plc-feature-start/references/worktree-layout.md). Keep every
 checkout, review copy, and untracked output for this PLC under its campaign
 folder, and track each checkout in the Current Work block's "Where the work lives"
 table (or the existing work list) with its owner, path, branch/commit, and

@@ -1,4 +1,4 @@
-"""Check what a wrap-this-up run delivered and cleaned up, against _expect.json
+"""Check what a plc-wrapup run delivered and cleaned up, against _expect.json
 and _snapshot.json.
 
 Usage:

@@ -2,7 +2,7 @@
 
 These are the shared PLC template's rules for updating a plan, as
 [`plc-planning`](../../../../skills/plc-planning/SKILL.md#shared-template)
-states them. The plc-checkpoint and wrap-this-up cases that may edit a plan
+states them. The plc-checkpoint and plc-wrapup cases that may edit a plan
 use this grader. When a run edited no plan, record "not applicable".
 
 Compare the packet as the run left it with the fixture's copy: `git diff` for

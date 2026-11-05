@@ -57,17 +57,17 @@ MANAGED_SKILLS = [
     "plc-execution",
     "plc-planning",
     "plc-checkpoint",
+    "plc-feature-start",
+    "plc-wrapup",
     "review-and-fix-plc",
     "release-readiness",
     "repo-navigation",
     "resolve-review-comments",
     "resume-after-crash",
-    "start-this-up",
     "test-quality-audit",
     "verify-before-claiming",
     "visual-code-audit",
     "work-visual-summary",
-    "wrap-this-up",
 ]
 
 NAME_RE = re.compile(r"^[a-z0-9-]{1,64}$")

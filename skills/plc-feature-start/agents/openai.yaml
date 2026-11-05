@@ -1,0 +1,4 @@
+interface:
+  display_name: "PLC Feature Start"
+  short_description: "Start one feature by hand in a safe worktree"
+  default_prompt: "Use $plc-feature-start to create a new feature branch and linked worktree for this task."
