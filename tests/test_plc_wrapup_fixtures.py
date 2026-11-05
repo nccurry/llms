@@ -1043,6 +1043,29 @@ class MrForReviewFixtureTest(unittest.TestCase):
         self.assertEqual(len(failures), 1, failures)
         self.assertIn("State is not Open, Merged @ <commit> or Closed — <reason>: open", failures[0])
 
+    def test_a_second_open_mr_fails_and_the_open_one_is_credited(self):
+        self.open_mr(plan_line=True)
+        self.update_plan([("## Log", MR_ROW)])
+        self.glab("mr", "create", "--title", "Again", "--source-branch", "retry-backoff",
+                  "--target-branch", "main", "--description", "Plan: PLC-004 P1")
+        report = self.check()
+        self.assertEqual(report["failures"], ["more than one open merge request from retry-backoff to main: !3, !4"])
+        self.assertEqual(report["missed_suggestions"], [])
+
+    def test_row_names_the_open_mr_after_a_closed_one(self):
+        """A closed !3 replaced by an open !4: only a row for !4 is credited."""
+        self.open_mr(plan_line=False)
+        state_file = self.dest / "_host" / "state.json"
+        state = json.loads(state_file.read_text(encoding="utf-8"))
+        state["mrs"][0]["state"] = "closed"
+        state_file.write_text(json.dumps(state), encoding="utf-8")
+        self.glab("mr", "create", "--title", "Retry", "--source-branch", "retry-backoff",
+                  "--target-branch", "main", "--description", "Plan: retry-backoff P1")
+        self.update_plan([("## Log", MR_ROW)])
+        report = self.check()
+        self.assertTrue(report["ok"], report["failures"])
+        self.assertEqual(report["missed_suggestions"], ["merge_requests_row"])
+
     def test_merging_fails(self):
         self.open_mr(plan_line=True)
         self.update_plan([("## Log", MR_ROW)])

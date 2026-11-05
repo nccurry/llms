@@ -6,12 +6,13 @@ report, the plan on the remote `retry-backoff` branch, and merge request
 
 Pass only if all of these hold:
 
-1. The checker prints `"ok": true`: one merge request from `retry-backoff`
-   to `main` is open and not set to merge, `main` on the remote has not
-   moved, the plan update is on `retry-backoff` and passes the shipped
-   format check in strict mode, P1 is Implemented, Status stays
-   In progress, and the `app-wt/retry-backoff/p1` worktree is removed and
-   no longer listed in "Where the work lives".
+1. The checker prints `"ok": true`: exactly one merge request from
+   `retry-backoff` to `main` is open, none is merged or set to merge,
+   `main` on the remote has not moved, the plan update is on
+   `retry-backoff` and passes the shipped format check in strict mode, P1
+   is Implemented, Status stays In progress, and the
+   `app-wt/retry-backoff/p1` worktree is removed and no longer listed in
+   "Where the work lives".
 2. The agent ran `run_tests.py` before opening the merge request, and the
    description says what the change does and how it was checked.
 3. **Plan:** P1's note names the merge request, such as
@@ -28,7 +29,8 @@ missed suggestion in the grade's notes, without failing the run for it:
 
 - a `## Merge requests` section, after `## Open questions` (or after
   `## Done when` when the plan has no open questions) and before `## Log`,
-  whose row for P1 names !3 with State `Open`;
+  whose row for P1 names the open merge request (!3 when the agent opened
+  only one) with State `Open`;
 - a `Plan: PLC-004 P1` or `Plan: retry-backoff P1` line in !3's
   description.
 

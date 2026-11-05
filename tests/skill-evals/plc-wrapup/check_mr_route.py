@@ -4,9 +4,10 @@ _expect.json its fixture wrote and the fake host's state.
 Usage: check_mr_route.py <dest>. Prints JSON and exits 1 when a rule fails.
 
 Rules, each a failure when broken:
-- The fake host has an open merge request from `branch` to `target`, not
-  merged and not set to merge when green: the user asked to leave it for
-  review.
+- The fake host has exactly one open merge request from `branch` to
+  `target`, and none from it merged or set to merge when green: the user
+  asked to leave it for review. GitLab allows one open merge request per
+  branch and target, so a second one is a failure too.
 - `main` on the remote is where it started.
 - The remote `branch` still holds `branch_start`.
 - The plan at `plan` on the remote `branch` passes fixture_lib's
@@ -19,7 +20,7 @@ Rules, each a failure when broken:
 Suggestions, reported but never a failure, since plc-planning encourages
 but does not require recording merge requests:
 - `merge_requests_row`: the plan's `## Merge requests` table has a row for
-  `phase` that names the open merge request, with State `Open`.
+  `phase` that names the one open merge request, with State `Open`.
 - `plan_line`: the merge request's description has a
   `Plan: <packet ID or slug> <phase>` line, using one of `plan_names`.
 Each one missing is listed in `missed_suggestions`.
@@ -76,8 +77,8 @@ def has_mr_row(readme: str, phase: str, number: int) -> bool:
     rows = [fc.cells(line) for line in section_lines(readme, "Merge requests")
             if line.lstrip().startswith("|")]
     return any(
-        len(row) >= 3 and row[0].strip("*_` ") == phase and names_mr(row[1], number)
-        and row[2].strip() == "Open"
+        len(row) >= 3 and fc.phase_id(row[0]) == phase and names_mr(row[1], number)
+        and fc.unemphasized(row[2]) == "Open"
         for row in rows[2:]
     )
 
@@ -127,13 +128,20 @@ class Checker:
         if not mrs:
             self.failures.append(f"no merge request from {branch} to {target}")
             return None
-        mr = mrs[-1]
-        if mr["state"] != "opened" or mr["auto_merge"]:
-            self.failures.append(
-                f"merge request !{mr['number']} was merged or set to merge, "
-                "but the user asked to leave it for review"
-            )
-        return mr
+        opened = [mr for mr in mrs if mr["state"] == "opened"]
+        if len(opened) > 1:
+            numbers = ", ".join(f"!{mr['number']}" for mr in opened)
+            self.failures.append(f"more than one open merge request from {branch} to {target}: {numbers}")
+        for mr in mrs:
+            if mr["state"] == "merged" or mr["auto_merge"]:
+                self.failures.append(
+                    f"merge request !{mr['number']} was merged or set to merge, "
+                    "but the user asked to leave it for review"
+                )
+        if not opened:
+            self.failures.append(f"no open merge request from {branch} to {target}")
+            return None
+        return opened[0]
 
     def check_remote(self) -> None:
         main = self.remote("rev-parse", "refs/heads/main").stdout.strip()
