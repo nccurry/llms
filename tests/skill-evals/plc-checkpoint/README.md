@@ -245,3 +245,25 @@ fixtures:
 - Point 5 of the cross-repo-wait grader expected "verified", but the fixture
   had no test file. The grader now accepts either wording, and the fixture
   has the test.
+
+### 2026-11-05, grow-plan runs
+
+Opus subagents in Claude Code on Linux, all 18 runs of the four case
+folders started at once with the normal skill catalog and the skill not
+named. A separate Opus subagent graded each run with the case's checker and
+graders.
+
+| Run | Skills loaded | Tool uses | Tokens | Checker | Grade |
+| --- | --- | --- | --- | --- | --- |
+| 1 | plc-checkpoint | 15 | 88659 | ok | pass |
+| 2 | plc-checkpoint, plain-english, verify-before-claiming, plc-planning, review-and-fix-plc | 17 | 95367 | ok | pass |
+| 3 | plc-checkpoint, review-and-fix-plc | 19 | 92489 | ok | pass |
+
+- All three grew the plan into `tide-cache/` with SRD.md, kept TIDE-001
+  unchanged, ran an independent review of the new requirements and asked
+  before committing on `main`.
+- All three let their own open questions on details (fractional seconds,
+  stderr) block approved behavior; run 1 named TIDE-003 as the Blocker,
+  runs 2 and 3 contradicted `Blocker: None`. This also showed on
+  2026-11-04. `plc-planning`'s open-questions rule now says a question on
+  a detail blocks only that detail, and point 10 grades it; not yet rerun.

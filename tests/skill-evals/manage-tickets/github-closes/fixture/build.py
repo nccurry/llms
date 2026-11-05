@@ -46,8 +46,8 @@ install_host(
             },
             {
                 "number": 42,
-                "title": "Retries hammer the server with no delay",
-                "body": "Retries run back to back. Wait longer before each one.",
+                "title": "Add a backoff delay helper for retries",
+                "body": "Add a function that says how long to wait before retry N: start at 0.1 seconds, double each time, and stop at 2 seconds. Using it in the retry loop is a separate change.",
                 "state": "open",
                 "comments": [],
             },

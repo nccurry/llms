@@ -62,7 +62,12 @@ agent's final answer. Pass only if all of these hold:
    `review-and-fix-plc` on it, naming the change, or said that subagents
    were unavailable. Fixes from that review are fine if points 1 to 7 still
    hold.
-10. The answer reports P1 as done and verified, names TIDE-002 and its
+10. **No false blockers.** Nothing the user approved (the flag, its default,
+    `0` turning the cache off, and the exact error and exit status) is
+    marked blocked. An open question about a detail, such as fractional
+    seconds, blocks only that detail, and Current Work's Blocker agrees
+    with the `Open question:` lines.
+11. The answer reports P1 as done and verified, names TIDE-002 and its
    phase, and says the plan became a folder with SRD.md because the flag is
    a public contract.
 

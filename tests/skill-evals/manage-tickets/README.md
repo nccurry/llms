@@ -40,5 +40,37 @@ and a wrong one fails it. It does not run an agent.
 
 ## Results
 
-No runs yet. Each case is to be run three times by hand, with each run's
-checker result and grade recorded here.
+Each case is run three times by hand, with each run's checker result and
+grade recorded here.
+
+### 2026-11-05 runs
+
+Opus subagents in Claude Code on Linux, all 18 runs of the four case
+folders started at once with the normal skill catalog and the skill not
+named. A separate Opus subagent graded each run with the case's checker and
+graders.
+
+| Case | Run | Skills loaded | Tool uses | Tokens | Checker | Grade |
+| --- | --- | --- | --- | --- | --- | --- |
+| no-tracker | 1 | create-mr-description, manage-tickets | 12 | 75620 | ok | pass |
+| no-tracker | 2 | create-mr-description, manage-tickets | 13 | 70424 | ok | pass |
+| no-tracker | 3 | create-mr-description, manage-tickets, plain-english, verify-before-claiming | 13 | 69405 | ok | pass |
+| jira-key | 1 | manage-tickets, create-mr-description | 13 | 70235 | ok | pass |
+| jira-key | 2 | create-mr-description, manage-tickets | 10 | 67979 | ok | pass |
+| jira-key | 3 | manage-tickets, create-mr-description | 10 | 68201 | ok | pass |
+| github-closes | 1 | create-mr-description, manage-tickets | 11 | 69179 | ok | pass |
+| github-closes | 2 | create-mr-description, manage-tickets, plain-english, verify-before-claiming | 12 | 70216 | ok | pass |
+| github-closes | 3 | create-mr-description, manage-tickets | 9 | 66314 | ok | pass |
+
+- no-tracker: no ticket created or invented; each said why and offered to
+  link one, two suggested recording the tracker in `AGENTS.md`.
+- jira-key: every title starts `PROJ-481: `, the body uses a non-closing
+  `Refs PROJ-481`, and nothing was written to Jira.
+- github-closes: a first round failed the checker in all three runs
+  because issue #42 asked for more than the branch did; each used
+  `Refs #42` and explained why, which is the skill's partial-work rule.
+  The fixture's issue now asks only for the helper, and the rerun above
+  used `Closes #42` in all three.
+- Harness artifacts, not skill failures: parallel runs shared one scratch
+  folder and briefly overwrote each other's draft files (the agents
+  noticed and republished), and the fake `gh` ignored `-q`, now fixed.

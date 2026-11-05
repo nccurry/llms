@@ -68,3 +68,22 @@ grader as it was then.
   each also names a single first step is left to the next grading.
 - These runs used the skill text and grader from before the 2026-11-04
   fixes; no run has used those fixes yet.
+
+### 2026-11-05, small-change runs
+
+Opus subagents in Claude Code on Linux, all 18 runs of the four case
+folders started at once with the normal skill catalog and the skill not
+named. A separate Opus subagent graded each run with the case's checker and
+graders.
+
+| Run | Skills loaded | Tool uses | Tokens | Checker | Grade |
+| --- | --- | --- | --- | --- | --- |
+| 1 | plc-planning, review-and-fix-plc | 9 | 77494 | ok | pass |
+| 2 | plc-planning, review-and-fix-plc | 9 | 75002 | ok | pass |
+| 3 | plc-planning, review-and-fix-plc | 10 | 79740 | ok | pass |
+
+- Each wrote one `planned/plc-list-limit-check.md` with @alex as owner and
+  changed no code. Runs 1 and 3 had a reviewer find and fix gaps (run 3's
+  caught a design that would have changed the `--limit abc` error). Run 2
+  could not start a reviewer because too many subagents were running, and
+  said so instead of reviewing its own plan.

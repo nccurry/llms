@@ -17,6 +17,8 @@ message, and the call is still logged.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import os
 import re
@@ -416,7 +418,10 @@ def glab(args: list[str]) -> None:
         if sub == "update":
             return update_mr(state, mr, rest, True)
         if sub in ("note", "comment"):
-            add_note(state, mr, option(rest, "--message", "-m") or "")
+            body = option(rest, "--message", "-m")
+            if not body:
+                fail("a note needs --message")
+            add_note(state, mr, body)
             return print("note added")
         if sub == "merge":
             return merge_mr(state, mr, "--auto-merge" in rest or "--when-pipeline-succeeds" in rest)
@@ -497,9 +502,21 @@ def jira(args: list[str]) -> None:
 def main() -> None:
     tool, args = sys.argv[1], sys.argv[2:]
     log([tool, *args])
-    if not args or args[0] in ("--help", "-h", "help", "--version", "version"):
+    if not args or args[0] in ("help", "version") or any(a in ("--help", "-h", "--version") for a in args):
         return print(f"fake {tool} for eval fixtures")
-    {"glab": glab, "gh": gh, "jira": jira}[tool](args)
+    query = option(args, "-q", "--jq")
+    if not query:
+        return {"glab": glab, "gh": gh, "jira": jira}[tool](args)
+    # Apply a simple `.field` or `.a.b` query the way gh does; anything else is unsupported.
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        {"glab": glab, "gh": gh, "jira": jira}[tool](args)
+    value = json.loads(out.getvalue())
+    for key in [k for k in query.strip().split(".") if k]:
+        if not isinstance(value, dict) or key not in value:
+            fail(f"fake {tool} supports only simple .field queries, not {query}")
+        value = value[key]
+    print(value if isinstance(value, str) else json.dumps(value))
 
 
 if __name__ == "__main__":

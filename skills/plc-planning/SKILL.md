@@ -492,6 +492,9 @@ call for another review.
 - Each unresolved point is one `Open question:` line in the README, naming
   what it blocks and whom it waits on:
   `- Open question: Should the cap be configurable? (blocks P2; waits on @sam)`.
+- A question about a detail of approved work blocks only that detail, never
+  the behavior the user approved. Current Work's Blocker names each open
+  question that blocks the next action, and only those.
 - When it is answered, delete the line and add a dated `Decision:` line to
   the Log. Also record the decision in SADD.md's decisions table when
   SADD.md exists, or when it meets SADD.md's trigger in

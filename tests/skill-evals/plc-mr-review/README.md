@@ -29,5 +29,28 @@ and a merged or wrongly resolved one fails it. It does not run an agent.
 
 ## Results
 
-No runs yet. The case is to be run three times by hand, with each run's
-checker result and grade recorded here.
+Each case is run three times by hand, with each run's checker result and
+grade recorded here.
+
+### 2026-11-05 runs
+
+Opus subagents in Claude Code on Linux, all 18 runs of the four case
+folders started at once with the normal skill catalog and the skill not
+named. A separate Opus subagent graded each run with the case's checker and
+graders.
+
+| Run | Skills loaded | Tool uses | Tokens | Checker | Grade |
+| --- | --- | --- | --- | --- | --- |
+| 1 | plc-mr-review, plain-english, verify-before-claiming, resolve-review-comments | 15 | 71528 | ok | pass |
+| 2 | plc-mr-review, resolve-review-comments | 12 | 69251 | ok | pass |
+| 3 | plc-mr-review, plain-english, verify-before-claiming, resolve-review-comments | 17 | 71824 | ok | pass |
+
+- Each fixed the real CI failure in the MR's branch, replied to and
+  resolved the bot's thread, left the human's question open, and did not
+  merge.
+- Run 1 pushed before its first local test run had started, then reran
+  the tests (they passed). The skill already says to run the checks
+  before pushing.
+- Runs 1 and 3 left an empty note: the fake `glab mr note --help` posted
+  one instead of printing help. The fake now prints help for `--help`
+  anywhere and refuses an empty note.
