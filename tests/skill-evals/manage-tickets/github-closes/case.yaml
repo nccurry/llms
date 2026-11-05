@@ -1,0 +1,13 @@
+schema_version: 1
+skill: manage-tickets
+description: "The PR template and history close issues with `Closes #N`. The PR body says `Closes #42`, and the agent leaves closing the issue to the merge."
+setup: python fixture/build.py <dest>
+working_directory: <dest>/app
+# The fake gh lives in <dest>/bin; put it first on PATH for the session.
+env:
+  PATH: <dest>/bin:$PATH
+prompt: "Open a pull request for the retry-backoff branch. It fixes #42."
+max_turns: 40
+check: python ../check_tickets.py <dest>
+graders:
+  - graders/outcome.md

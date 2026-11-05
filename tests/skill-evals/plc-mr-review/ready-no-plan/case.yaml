@@ -1,0 +1,13 @@
+schema_version: 1
+skill: plc-mr-review
+description: "MR !7 has failing CI, a bot's review thread about the cause, and a human's question. There is no plan. Fix CI, handle the threads with resolve-review-comments, and leave the MR unmerged."
+setup: python fixture/build.py <dest>
+working_directory: <dest>/app
+# The fake glab lives in <dest>/bin; put it first on PATH for the session.
+env:
+  PATH: <dest>/bin:$PATH
+prompt: "Get MR !7 ready for review."
+max_turns: 60
+check: python ../check_mr_review.py <dest>
+graders:
+  - graders/outcome.md

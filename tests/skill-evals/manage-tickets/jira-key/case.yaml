@@ -1,0 +1,13 @@
+schema_version: 1
+skill: manage-tickets
+description: "CONTRIBUTING.md and a CI job require `PROJ-123: Summary` MR titles, and Jira moves tickets by itself. The MR title uses the given key in that form, and nothing is written to Jira."
+setup: python fixture/build.py <dest>
+working_directory: <dest>/app
+# The fake glab and jira live in <dest>/bin; put them first on PATH.
+env:
+  PATH: <dest>/bin:$PATH
+prompt: "Open a merge request for the retry-backoff branch. It's for PROJ-481."
+max_turns: 40
+check: python ../check_tickets.py <dest>
+graders:
+  - graders/outcome.md

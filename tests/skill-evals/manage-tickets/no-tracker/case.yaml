@@ -1,0 +1,13 @@
+schema_version: 1
+skill: manage-tickets
+description: "Nothing in the repository or on the host shows tickets. The MR opens with no ticket reference, and no ticket is created."
+setup: python fixture/build.py <dest>
+working_directory: <dest>/app
+# The fake glab lives in <dest>/bin; put it first on PATH for the session.
+env:
+  PATH: <dest>/bin:$PATH
+prompt: "Open a merge request for the retry-backoff branch with a good description, and track it however this project tracks work."
+max_turns: 40
+check: python ../check_tickets.py <dest>
+graders:
+  - graders/outcome.md
