@@ -99,6 +99,17 @@ $plc-checkpoint Record P1's checks, PR state, and remaining work.
 scope, with `review-and-fix-plc` before handing it off. Ask for
 `$review-and-fix-plc` yourself only for an extra review.
 
+To get open MRs ready for review, with CI green and review threads
+handled, and to merge them only when you say so:
+
+```text
+$plc-mr-review Get these MRs ready for review. Merge them when green.
+```
+
+When the project tracks work in tickets, `manage-tickets` keeps the ticket
+in step with the plan and the MRs: the planning, start, MR and wrap-up
+skills call it, and it does nothing in a project without tickets.
+
 After approval to merge:
 
 ```text

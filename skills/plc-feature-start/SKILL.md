@@ -110,6 +110,7 @@ git worktree list
 7. Continue from the new worktree.
    - Treat the new worktree path as the working directory for all implementation, testing, and git commands related to the feature.
    - Leave the original worktree and any uncommitted work exactly as found.
+   - When this work has a ticket or the project uses tickets, run [manage-tickets](../manage-tickets/SKILL.md) for the start of work.
 
 ## Resume Existing Work
 

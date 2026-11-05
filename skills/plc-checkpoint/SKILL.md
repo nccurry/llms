@@ -95,6 +95,9 @@ Fetch first, then collect facts. Record the commit each fact applies to.
    this repo, read its Current Work and Phases. For another repo, read
    [dependency-check](references/dependency-check.md). Use one subagent per
    repo when there are several and the host supports it.
+7. **Tickets** the plan or the work names, when a tracker tool is
+   available: their state, as one more source. Report where it disagrees
+   with the plan as drift. Don't change tickets here.
 
 Find each phase's parts with the Parts rule in `plc-planning`'s
 [word list](../plc-planning/SKILL.md#words), and give each part a phase

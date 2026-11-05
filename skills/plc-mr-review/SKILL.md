@@ -62,6 +62,10 @@ repository's route (`glab`, `gh`, or the host's merge button):
 For a stack, merge bottom up, and retarget or rebase each next MR as the
 host requires before merging it.
 
+When this work has a ticket or the project uses tickets, run
+[manage-tickets](../manage-tickets/SKILL.md) for each MR event: opened,
+updated or merged.
+
 ## 6. Update a linked plan after a merge
 
 When a merged MR belongs to a plan, update the plan's Current Work and

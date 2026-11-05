@@ -46,6 +46,7 @@ MANAGED_SKILLS = [
     "figma-implement-design",
     "frontend-design",
     "frontend-design-review",
+    "manage-tickets",
     "monitored-luna-plc-execution",
     "monitored-opus-plc-execution",
     "monitored-sol-plc-execution",

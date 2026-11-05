@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manage Tickets"
+  short_description: "Create, link, update and close tickets the project's way"
+  default_prompt: "Use $manage-tickets to keep this work's ticket in step with the project's tracker, in the project's own style."

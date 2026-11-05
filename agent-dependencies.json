@@ -153,7 +153,8 @@
       "plc-planning",
       "docs-sync",
       "clean-stale-worktrees",
-      "plc-checkpoint"
+      "plc-checkpoint",
+      "manage-tickets"
     ],
     "resolve-review-comments": [
       "create-mr-description"
@@ -167,10 +168,12 @@
       "plc-wrapup"
     ],
     "plc-feature-start": [
-      "plc-planning"
+      "plc-planning",
+      "manage-tickets"
     ],
     "plc-planning": [
-      "review-and-fix-plc"
+      "review-and-fix-plc",
+      "manage-tickets"
     ],
     "plc-mr-review": [
       "plain-english",
@@ -178,7 +181,15 @@
       "resolve-review-comments",
       "create-mr-description",
       "plc-checkpoint",
-      "plc-wrapup"
+      "plc-wrapup",
+      "manage-tickets"
+    ],
+    "manage-tickets": [
+      "plain-english",
+      "verify-before-claiming"
+    ],
+    "create-mr-description": [
+      "manage-tickets"
     ]
   }
 }

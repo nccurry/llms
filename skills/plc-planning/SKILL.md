@@ -209,6 +209,9 @@ Record the check's actual result only after running it.
    - Run repo-appropriate documentation checks and `git diff --check` when
      available.
    - Run the [independent review](#independent-review) when it applies.
+   - When this work has a ticket or the project uses tickets, run
+     [manage-tickets](../manage-tickets/SKILL.md) once the user accepts the
+     plan.
 
 ## Shared template
 

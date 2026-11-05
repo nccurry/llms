@@ -169,6 +169,10 @@ Deliver the plan update with the code:
 - A plan kept in another repo gets its own commit there, following that
   repo's rules.
 
+When this work has a ticket or the project uses tickets, run
+[manage-tickets](../manage-tickets/SKILL.md) for the wrap-up, to close the
+ticket or comment on it.
+
 ## 7. Clean up this work
 
 Follow [clean-stale-worktrees](../clean-stale-worktrees/SKILL.md) for each
