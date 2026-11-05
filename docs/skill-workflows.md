@@ -70,11 +70,8 @@ Keep requirement and phase IDs stable. Replace Current Work as work changes,
 and add a dated Log line for each change. A phase is Verified only when its
 check passed on the merged code. Record each result once and link to it. If a
 record is missing, check existing results before running checks again. The
-`## Merge requests` table is optional: one row per merge request for a
-phase, with a `Plan: <packet ID or slug> <phase>` line in each
-description, as the planning skill's
-[Merge requests](../skills/plc-planning/SKILL.md#merge-requests) rule
-suggests. A
+optional `## Merge requests` table follows the planning skill's
+[Merge requests](../skills/plc-planning/SKILL.md#merge-requests) rule. A
 finished plan moves to `completed/`; plans finished earlier into another folder
 stay where they are. The full rules and the format check are in
 [plc-planning](../skills/plc-planning/SKILL.md#shared-template).

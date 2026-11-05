@@ -83,7 +83,9 @@ Fetch first, then collect facts. Record the commit each fact applies to.
    uv run --script <skills-dir>/clean-stale-worktrees/scripts/worktree_report.py --path . --fetch --reviews --format table
    ```
 
-3. **PRs/MRs** with `gh` or `glab`: state, target, merge commit, CI, review.
+3. **PRs/MRs** with `gh` or `glab`: state, target, merge commit, CI, review,
+   for this work's branches and open MRs whose description has a `Plan:`
+   line for this plan.
 4. **Checks.** For each part the plan calls verified, the check and the commit
    it ran on. A result from an older commit doesn't verify the current one.
    For a Merged phase with no result on the target commit yet, name its
@@ -190,11 +192,9 @@ Then, in the plan's README:
   merge request or commit. Mark a phase Verified or Live only with its
   evidence in the note; otherwise give it the word `plc-planning`'s
   [Words](../plc-planning/SKILL.md#words) rules give.
-- Refresh each `## Merge requests` row's State from what step 3 read on
-  the host, and offer rows for the MRs it found by branch or `Plan:` line
-  that the plan doesn't list, as `plc-planning`'s
-  [Merge requests](../plc-planning/SKILL.md#merge-requests) rule suggests.
-  Change only the plan, never the host.
+- Update the `## Merge requests` table, if the plan has one, as
+  `plc-planning`'s [Merge requests](../plc-planning/SKILL.md#merge-requests)
+  rule says. Change only the plan, never the host.
 - Add one dated line to `## Log` for each state change, decision, or
   surprise since the last update. A gap (see below) that nobody had named
   before this update counts as a surprise. A line about a merge names its

@@ -73,10 +73,12 @@ change, omit empty sections, and keep necessary migration guidance visible.
   For performance claims, include baseline, workload, method, and measured result.
 - **Related work:** Link issues, relevant plan requirements, prerequisites, and
   follow-ups with their relationship. Explain what this MR delivers and what
-  remains elsewhere. Avoid unexplained phase IDs and internal process language.
-  When the MR delivers a phase of a plan, suggest a
-  `Plan: <packet ID or slug> <phase>` line, as `plc-planning`'s
-  [Merge requests](../plc-planning/SKILL.md#merge-requests) rule says.
+  remains elsewhere. Avoid unexplained phase IDs and internal process language,
+  except one `Plan: <packet ID or slug> <phase>` line when the MR delivers a
+  phase of a plan. With a plan, suggest adding that line and the phase's row
+  in the plan's `## Merge requests` table; both are optional, as
+  `plc-planning`'s [Merge requests](../plc-planning/SKILL.md#merge-requests)
+  rule says.
   When this work has a ticket or the project uses tickets, run
   [manage-tickets](../manage-tickets/SKILL.md) to put its key in the title or
   body in the project's form.

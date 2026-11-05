@@ -137,10 +137,9 @@ Rewrite Current Work and the README's `## Phases` table to the real end
 state, using the rewrite rules in `plc-checkpoint`'s
 [Rewrite Current Work](../plc-checkpoint/SKILL.md#5-rewrite-current-work)
 step. Its commit rules don't apply; this step's delivery rules below do.
-Also refresh each `## Merge requests` row's State from the host, and
-offer rows for the MRs this wrap-up opened or found by branch or `Plan:`
-line, as `plc-planning`'s
-[Merge requests](../plc-planning/SKILL.md#merge-requests) rule suggests.
+Update the `## Merge requests` table, if the plan has one, and add rows
+for the MRs this wrap-up opened, as `plc-planning`'s
+[Merge requests](../plc-planning/SKILL.md#merge-requests) rule says.
 First decide, with step 7's rules, which checkouts and branches step 7 will
 remove and which it will keep. Record what it will keep now, so the plan is
 delivered once: in an open plan, as rows in Current Work's "Where the work
