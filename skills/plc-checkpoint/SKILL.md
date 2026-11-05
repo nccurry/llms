@@ -218,7 +218,9 @@ the plan Complete while a requirement lacks its evidence.
 Then run `python3 <skills-dir>/plc-planning/scripts/format_check.py --packet <packet> --strict`
 and fix what it reports in the parts you changed. When a finding needs the
 user's decision, such as a status that disagrees with the evidence, ask
-instead of guessing.
+instead of guessing. When this update added approved scope, such as a new
+requirement, run `plc-planning`'s
+[independent review](../plc-planning/SKILL.md#independent-review) on it.
 
 **Which copy, and where to commit:**
 

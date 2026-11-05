@@ -207,11 +207,7 @@ Record the check's actual result only after running it.
      fix what it reports.
    - Run repo-appropriate documentation checks and `git diff --check` when
      available.
-   - For a new full packet, or one whose requirements or design changed
-     substantially, run [review-and-fix-plc](../review-and-fix-plc/SKILL.md)
-     before handoff unless the user declines. An independent reader catches
-     gaps the author can't see. Skip it for compact plans and for routine
-     Current Work updates.
+   - Run the [independent review](#independent-review) when it applies.
 
 ## Shared template
 
@@ -391,6 +387,24 @@ this skill's `assets/default-packet/`.
 
 A packet in `completed/` never grows; new scope opens a new packet, as
 [Ending a packet](#ending-a-packet) says.
+
+#### Independent review
+
+An independent reader catches gaps the author can't see. Before handing a
+plan off, run [review-and-fix-plc](../review-and-fix-plc/SKILL.md), unless
+the user declines, when:
+
+- a new plan has a requirement or a design decision, whatever its shape: one
+  file, a README-only folder or a full packet;
+- an update adds approved scope: a requirement, a public contract, a design
+  decision or a phase, including a new SRD.md or SADD.md that
+  [Growing a packet](#growing-a-packet) adds for it.
+
+For an update, name the change, so the review covers what was added and the
+parts of the plan that depend on it. Skip the review when an update changes
+only the plan's records (Current Work, Log lines, phase states, evidence or
+links), or only moves information into a new file. Run it once per change;
+fixing its findings does not call for another review.
 
 #### Title and summary
 

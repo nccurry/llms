@@ -832,6 +832,19 @@ class TemplateTest(unittest.TestCase):
         srd = (assets / "default-packet" / "SRD.md").read_text(encoding="utf-8").splitlines()
         self.assertEqual([cells[0] for _, cells in fc.requirement_rows(srd)], ["REQ-001"])
 
+    def test_independent_review_has_one_home(self):
+        """plc-planning states when a plan gets an independent review; the
+        skills that write or grow plans point there instead of restating it."""
+        text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        rule = text.split("#### Independent review\n", 1)[1].split("\n#### ", 1)[0]
+        self.assertIn("../review-and-fix-plc/SKILL.md", rule)
+        self.assertIn("(#independent-review)", text.split("## Shared template", 1)[0])
+        for name in ("plc-checkpoint", "plc-execution"):
+            other = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+            with self.subTest(skill=name):
+                self.assertIn("../plc-planning/SKILL.md#independent-review", other)
+                self.assertNotIn("../review-and-fix-plc/SKILL.md", other)
+
     def test_skill_word_list_matches_the_check(self):
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         words = " ".join(text.split("### Words\n", 1)[1].split("\n### ", 1)[0].split())

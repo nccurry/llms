@@ -47,7 +47,9 @@ update, follow `plc-planning`'s
 [Growing a packet](../plc-planning/SKILL.md#growing-a-packet) rule: when a
 trigger in its [Adding files](../plc-planning/SKILL.md#adding-files) rule
 holds for a file the plan lacks, including for what the update records, add
-that file instead of piling the information into Log lines or notes.
+that file instead of piling the information into Log lines or notes. When
+the update adds approved scope, run `plc-planning`'s
+[independent review](../plc-planning/SKILL.md#independent-review) on it.
 Requirements and design describe approved behavior and adopted decisions.
 Keep current status, remaining work, and concise validation evidence in the
 work list and the sections that own them. Record each result once and link
