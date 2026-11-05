@@ -48,7 +48,7 @@ update, follow `plc-planning`'s
 trigger in its [Adding files](../plc-planning/SKILL.md#adding-files) rule
 holds for a file the plan lacks, including for what the update records, add
 that file instead of piling the information into Log lines or notes. When
-the update adds approved scope, run `plc-planning`'s
+the update adds, changes or drops approved scope, run `plc-planning`'s
 [independent review](../plc-planning/SKILL.md#independent-review) on it.
 Requirements and design describe approved behavior and adopted decisions.
 Keep current status, remaining work, and concise validation evidence in the

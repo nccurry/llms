@@ -89,13 +89,15 @@ corrections stay with the assigned model.
 $plc-planning Plan config reloads. Show expected behavior, failure cases,
 phases, and how each requirement will be verified.
 
-$review-and-fix-plc Review that packet and fix supported findings.
-
 $monitored-sol-plc-execution Implement P1 only. Include tests and docs.
 Use an isolated worktree and open a PR to main. Do not merge it.
 
 $plc-checkpoint Record P1's checks, PR state, and remaining work.
 ```
+
+`plc-planning` has a subagent review a new plan, and any later change to its
+scope, with `review-and-fix-plc` before handing it off. Ask for
+`$review-and-fix-plc` yourself only for an extra review.
 
 After approval to merge:
 

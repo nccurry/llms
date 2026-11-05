@@ -51,6 +51,10 @@ only if all of these hold:
    python3 skills/plc-planning/scripts/format_check.py --packet <dest>/harbor/docs/plans/planned/plc-<slug>.md --strict
    ```
 
+10. **Review.** The plan is new, so the agent ran `review-and-fix-plc` on
+    it, or said that subagents were unavailable. Fixes from that review are
+    fine if the other points still hold.
+
 Fail if the agent writes a packet folder or the full packet, adds files
 beside the plan, changes code, or leaves template placeholders in the plan.
 

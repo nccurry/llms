@@ -58,7 +58,11 @@ agent's final answer. Pass only if all of these hold:
    plan updates go there, so the edit is left uncommitted and the answer
    asks whether to commit it. The rename `git mv` staged is fine. No code
    changes: the flag is not built.
-9. The answer reports P1 as done and verified, names TIDE-002 and its
+9. **Review.** The flag is added scope, so the agent ran
+   `review-and-fix-plc` on it, naming the change, or said that subagents
+   were unavailable. Fixes from that review are fine if points 1 to 7 still
+   hold.
+10. The answer reports P1 as done and verified, names TIDE-002 and its
    phase, and says the plan became a folder with SRD.md because the flag is
    a public contract.
 

@@ -394,17 +394,19 @@ An independent reader catches gaps the author can't see. Before handing a
 plan off, run [review-and-fix-plc](../review-and-fix-plc/SKILL.md), unless
 the user declines, when:
 
-- a new plan has a requirement or a design decision, whatever its shape: one
-  file, a README-only folder or a full packet;
-- an update adds approved scope: a requirement, a public contract, a design
-  decision or a phase, including a new SRD.md or SADD.md that
+- a plan is new, whatever its shape: one file, a README-only folder or a
+  full packet;
+- an update adds, changes or drops approved scope: a requirement or its
+  check, a public contract, a tracked risk, a design decision, or a phase or
+  its prerequisites, including a new SRD.md or SADD.md that
   [Growing a packet](#growing-a-packet) adds for it.
 
-For an update, name the change, so the review covers what was added and the
-parts of the plan that depend on it. Skip the review when an update changes
-only the plan's records (Current Work, Log lines, phase states, evidence or
-links), or only moves information into a new file. Run it once per change;
-fixing its findings does not call for another review.
+For an update, name the change, so the review covers it and the parts of the
+plan that depend on it. Skip the review when an update changes only the
+plan's records (Current Work, Log lines, phase states, evidence or links),
+only moves information into a new file, or records a gap in existing scope
+as its own phase row. Run it once per change; fixing its findings does not
+call for another review.
 
 #### Title and summary
 
