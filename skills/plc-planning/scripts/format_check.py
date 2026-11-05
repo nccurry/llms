@@ -131,7 +131,9 @@ OTHER_FILES = ("IMPLEMENTATION_PLAN.md", "SRD.md", "SADD.md")
 # The optional ## Merge requests table: one row per merge request or pull
 # request, several per phase allowed.
 MR_HEADER = ["Phase", "Merge request", "State", "Note"]
-MR_REFERENCE = re.compile(r"[!#]\d+|https?://\S+|\[[^\]]*\]\(https?://[^\s)]+\)|<https?://[^\s>]+>")
+MR_REFERENCE = re.compile(r"[!#]\d+|https?://\S+|\[[^\]]*\]\(https?://\S+\)|<https?://[^\s>]+>")
+# A Markdown link, read as its text.
+LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 MR_STATE = re.compile(r"Open|Merged @ (`?)[0-9a-fA-F]{7,40}\1|Closed — \S.*")
 
 # Flat design files sit beside a one-file plan, as plc-012-retry-srd.md sits
@@ -577,6 +579,18 @@ def check_phase_tables(readme, lines, parts, lifecycle, strict):
     return found
 
 
+def phase_id(cell):
+    """A phase ID as a cell writes it, without emphasis, code marks or a
+    link: `**P1**` and `[P1](IMPLEMENTATION_PLAN.md#p1-cap)` both give P1."""
+    text = LINK.sub(r"\1", cell)
+    return re.sub(r"\*\*|__", "", text).strip("*_` ")
+
+
+def unemphasized(cell):
+    """A cell without bold or italic marks, so `**Open**` reads as Open."""
+    return re.sub(r"\*\*|__", "", cell).strip("*_ ")
+
+
 def phase_ids(lines, parts):
     """The phase IDs in the first column of the ## Phases table."""
     phases = named(parts, "phases")
@@ -584,40 +598,47 @@ def phase_ids(lines, parts):
         return set()
     in_section = tables(lines, phases[0].start + 1, phases[0].end)
     rows = [row for table in in_section if is_phase_table(table) for _, row in table.rows]
-    return {EMPHASIS.sub("", row[0]).strip("*_` ") for row in rows} - {"", "—", "-"}
+    return {phase_id(row[0]) for row in rows} - {"", "—", "-"}
+
+
+def check_merge_request_rows(readme, table, known):
+    found = []
+    for line, row in table.rows:
+        if len(row) != len(MR_HEADER):
+            message = f"Merge requests: row has {len(row)} cells, but the header has {len(MR_HEADER)}"
+            found.append(finding(readme, line, message))
+            continue
+        phase, reference, state = row[0], row[1], row[2]
+        if phase_id(phase) not in known:
+            message = f"Merge requests: phase {phase[:60] or '(empty)'} is not in the ## Phases table"
+            found.append(finding(readme, line, message))
+        if not MR_REFERENCE.fullmatch(reference):
+            value = reference[:60] or "(empty)"
+            message = f"Merge requests: Merge request is not !<number>, #<number> or a URL: {value}"
+            found.append(finding(readme, line, message))
+        if not MR_STATE.fullmatch(unemphasized(state)):
+            value = state[:60] or "(empty)"
+            message = f"Merge requests: State is not Open, Merged @ <commit> or Closed — <reason>: {value}"
+            found.append(finding(readme, line, message))
+    return found
 
 
 def check_merge_requests(readme, lines, parts):
     """Findings for the optional ## Merge requests table."""
     known = phase_ids(lines, parts)
+    wanted = [head.lower() for head in MR_HEADER]
+    header = "| " + " | ".join(MR_HEADER) + " |"
     found = []
     for part in named(parts, "merge requests"):
         in_section = tables(lines, part.start + 1, part.end)
-        if not in_section or in_section[0].header != MR_HEADER:
-            header = "| " + " | ".join(MR_HEADER) + " |"
+        if not in_section or [head.lower() for head in in_section[0].header] != wanted:
             where = in_section[0].line if in_section else part.start + 1
             found.append(finding(readme, where, f"Merge requests: the section needs the table {header}"))
             continue
-        for line, row in in_section[0].rows:
-            if len(row) != len(MR_HEADER):
-                message = f"Merge requests: row has {len(row)} cells, but the header has {len(MR_HEADER)}"
-                found.append(finding(readme, line, message))
-                continue
-            phase, reference, state = row[0], row[1], row[2]
-            if EMPHASIS.sub("", phase).strip("*_` ") not in known:
-                message = f"Merge requests: phase {phase[:60] or '(empty)'} is not in the ## Phases table"
-                found.append(finding(readme, line, message))
-            if not MR_REFERENCE.fullmatch(reference):
-                value = reference[:60] or "(empty)"
-                message = f"Merge requests: Merge request is not !<number>, #<number> or a URL: {value}"
-                found.append(finding(readme, line, message))
-            if not MR_STATE.fullmatch(state):
-                value = state[:60] or "(empty)"
-                message = (
-                    "Merge requests: State is not Open, Merged @ <commit> or "
-                    f"Closed — <reason>: {value}"
-                )
-                found.append(finding(readme, line, message))
+        found += check_merge_request_rows(readme, in_section[0], known)
+        for extra in in_section[1:]:
+            message = "Merge requests: a second table; the section holds one table"
+            found.append(finding(readme, extra.line, message))
     return found
 
 

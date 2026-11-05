@@ -516,11 +516,11 @@ call for another review.
 - Phase is an ID from the `## Phases` table. Merge request is `!12`, `#34`
   or the full URL. State is `Open`, `Merged @ <commit>` or
   `Closed — <reason>`.
-- Whoever opens a merge request for a phase adds its row, and puts a
-  `Plan: <packet ID or slug> <phase>` line in its description, such as
-  `Plan: PLC-012 P2`. A status update refreshes each row's State from the
-  host, and offers rows for merge requests it finds by their branch or
-  their `Plan:` line.
+- When you open a merge request for a phase, add its row and a
+  `Plan: <packet ID or slug> <phase>` line to its description, such as
+  `Plan: PLC-012 P2`. Both are optional.
+- A status update refreshes each row's State from the host, and offers
+  rows for merge requests it finds by their branch or their `Plan:` line.
 
 #### Log
 
@@ -604,9 +604,12 @@ python3 <skill-dir>/scripts/format_check.py <plans folder> --people "Alex Kim=al
   findings too: a `## Done when` that is missing or has no line naming
   SRD.md, one that holds more than one paragraph or list item (a wrapped
   line counts once), and a requirement ID there from any table in SRD.md
-  whose first column is `ID`. In `## Merge requests`, a row whose phase is
-  not in `## Phases`, or whose Merge request or State cell is not one of
-  the forms in [Merge requests](#merge-requests), is a finding. It ignores
+  whose first column is `ID`. In `## Merge requests`, these are findings:
+  a section without the table `| Phase | Merge request | State | Note |`, or
+  with more than one table; a row whose cell count differs from the
+  header's; a row whose phase is not in `## Phases`; and a Merge request or
+  State cell that is not one of the forms in
+  [Merge requests](#merge-requests). It ignores
   HTML comments and fenced code blocks. `--strict` adds the rules across
   fields.
 - `--lifecycle <folder>` checks a packet as if it were in that lifecycle

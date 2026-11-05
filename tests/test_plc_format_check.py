@@ -528,6 +528,51 @@ class PacketRulesTest(unittest.TestCase):
         wrong = "## Merge requests\n\n| Phase | MR | State |\n| --- | --- | --- |\n| P1 | !12 | Open |\n\n## Log"
         self.assertEqual(self.check(edit("## Log", wrong)), [f"{R}:20: {message}"])
 
+    def test_merge_requests_forms_the_neighbouring_rules_accept(self):
+        """Linked and bold phase IDs, emphasis in State, any header case, and
+        links whose target holds parentheses or is an autolink."""
+        linked = edit("| P1 | Cap retries | | Planned |", "| [P1](IMPLEMENTATION_PLAN.md#p1-cap) | Cap | | Planned |")
+        table = (
+            "## Merge requests\n\n| phase | Merge Request | STATE | note |\n| --- | --- | --- | --- |\n"
+            "| [P1](IMPLEMENTATION_PLAN.md#p1-cap) | [!12](https://git.example.com/a_(b)/-/merge_requests/12) | **Open** | |\n"
+            "| **P1** | <https://git.example.com/app/pull/13> | *Merged @ abc1234* | |\n"
+            "| `P1` | #14 | **Closed** — replaced by #13 | |\n\n## Log"
+        )
+        self.assertEqual(self.check(edit("## Log", table, linked)), [])
+        self.assertEqual(self.check(edit("## Log", table)), [])
+
+    def test_merge_requests_second_table_is_a_finding(self):
+        two = (
+            "## Merge requests\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n"
+            "| P1 | !12 | Open | |\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n"
+            "| P9 | x | y | |\n\n## Log"
+        )
+        message = "Merge requests: a second table; the section holds one table"
+        self.assertEqual(self.check(edit("## Log", two)), [f"{R}:24: {message}"])
+
+    def test_merge_requests_tables_in_comments_and_fences_are_ignored(self):
+        hidden = "| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n| P9 | x | y | |"
+        fenced = (
+            f"## Merge requests\n\n```\n{hidden}\n```\n\n"
+            "| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n| P1 | !12 | Open | |\n\n## Log"
+        )
+        self.assertEqual(self.check(edit("## Log", fenced)), [])
+        commented = f"## Merge requests\n\n<!--\n{hidden}\n-->\n\n## Log"
+        message = "Merge requests: the section needs the table | Phase | Merge request | State | Note |"
+        self.assertEqual(self.check(edit("## Log", commented)), [f"{R}:18: {message}"])
+        example = f"## Notes\n\n```\n## Merge requests\n\n{hidden}\n```\n\n## Log"
+        self.assertEqual(self.check(edit("## Log", example)), [])
+
+    def test_merge_requests_without_phases(self):
+        no_phases = edit("## Phases\n\n" + TABLE + "\n\n", "")
+        table = (
+            "## Merge requests\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n"
+            "| P1 | !12 | Open | |\n\n## Log"
+        )
+        found = self.check(edit("## Log", table, no_phases))
+        self.assertIn(f"{R}:16: Merge requests: phase P1 is not in the ## Phases table", found)
+        self.assertNotIn(OUTSIDE, " ".join(found))
+
     def test_no_merge_requests_section_has_no_finding(self):
         self.assertNotIn("## Merge requests", VALID)
         self.assertEqual(self.check(), [])

@@ -44,11 +44,11 @@ Where the work lives:
 
 ## Merge requests
 
-<!-- Optional: one row per merge request or pull request for a phase,
-closed and replaced ones included; a phase may have several. Merge request
-is `!12`, `#34` or the full URL. State is `Open`, `Merged @ <commit>` or
-`Closed — <reason>`. Delete this section when you don't record merge
-requests, and delete this note. -->
+<!-- A new plan has no merge requests yet: delete this section, and add it
+when the first one opens. It is optional: one row per merge request or pull
+request for a phase, closed and replaced ones included; a phase may have
+several. Merge request is `!12`, `#34` or the full URL. State is `Open`,
+`Merged @ <commit>` or `Closed — <reason>`. Delete this note. -->
 | Phase | Merge request | State | Note |
 | --- | --- | --- | --- |
 | P1 | !<number> | Open | |
