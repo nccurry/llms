@@ -1,6 +1,6 @@
 ---
 name: wrap-this-up
-description: "Use when the user is done with a piece of work, or done for now, and wants it landed - 'wrap this up', 'merge it down', 'we're done', 'close this out', or finishing after PLC, Luna, Sol, or Opus execution. Merges everything in flight, finished or not, into main directly or through a PR/MR (merged only when the user says), rewrites the plan's Current Work to its real end state, moves a finished plan to the completed folder, and removes the work's worktrees and branches locally and on the remote. For an update that keeps work going, use plc-checkpoint."
+description: "Use when the user is done with a piece of work, or done for now, and wants it landed - 'wrap this up', 'merge it down', 'we're done', 'close this out' - or wants to drop it unmerged, or finishing after PLC, Luna, Sol, or Opus execution. Merges everything in flight, finished or not, into main directly or through a PR/MR (merged only when the user says), rewrites the plan's Current Work to its real end state, moves a finished plan to the completed folder, and removes the work's worktrees and branches locally and on the remote. For an update that keeps work going, use plc-checkpoint."
 ---
 
 # Wrap This Up
@@ -25,7 +25,13 @@ Luna/Sol/Opus/Sonnet workflow's model choices, escalation state, strict
 acceptance, and parent ownership when repairs need children. Use `docs-sync`
 for maintained documentation that the delivered behavior changes. Without a
 PLC, use the repo's own checks and conventions; don't create a packet just to
-close out.
+close out, and skip the plan steps below.
+
+When the user is dropping the work rather than landing it, merge nothing:
+the plan ends in `archived/` as `plc-planning`'s
+[Ending a packet](../plc-planning/SKILL.md#ending-a-packet) rule says, and
+step 7 keeps or removes the unfinished branches as
+[clean-stale-worktrees](../clean-stale-worktrees/SKILL.md) says.
 
 ## 1. Checkpoint first
 
@@ -102,7 +108,10 @@ target ref on the local-only route), or the PR/MR's merged state for squash
 and rebase merges. Recheck the target right before pushing; if it moved,
 merge it in and rerun the affected checks. Never force-push `main`. On the
 direct route the push happens at the end of step 6, with the plan update;
-run the `origin/main` check after that push.
+run the `origin/main` check after that push. Before step 6, run each
+merged phase's checks that need the merged code on the merged result, so
+step 6 can mark it Verified, or keep it Merged and name the check that is
+left.
 
 ## 6. Finish the plan
 
@@ -150,8 +159,9 @@ Deliver the plan update with the code:
   together, then run step 5's `origin/main` check.
 - **Local only:** commit it on top of the merge on the local target.
 - **PR/MR:** an open plan's update travels in the PR/MR. Finishing the plan
-  waits for the merge; then deliver it as a follow-up commit, by the repo's
-  usual route.
+  waits for the merge. After it, a checkpoint runs the merged phases'
+  checks on the target, and the next wrap-up finishes the plan by the
+  repo's usual route.
 - A plan kept in another repo gets its own commit there, following that
   repo's rules.
 

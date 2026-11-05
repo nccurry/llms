@@ -1,6 +1,6 @@
 ---
 name: plc-planning
-description: Drafts and maintains change plans, specs, and PLC packets with requirements, design, delivery steps, and acceptance evidence. Use when asked to create or update a durable plan for a substantial change. Small fixes and review-only requests do not need this authoring workflow.
+description: Drafts and maintains change plans, specs, and PLC packets with requirements, design, delivery steps, and acceptance evidence. Use when asked to create or update a durable plan for a change, small or large. Work the user wants done without a plan, and review-only requests, do not need it.
 ---
 
 # PLC Planning
@@ -160,11 +160,12 @@ Record the check's actual result only after running it.
    - For difficult hardware, performance, or platform checks, prove the method
      early with a representative case and a known failure. Ordinary checks that
      already work do not need a separate qualification phase.
-   - State the execution boundary in the generated plan: discoveries do not add
-     requirements or phases automatically. Significant expansion beyond existing
-     authorization needs user approval before adoption or implementation,
+   - Discoveries do not add requirements or phases automatically.
+     Significant expansion beyond existing authorization needs user approval before adoption or implementation,
      including new deliverables, contract/architecture changes, or substantially
      greater cumulative work. Routine repairs within approved scope can proceed.
+     This boundary and the finish below are `plc-execution`'s defaults; write
+     them into the plan only where this work differs.
    - Define a finish: close selected work once its requirements and required
      checks pass, authorized delivery is verified, and cleanup is completed or
      explicitly accounted for. Optional outside-scope follow-ups do not extend
@@ -220,6 +221,11 @@ refer to this section instead of repeating it.
 
 - **Packet status words:** Planned, In progress, Blocked, Complete,
   Archived, Superseded.
+- **Status follows the phases:** Planned until a phase is In progress or
+  later, then In progress.
+- **Approved:** what the user asked for or accepted, in the plan or the
+  conversation. Anything an agent adds beyond it is an `Open question:`
+  line until the user accepts it. There is no separate approval step.
 - **Phase state words, in order:**
   - Planned;
   - In progress;
@@ -521,9 +527,12 @@ call for another review.
   line "Historical record as of <commit>; the code is the current truth.",
   naming the commit that finished it. After that the packet is not edited,
   with one exception: a single dated Log line may record cleanup that
-  `wrap-this-up` could not finish. New scope opens a new packet.
-- An abandoned or replaced packet moves to `archived/`, with Status Archived
-  or Superseded and a reason.
+  `wrap-this-up` could not finish. New scope opens a new packet, and so does
+  a later failure of one of its requirements: the new plan names the old
+  packet and the requirement.
+- A packet the user drops moves to `archived/` with Status Archived and a
+  reason; one that another plan replaces gets Superseded and a
+  `Superseded by:` line. Its unfinished work is not merged.
 
 ### Rules across fields
 

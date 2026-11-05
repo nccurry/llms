@@ -39,13 +39,13 @@ per plan, change nothing, and ask which one to expand.
 
 The plan is one of three kinds:
 
-- **A PLC packet or compact plan in this repo.**
+- **A PLC packet or one-file plan in this repo.**
 - **A plan in another repo.** The repo's `AGENTS.md` or `CLAUDE.md`, or a
   pointer in the packet, says where. Read and update it there.
 - **No plan (ad-hoc work).** The conversation, the session's task list, and
-  git are the plan. Don't create a plan file unasked. At the end, offer a
-  compact plan from `plc-planning`'s `assets/compact-plan.md`, so the next
-  session has a Current Work block to read.
+  git are the plan. Don't create a plan file unasked. When the work will
+  continue in a later session, offer to write a one-file plan with
+  `plc-planning`, so that session has a Current Work block to read.
 
 Name the campaign: the plan ID or slug used for its worktree folder and
 branches. Read the repo's `AGENTS.md` for its worktree layout, target branch,
@@ -86,9 +86,12 @@ Fetch first, then collect facts. Record the commit each fact applies to.
 3. **PRs/MRs** with `gh` or `glab`: state, target, merge commit, CI, review.
 4. **Checks.** For each part the plan calls verified, the check and the commit
    it ran on. A result from an older commit doesn't verify the current one.
+   For a Merged phase, run its checks on the target commit when they can run
+   here, and record the result.
 5. **This conversation and child reports:** decisions, scope calls,
    approvals, and open questions since the work started.
-6. **Other repos the plan waits on.** For each, read
+6. **Other plans the plan waits on**, from its `Depends on` line. For one in
+   this repo, read its Current Work and Phases. For another repo, read
    [dependency-check](references/dependency-check.md). Use one subagent per
    repo when there are several and the host supports it.
 

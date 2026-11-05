@@ -28,9 +28,9 @@ assigning affected work.
 
 ## Scope changes and planning documents
 
-Record the selected requirement IDs and exit criteria in the existing work list
-before execution, with one concrete delivery endpoint. Before adding work,
-consider reuse, deletion, or a narrower deliverable that meets the approved
+Record the selected requirement IDs and exit criteria in the plan's Current
+Work (`Selected work`) before execution, with one concrete delivery endpoint.
+Before adding work, consider reuse, deletion, or a narrower deliverable that meets the approved
 outcome. Discoveries do not add requirements or phases by themselves.
 Significant expansion includes new deliverables, phases for additional work,
 unapproved contract or architecture changes, or a materially larger total effort,
@@ -287,7 +287,7 @@ checks pass, authorized delivery is verified, and cleanup is completed or each
 retained checkout is accounted for under the cleanup rules. Leave unselected
 phases open. Record optional discoveries separately as outside-scope follow-ups;
 they do not extend this run or reopen completed work without user authorization.
-New evidence that an existing requirement fails does reopen its acceptance.
+New evidence that an existing requirement fails does reopen its acceptance while the plan is open; for a completed plan, `plc-planning`'s [Ending a packet](../plc-planning/SKILL.md#ending-a-packet) rule applies.
 If a genuine acceptance blocker needs significant extra scope, report the
 blocker and request a decision; keep that requirement open while waiting.
 
