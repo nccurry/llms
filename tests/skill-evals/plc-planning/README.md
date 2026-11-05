@@ -87,3 +87,21 @@ graders.
   caught a design that would have changed the `--limit abc` error). Run 2
   could not start a reviewer because too many subagents were running, and
   said so instead of reviewing its own plan.
+
+### 2026-11-05, small-change runs with point 11
+
+Three runs of the small-change case at `ee72611`, graded with the grader's
+new point 11 (no padding with diagrams).
+
+| Run | Plan | Checker | Grade |
+| --- | --- | --- | --- |
+| 1 | `planned/plc-list-limit-check.md` | ok | pass |
+| 2 | `planned/plc-list-limit-validation.md` | ok | pass |
+| 3 | `planned/plc-list-limit-check.md` | ok | pass |
+
+- `check_plan.py` printed `"ok": true` with no problems in all three. Each
+  run wrote one file in `planned/`, and each plan passes the strict format
+  check.
+- No plan has a diagram, so point 11 is met in all three.
+- Each run said the independent review could not run, because no reviewer
+  was available in the eval.

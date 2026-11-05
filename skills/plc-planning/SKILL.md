@@ -416,11 +416,12 @@ diagram just to fill it out.
   - stored data: an ER diagram;
   - types and how they relate: a class diagram;
   - a lifecycle, such as the states of an order: a state diagram;
-  - hosts and services: a flowchart laid out as a deployment diagram;
+  - hosts and services: a deployment diagram drawn as a flowchart, with a
+    `subgraph` for each host;
   - decision logic: a flowchart.
 - **Where it lives.** With the design it explains, which is mostly SADD.md.
-  A UI or CLI sketch goes in SRD.md's Expected Experience. The README holds
-  at most one overview diagram. In a one-file plan, a diagram sits in the
+  A UI or CLI sketch goes in a `text` code block in SRD.md's Expected
+  Experience. The README holds at most one overview diagram. In a one-file plan, a diagram sits in the
   section it explains.
 - Keep each diagram small and use the plan's own names. The
   [SADD template](assets/default-packet/SADD.md) shows examples in HTML

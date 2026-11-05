@@ -877,6 +877,7 @@ class TemplateTest(unittest.TestCase):
         each lives."""
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         self.assertEqual(text.count("#### Visual aids\n"), 1)
+        self.assertEqual(" ".join(text.split()).count("never required"), 1)
         rules = text.split("### Rules\n", 1)[1]
         rule = " ".join(rules.split("#### Visual aids\n", 1)[1].split("\n#### ", 1)[0].split())
         for phrase in (

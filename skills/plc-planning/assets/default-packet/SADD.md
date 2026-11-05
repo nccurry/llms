@@ -11,8 +11,8 @@ responsibility. Link to the public contracts in `SRD.md` or their existing sourc
 
 <!-- Optional: a small diagram of the components and their boundaries.
 Copy it out of this comment with the plan's own names, or delete the comment.
-Arrows here are ==> because the usual thin arrow would end this comment;
-either works in a plan.
+Arrows here are ==> because `--` followed by `>` would end this comment. In
+a plan, flowcharts use `--` followed by `>`.
 
 ```mermaid
 flowchart LR
@@ -50,7 +50,8 @@ ownership without repeating public contract definitions or experience examples.
 
 <!-- Optional: a sequence diagram for a flow across parts, or an ER diagram
 for stored data. Copy one out of this comment with the plan's own names, or
-delete the comment.
+delete the comment. The reply here is ->> because `--` followed by `>>`
+would end this comment. In a plan, replies use `--` followed by `>>`.
 
 ```mermaid
 sequenceDiagram

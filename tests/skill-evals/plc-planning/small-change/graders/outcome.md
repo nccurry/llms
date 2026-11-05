@@ -59,8 +59,8 @@ only if all of these hold:
     requires them, and a one-file plan this small needs none. A plan with no
     diagram passes this point; do not ask for one. One small diagram that
     fits what it explains, such as a plain-text tree of the two files the fix
-    touches, also passes. Fail only a plan padded with diagrams: several of
-    them, or one bigger than the change it explains.
+    touches, also passes. Fail a plan with two or more diagrams, or one
+    diagram that shows parts the change does not touch.
 
 Fail if the agent writes a packet folder or the full packet, adds files
 beside the plan, changes code, or leaves template placeholders in the plan.
