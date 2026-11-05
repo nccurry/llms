@@ -46,15 +46,15 @@ The retry backoff plan is [{PLAN}/README.md]({PLAN}/README.md).
 
 REQUIREMENTS = """| ID | Priority | Requirement | Check |
 | --- | --- | --- | --- |
-| RB-001 | Must | Each retry waits twice as long as the one before, starting at `base` seconds. | `test_delay_doubles` passes. |
-| RB-002 | Must | The wait never exceeds `max_delay` seconds. | `test_delay_is_capped` passes. |
+| RB-001 | Must | `backoff_delay(attempt)` doubles with each attempt, starting at `base` seconds. | `test_delay_doubles` passes. |
+| RB-002 | Must | `backoff_delay` never returns more than `max_delay` seconds. | `test_delay_is_capped` passes. |
 """
 
 dest = destination()
 plan = packet(
     PLAN.removeprefix("docs/plans/"),
     "PLC-004 Retry backoff",
-    "Wait longer before each retry of a failed call, up to a cap.",
+    "A `backoff_delay` helper that gives the wait before each retry: doubling, up to a cap. Calling it from `call_with_retry` is a later plan.",
     current_work(
         last_updated="2026-11-04, `retry-backoff` at its first commit",
         next_action="open the merge request for P1",
