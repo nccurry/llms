@@ -142,5 +142,87 @@ class ExternalRefreshTests(unittest.TestCase):
             self.assertEqual(manifest_file.read_text(), "original pins")
 
 
+class RetiredSkillTests(unittest.TestCase):
+    """Skills that leave the repo move to backups; other installers' skills stay."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        root = Path(self.temp.name)
+        self.source = root / "source"
+        (self.source / "kept").mkdir(parents=True)
+        (self.source / "kept" / "SKILL.md").write_text("kept\n")
+        self.target = root / "agent" / "skills"
+        self.target.mkdir(parents=True)
+        for name in ("dropped", "start-this-up", "someone-elses"):
+            (self.target / name).mkdir()
+            (self.target / name / "SKILL.md").write_text(f"{name}\n")
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def install(self, dry_run=False):
+        with (
+            patch.object(installer, "MANAGED_SKILLS", ["kept"]),
+            patch.object(installer, "validate_source", return_value={"valid": True}),
+        ):
+            return installer.install_skills(
+                self.source,
+                {"agent": self.target},
+                dry_run,
+                manifest={},
+                external_source=self.source,
+            )
+
+    def record(self, *names):
+        installer.install_record(self.target).write_text(
+            installer.json.dumps({"skills": list(names)})
+        )
+
+    def installed(self):
+        return sorted(path.name for path in self.target.iterdir())
+
+    def test_recorded_and_known_retired_skills_move_to_backups(self):
+        self.record("kept", "dropped")
+        result = self.install()
+
+        self.assertEqual(self.installed(), ["kept", "someone-elses"])
+        retired = result["targets"]["agent"]["retired"]
+        self.assertEqual([r["skill"] for r in retired], ["dropped", "start-this-up"])
+        for item in retired:
+            self.assertEqual(item["action"], "retired")
+            moved = Path(item["destination"])
+            self.assertEqual(moved.parent.parent.parent, installer.backup_root(self.target))
+            self.assertEqual((moved / "SKILL.md").read_text(), f"{item['skill']}\n")
+        self.assertEqual(installer.recorded_skills(self.target), ["kept"])
+
+    def test_skills_never_recorded_stay_without_a_record(self):
+        self.install()
+        self.assertEqual(self.installed(), ["dropped", "kept", "someone-elses"])
+
+    def test_dry_run_moves_nothing_and_writes_no_record(self):
+        self.record("kept", "dropped")
+        result = self.install(dry_run=True)
+
+        self.assertEqual(
+            self.installed(), ["dropped", "someone-elses", "start-this-up"]
+        )
+        actions = {r["skill"]: r["action"] for r in result["targets"]["agent"]["retired"]}
+        self.assertEqual(
+            actions, {"dropped": "would_retire", "start-this-up": "would_retire"}
+        )
+        self.assertEqual(installer.recorded_skills(self.target), ["kept", "dropped"])
+
+    def test_failed_install_retires_nothing(self):
+        self.record("kept", "dropped")
+        with patch.object(installer, "install_skill", side_effect=RuntimeError("boom")):
+            with self.assertRaisesRegex(RuntimeError, "boom"):
+                self.install()
+
+        self.assertEqual(
+            self.installed(), ["dropped", "someone-elses", "start-this-up"]
+        )
+        self.assertEqual(installer.recorded_skills(self.target), ["kept", "dropped"])
+
+
 if __name__ == "__main__":
     unittest.main()

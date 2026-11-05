@@ -72,6 +72,15 @@ MANAGED_SKILLS = [
     "work-visual-summary",
 ]
 
+# Skills this repo installed before installs were recorded. Each install moves
+# these, and recorded skills that left the repo, into skill-backups.
+RETIRED_SKILLS = [
+    "opus-managed-opus-plc-execution",
+    "opus-managed-sonnet-plc-execution",
+    "start-this-up",
+    "wrap-this-up",
+]
+
 NAME_RE = re.compile(r"^[a-z0-9-]{1,64}$")
 LEGACY_BACKUP_RE = re.compile(
     r"^(?P<skill>[a-z0-9-]+)\.backup-(?P<timestamp>\d{8}-\d{6})(?:-\d+)?$"
@@ -675,6 +684,19 @@ def staging_root(target_dir: Path) -> Path:
     return target_dir.parent / ".skill-staging"
 
 
+def install_record(target_dir: Path) -> Path:
+    """The file listing the skills this installer put in target_dir."""
+    return target_dir.with_name(f".{target_dir.name}-installed.json")
+
+
+def recorded_skills(target_dir: Path) -> list[str]:
+    record = install_record(target_dir)
+    if not record.is_file():
+        return []
+    names = json.loads(record.read_text(encoding="utf-8")).get("skills", [])
+    return [name for name in names if NAME_RE.fullmatch(name)]
+
+
 def next_available_path(base: Path) -> Path:
     if not base.exists():
         return base
@@ -801,6 +823,48 @@ def archive_legacy_backups(
             }
         )
 
+    return results
+
+
+def retire_skills(
+    target_name: str,
+    target_dir: Path,
+    dry_run: bool,
+    timestamp: str,
+    current_names: list[str],
+) -> list[dict[str, Any]]:
+    """Move skills this installer put here, but no longer ships, into backups."""
+    results: list[dict[str, Any]] = []
+    retired = (set(recorded_skills(target_dir)) | set(RETIRED_SKILLS)) - set(
+        current_names
+    )
+    for skill_name in sorted(retired):
+        candidate = target_dir / skill_name
+        if not (candidate.exists() or candidate.is_symlink()):
+            continue
+        destination = next_available_path(
+            backup_root(target_dir) / timestamp / target_name / skill_name
+        )
+        source_digest = digest_path(candidate)
+        retired_digest = None
+        if not dry_run:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(candidate), str(destination))
+            retired_digest = digest_path(destination)
+            if retired_digest != source_digest:
+                shutil.move(str(destination), str(candidate))
+                raise RuntimeError(f"retired skill digest mismatch for {candidate}")
+        results.append(
+            {
+                "skill": skill_name,
+                "source": display_path(candidate),
+                "destination": display_path(destination),
+                "action": "would_retire" if dry_run else "retired",
+                "source_digest": source_digest,
+                "retired_digest": retired_digest,
+                "verified": None if dry_run else True,
+            }
+        )
     return results
 
 
@@ -952,6 +1016,7 @@ def install_skills(
                 "backup_root": display_path(backup_root(target_dir)),
                 "legacy_backups": legacy_backups,
                 "skills": skills,
+                "retired": [],
             }
     except Exception as error:
         rollback_errors: list[str] = []
@@ -966,6 +1031,18 @@ def install_skills(
                 + "; ".join(rollback_errors)
             ) from error
         raise
+
+    # Retire only after every target installed, so a rollback never needs to
+    # bring a retired skill back.
+    for target_name, target_dir in targets.items():
+        target_results[target_name]["retired"] = retire_skills(
+            target_name, target_dir, dry_run, timestamp, list(sources)
+        )
+        if not dry_run:
+            install_record(target_dir).write_text(
+                json.dumps({"skills": sorted(sources)}, indent=2) + "\n",
+                encoding="utf-8",
+            )
 
     return {
         "command": "install",
@@ -1041,6 +1118,8 @@ def emit(result: dict[str, Any], output: str) -> None:
                 if skill["verified"] is not None:
                     line += f" verified={str(skill['verified']).lower()}"
                 print(line)
+            for skill in target["retired"]:
+                print(f"  {skill['action']}: {skill['skill']} (to {skill['destination']})")
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

@@ -60,6 +60,13 @@ copy, compares file hashes, and backs up changed skills outside the folders agen
 search for skills. If replacement fails, it restores the previous copy. Old
 `*.backup-*` folders are moved out of those search folders to prevent duplicate skills.
 
+Each install records the skills it installed in `.<skills folder>-installed.json`
+beside the skills folder, for example `~/.claude/.skills-installed.json`. A
+recorded skill that is no longer in this repo, such as one that was renamed, is
+moved to the backup folder on the next install. Skills from other installers are
+never moved. `RETIRED_SKILLS` in `scripts/install_skills.py` lists skills
+removed before installs were recorded.
+
 Normal skill installs check the upstream GitHub default branch for external
 skills, validate the downloaded files, and record the installed commits and
 checksums in `agent-dependencies.json`. All six Ponytail skills are managed this
