@@ -76,7 +76,11 @@ rules: it is Merged only when all its parts are on the branch the work is
 delivered to, and a merge into another target, such as the next MR down a
 stack, leaves it Implemented. Leave Verified to the plan's checks on the
 merged code, as [plc-wrapup](../plc-wrapup/SKILL.md) step 5 or a later
-checkpoint runs them. With no plan, skip this step.
+checkpoint runs them. Refresh the MR's row in the plan's
+`## Merge requests` table, or offer one for an MR found by branch or
+`Plan:` line, as `plc-planning`'s
+[Merge requests](../plc-planning/SKILL.md#merge-requests) rule suggests.
+With no plan, skip this step.
 
 ## 7. Report
 

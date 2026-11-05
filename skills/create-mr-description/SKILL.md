@@ -74,6 +74,9 @@ change, omit empty sections, and keep necessary migration guidance visible.
 - **Related work:** Link issues, relevant plan requirements, prerequisites, and
   follow-ups with their relationship. Explain what this MR delivers and what
   remains elsewhere. Avoid unexplained phase IDs and internal process language.
+  When the MR delivers a phase of a plan, suggest a
+  `Plan: <packet ID or slug> <phase>` line, as `plc-planning`'s
+  [Merge requests](../plc-planning/SKILL.md#merge-requests) rule says.
   When this work has a ticket or the project uses tickets, run
   [manage-tickets](../manage-tickets/SKILL.md) to put its key in the title or
   body in the project's form.

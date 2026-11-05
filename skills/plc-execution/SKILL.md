@@ -126,7 +126,10 @@ whether final delivery is local or remote before selecting its cleanup proof ref
 - Direct integration: the parent merges child branches into the chosen target.
 - MR/PR integration: branches receive host review and CI. Read
   [the MR procedure](references/merge-request-integration.md) when this route
-  applies, including its review, comment-resolution, and CI gates.
+  applies, including its review, comment-resolution, and CI gates. When you
+  open an MR for a phase, consider adding its row and the description's
+  `Plan:` line, as `plc-planning`'s
+  [Merge requests](../plc-planning/SKILL.md#merge-requests) rule suggests.
 
 Prefer a separate non-default integration branch/worktree for isolation. Use
 `main`, another default branch, or the source checkout only when the user chose

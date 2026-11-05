@@ -26,7 +26,7 @@ triggers, and its
 [Growing a packet](../skills/plc-planning/SKILL.md#growing-a-packet) rule
 turns a one-file plan into a folder when one holds. The files of a packet:
 
-![PLC packet: README.md holds the summary, Current Work, the Phases table, Done when, open questions, and the Log. SRD.md defines requirements and their checks; SADD.md explains the design; IMPLEMENTATION_PLAN.md holds phase details and evidence. Add them only when needed. Optional FIXTURES.md holds stable examples and test cases.](images/plc-packet.svg)
+![PLC packet: README.md holds the summary, Current Work, the Phases table, Done when, open questions, optional merge requests, and the Log. SRD.md defines requirements and their checks; SADD.md explains the design; IMPLEMENTATION_PLAN.md holds phase details and evidence. Add them only when needed. Optional FIXTURES.md holds stable examples and test cases.](images/plc-packet.svg)
 
 This example is trimmed: the other Current Work keys and the "Where the work
 lives" table are left out.
@@ -54,6 +54,12 @@ Reload the config without a restart, keeping the old config if the new one is in
 - REQ-001: Invalid config leaves the running config unchanged.
   Check: `task test -- reload` → passes
 
+## Merge requests
+
+| Phase | Merge request | State | Note |
+| ----- | ------------- | ----- | ---- |
+| P1    | #12           | Open  |      |
+
 ## Log
 
 - 2026-11-02 Created.
@@ -63,7 +69,12 @@ Reload the config without a restart, keeping the old config if the new one is in
 Keep requirement and phase IDs stable. Replace Current Work as work changes,
 and add a dated Log line for each change. A phase is Verified only when its
 check passed on the merged code. Record each result once and link to it. If a
-record is missing, check existing results before running checks again. A
+record is missing, check existing results before running checks again. The
+`## Merge requests` table is optional: one row per merge request for a
+phase, with a `Plan: <packet ID or slug> <phase>` line in each
+description, as the planning skill's
+[Merge requests](../skills/plc-planning/SKILL.md#merge-requests) rule
+suggests. A
 finished plan moves to `completed/`; plans finished earlier into another folder
 stay where they are. The full rules and the format check are in
 [plc-planning](../skills/plc-planning/SKILL.md#shared-template).
