@@ -23,8 +23,11 @@ with a packet status word or a phase state word, or a `- Lifecycle:` line
 that starts with a packet status word. When SRD.md exists, it holds the
 requirements, so the README's ## Done when holds one paragraph or list item
 naming SRD.md (a wrapped line counts once), and no requirement ID from a table
-in SRD.md whose first column is ID. HTML comments and fenced code blocks are
-ignored.
+in SRD.md whose first column is ID. An optional ## Merge requests section
+holds one table, | Phase | Merge request | State | Note |: each row's phase is
+an ID from the ## Phases table, its merge request is !12, #34 or a full URL,
+and its State is Open, Merged @ <commit> or Closed — <reason>. HTML comments
+and fenced code blocks are ignored.
 
 --strict also checks the five rules across fields:
   1. Status matches the lifecycle folder.
@@ -124,6 +127,12 @@ STATE_COLUMNS = ("state", "status")
 OLD_STATE_COLUMNS = {"implementation", "verification", "delivery"}
 MAX_BYTES = 4 * 1024 * 1024
 OTHER_FILES = ("IMPLEMENTATION_PLAN.md", "SRD.md", "SADD.md")
+
+# The optional ## Merge requests table: one row per merge request or pull
+# request, several per phase allowed.
+MR_HEADER = ["Phase", "Merge request", "State", "Note"]
+MR_REFERENCE = re.compile(r"[!#]\d+|https?://\S+|\[[^\]]*\]\(https?://[^\s)]+\)|<https?://[^\s>]+>")
+MR_STATE = re.compile(r"Open|Merged @ (`?)[0-9a-fA-F]{7,40}\1|Closed — \S.*")
 
 # Flat design files sit beside a one-file plan, as plc-012-retry-srd.md sits
 # beside plc-012-retry.md. They are not packets, so a plans folder skips them.
@@ -544,19 +553,71 @@ def check_phases_section(readme, lines, part, lifecycle, strict):
     return found, True
 
 
+def within(part, table):
+    return part.start < table.line - 1 < part.end
+
+
 def check_phase_tables(readme, lines, parts, lifecycle, strict):
     phases = named(parts, "phases")
+    merge_requests = named(parts, "merge requests")
     found, has_phase_table = [], False
     if phases:
         found, has_phase_table = check_phases_section(readme, lines, phases[0], lifecycle, strict)
     for table in tables(lines):
-        inside = bool(phases) and phases[0].start < table.line - 1 < phases[0].end
-        if inside or not is_phase_table(table):
+        inside = bool(phases) and within(phases[0], table)
+        # The ## Merge requests table starts with Phase and has a State
+        # column, but holds merge request state, not phase state.
+        merge_request_table = any(within(part, table) for part in merge_requests)
+        if inside or merge_request_table or not is_phase_table(table):
             continue
         if holds_phase_state(table):
             found.append(finding(readme, table.line, OUTSIDE))
         if not has_phase_table:
             found.append(finding(readme, table.line, "Phases: phase table is not under ## Phases"))
+    return found
+
+
+def phase_ids(lines, parts):
+    """The phase IDs in the first column of the ## Phases table."""
+    phases = named(parts, "phases")
+    if not phases:
+        return set()
+    in_section = tables(lines, phases[0].start + 1, phases[0].end)
+    rows = [row for table in in_section if is_phase_table(table) for _, row in table.rows]
+    return {EMPHASIS.sub("", row[0]).strip("*_` ") for row in rows} - {"", "—", "-"}
+
+
+def check_merge_requests(readme, lines, parts):
+    """Findings for the optional ## Merge requests table."""
+    known = phase_ids(lines, parts)
+    found = []
+    for part in named(parts, "merge requests"):
+        in_section = tables(lines, part.start + 1, part.end)
+        if not in_section or in_section[0].header != MR_HEADER:
+            header = "| " + " | ".join(MR_HEADER) + " |"
+            where = in_section[0].line if in_section else part.start + 1
+            found.append(finding(readme, where, f"Merge requests: the section needs the table {header}"))
+            continue
+        for line, row in in_section[0].rows:
+            if len(row) != len(MR_HEADER):
+                message = f"Merge requests: row has {len(row)} cells, but the header has {len(MR_HEADER)}"
+                found.append(finding(readme, line, message))
+                continue
+            phase, reference, state = row[0], row[1], row[2]
+            if EMPHASIS.sub("", phase).strip("*_` ") not in known:
+                message = f"Merge requests: phase {phase[:60] or '(empty)'} is not in the ## Phases table"
+                found.append(finding(readme, line, message))
+            if not MR_REFERENCE.fullmatch(reference):
+                value = reference[:60] or "(empty)"
+                message = f"Merge requests: Merge request is not !<number>, #<number> or a URL: {value}"
+                found.append(finding(readme, line, message))
+            if not MR_STATE.fullmatch(state):
+                value = state[:60] or "(empty)"
+                message = (
+                    "Merge requests: State is not Open, Merged @ <commit> or "
+                    f"Closed — <reason>: {value}"
+                )
+                found.append(finding(readme, line, message))
     return found
 
 
@@ -683,6 +744,7 @@ def check_packet(path, people=(), strict=False, lifecycle=None):
     if not named(parts, "log"):
         found.append(finding(readme, 1, "Log: no ## Log section"))
     found += check_phase_tables(readme, lines, parts, lifecycle, strict)
+    found += check_merge_requests(readme, lines, parts)
     srd = next((other_lines for other, other_lines in others if other.name == "SRD.md"), None)
     if srd is not None:
         found += check_done_when(readme, lines, parts, srd)

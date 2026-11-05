@@ -171,6 +171,7 @@ def run(*args, cwd=DATA, env=None):
 def fill(text):
     """Replace each template placeholder with a neutral value."""
     text = text.replace("<YYYY-MM-DD>", "2026-11-03").replace("@<handle>", "@alex")
+    text = text.replace("!<number>", "!12")
     return re.sub(r"<(?!!)[^<>\n]+>", "sample", text)
 
 
@@ -489,6 +490,47 @@ class PacketRulesTest(unittest.TestCase):
         self.assertEqual(self.check(heading, name="heading", files={"SRD.md": SRD}), [
             f"planned/heading/README.md:18: {ITEMS.format(2)}",
         ])
+
+    def test_merge_requests_table(self):
+        """Several rows per phase pass; each cell has its own finding."""
+        valid = (
+            "## Merge requests\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n"
+            "| P1 | !12 | Closed — replaced by !14 | first try |\n"
+            "| P1 | !14 | Merged @ abc1234 | |\n"
+            "| P1 | #34 | Open | follow-up |\n"
+            "| P1 | https://git.example.com/app/-/merge_requests/15 | Merged @ `abc1234def` | |\n"
+            "| P1 | [!16](https://git.example.com/app/-/merge_requests/16) | Open | |\n\n## Log"
+        )
+        self.assertEqual(self.check(edit("## Log", valid)), [])
+        bad = (
+            "## Merge requests\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n"
+            "| P2 | !12 | Open | |\n"
+            "| P1 | 12 | Merged | |\n"
+            "| P1 | !13 | Closed | |\n"
+            "| P1 | !14 | merged @ abc1234 | |\n"
+            "| P1 | !15 | Open |\n\n## Log"
+        )
+        reference = "Merge requests: Merge request is not !<number>, #<number> or a URL: 12"
+        state = "Merge requests: State is not Open, Merged @ <commit> or Closed — <reason>: {}"
+        self.assertEqual(self.check(edit("## Log", bad)), [
+            f"{R}:22: Merge requests: phase P2 is not in the ## Phases table",
+            f"{R}:23: {reference}",
+            f"{R}:23: {state.format('Merged')}",
+            f"{R}:24: {state.format('Closed')}",
+            f"{R}:25: {state.format('merged @ abc1234')}",
+            f"{R}:26: Merge requests: row has 3 cells, but the header has 4",
+        ])
+
+    def test_merge_requests_section_needs_its_table(self):
+        message = "Merge requests: the section needs the table | Phase | Merge request | State | Note |"
+        no_table = edit("## Log", "## Merge requests\n\nNone yet.\n\n## Log")
+        self.assertEqual(self.check(no_table), [f"{R}:18: {message}"])
+        wrong = "## Merge requests\n\n| Phase | MR | State |\n| --- | --- | --- |\n| P1 | !12 | Open |\n\n## Log"
+        self.assertEqual(self.check(edit("## Log", wrong)), [f"{R}:20: {message}"])
+
+    def test_no_merge_requests_section_has_no_finding(self):
+        self.assertNotIn("## Merge requests", VALID)
+        self.assertEqual(self.check(), [])
 
     def test_fenced_phase_table_in_the_plan(self):
         plan = "# Plan\n\n```\n| Phase | State |\n| --- | --- |\n| P1 | Planned |\n```\n"
@@ -813,7 +855,7 @@ class TemplateTest(unittest.TestCase):
         sections = re.findall(r"`(## [^`]+)`", rule("Order and format").split(" - ")[0])
         keys = re.search(r"- (Status), (Owner) and (Last updated) come first.*?Then ([^.]+)\.", rule("Current Work"))
         keys = [*keys.groups()[:3], *re.split(r", | and ", keys[4])]
-        self.assertEqual(len(sections), 5)
+        self.assertEqual(len(sections), 6)
         self.assertEqual(len(keys), 8)
 
         for path, texts in fields.items():

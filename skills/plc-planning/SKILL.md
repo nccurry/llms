@@ -286,8 +286,9 @@ refer to this section instead of repeating it.
 #### Order and format
 
 - Sections go in this order: title, summary, `## Current Work`,
-  `## Phases`, `## Done when`, `## Open questions`, any repository-specific
-  sections, then `## Log` last.
+  `## Phases`, `## Done when`, `## Open questions`, `## Merge requests`
+  when the plan records them, any repository-specific sections, then
+  `## Log` last.
 - Plain Markdown with `- Key: value` lines and no front matter. The format
   check and other tools find each line by its exact key name and read the
   value after the colon, so keep both as written here.
@@ -299,8 +300,9 @@ made from one, keeps them as written here:
 
 - `README.md` and `compact-plan.md`: the section headings in
   [Order and format](#order-and-format) and the `- Key:` lines in
-  [Current Work](#current-work), spelled as they are there, and the
-  `## Phases` table header `| Phase | Name | Owner | State |`.
+  [Current Work](#current-work), spelled as they are there, the
+  `## Phases` table header `| Phase | Name | Owner | State |`, and the
+  `## Merge requests` table header `| Phase | Merge request | State | Note |`.
 - `SRD.md`: the requirements table header
   `| ID | Priority | Requirement | Check |`. The format check reads the IDs
   in its first column.
@@ -502,6 +504,24 @@ call for another review.
   [Growing a packet](#growing-a-packet) says if the packet has none. The
   Log line then links to the table.
 
+#### Merge requests
+
+- `## Merge requests` is optional. Recording merge requests is encouraged,
+  not required, and a plan without the section is valid. Delete it when
+  unused.
+- One row per merge request or pull request: a phase may have several, in
+  parallel, in a stack, or replacing one another. Closed and replaced ones
+  keep their rows, so the table keeps the history. Each phase's note in
+  `## Phases` still names its merge request or commit.
+- Phase is an ID from the `## Phases` table. Merge request is `!12`, `#34`
+  or the full URL. State is `Open`, `Merged @ <commit>` or
+  `Closed — <reason>`.
+- Whoever opens a merge request for a phase adds its row, and puts a
+  `Plan: <packet ID or slug> <phase>` line in its description, such as
+  `Plan: PLC-012 P2`. A status update refreshes each row's State from the
+  host, and offers rows for merge requests it finds by their branch or
+  their `Plan:` line.
+
 #### Log
 
 - `## Log` is only ever added to: one dated line per state change, decision
@@ -584,8 +604,11 @@ python3 <skill-dir>/scripts/format_check.py <plans folder> --people "Alex Kim=al
   findings too: a `## Done when` that is missing or has no line naming
   SRD.md, one that holds more than one paragraph or list item (a wrapped
   line counts once), and a requirement ID there from any table in SRD.md
-  whose first column is `ID`. It ignores HTML comments and fenced code
-  blocks. `--strict` adds the rules across fields.
+  whose first column is `ID`. In `## Merge requests`, a row whose phase is
+  not in `## Phases`, or whose Merge request or State cell is not one of
+  the forms in [Merge requests](#merge-requests), is a finding. It ignores
+  HTML comments and fenced code blocks. `--strict` adds the rules across
+  fields.
 - `--lifecycle <folder>` checks a packet as if it were in that lifecycle
   folder, for example before a finished packet moves to `completed/`.
 - `--people` takes `NAME=HANDLE` pairs (HANDLE may start with `@`) and

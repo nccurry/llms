@@ -36,6 +36,17 @@ Where the work lives:
 
 - Open question: <question> (blocks <phase or requirement IDs>; waits on @<handle>)
 
+## Merge requests
+
+<!-- Optional: one row per merge request or pull request for a phase,
+closed and replaced ones included; a phase may have several. Merge request
+is `!12`, `#34` or the full URL. State is `Open`, `Merged @ <commit>` or
+`Closed — <reason>`. Delete this section when you don't record merge
+requests, and delete this note. -->
+| Phase | Merge request | State | Note |
+| --- | --- | --- | --- |
+| P1 | !<number> | Open | |
+
 ## Log
 
 - <YYYY-MM-DD> Created.
