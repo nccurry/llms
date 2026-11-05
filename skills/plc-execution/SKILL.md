@@ -52,7 +52,7 @@ the update adds, changes or drops approved scope, run `plc-planning`'s
 [independent review](../plc-planning/SKILL.md#independent-review) on it.
 Requirements and design describe approved behavior and adopted decisions.
 Keep current status, remaining work, and concise validation evidence in the
-work list and the sections that own them. Record each result once and link
+plan's Current Work, its Phases table and the sections that own them. Record each result once and link
 to it elsewhere; do not restate the skill's general workflow in the packet. Keep raw logs,
 repeated handoffs, abandoned attempts, and session narration out of requirements and
 design. A new reader must be able to identify approved scope, current design,
@@ -80,7 +80,8 @@ owning project documents to
 interpret selected requirements; do not guess project facts or silently add
 deliverables. Raise material conflicts under the scope-change rule above.
 
-Make one work list containing each selected block, prerequisites, owner, files,
+Make one work list, in the session's task list rather than a plan file,
+containing each selected block, prerequisites, owner, files,
 behavior, design goals, tests, audits, exit criteria, and readiness. Run a block
 only after its prerequisites pass. Discovery may precede a prerequisite when it
 cannot alter that prerequisite. Verify the needed capability in source or
@@ -287,7 +288,9 @@ checks pass, authorized delivery is verified, and cleanup is completed or each
 retained checkout is accounted for under the cleanup rules. Leave unselected
 phases open. Record optional discoveries separately as outside-scope follow-ups;
 they do not extend this run or reopen completed work without user authorization.
-New evidence that an existing requirement fails does reopen its acceptance while the plan is open; for a completed plan, `plc-planning`'s [Ending a packet](../plc-planning/SKILL.md#ending-a-packet) rule applies.
+New evidence that an existing requirement fails does reopen its acceptance
+while the plan is open; for a completed plan, `plc-planning`'s
+[Ending a packet](../plc-planning/SKILL.md#ending-a-packet) rule applies.
 If a genuine acceptance blocker needs significant extra scope, report the
 blocker and request a decision; keep that requirement open while waiting.
 

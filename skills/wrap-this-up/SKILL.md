@@ -27,11 +27,13 @@ for maintained documentation that the delivered behavior changes. Without a
 PLC, use the repo's own checks and conventions; don't create a packet just to
 close out, and skip the plan steps below.
 
-When the user is dropping the work rather than landing it, merge nothing:
-the plan ends in `archived/` as `plc-planning`'s
-[Ending a packet](../plc-planning/SKILL.md#ending-a-packet) rule says, and
-step 7 keeps or removes the unfinished branches as
-[clean-stale-worktrees](../clean-stale-worktrees/SKILL.md) says.
+When the user is dropping the work rather than landing it, merge nothing.
+Run step 1 and skip steps 2 to 5. Then the plan ends in `archived/` as
+`plc-planning`'s [Ending a packet](../plc-planning/SKILL.md#ending-a-packet)
+rule says, delivered by step 6's rules and checked with `--strict`; if the
+plan exists only on a dropped branch, ask whether to keep it on `main`.
+Steps 7 and 8 then keep or remove the unfinished branches as
+[clean-stale-worktrees](../clean-stale-worktrees/SKILL.md) says, and report.
 
 ## 1. Checkpoint first
 
@@ -109,9 +111,9 @@ and rebase merges. Recheck the target right before pushing; if it moved,
 merge it in and rerun the affected checks. Never force-push `main`. On the
 direct route the push happens at the end of step 6, with the plan update;
 run the `origin/main` check after that push. Before step 6, run each
-merged phase's checks that need the merged code on the merged result, so
-step 6 can mark it Verified, or keep it Merged and name the check that is
-left.
+merged phase's checks that need the merged code on the merged result (step
+4's results on the same tree count), so step 6 can mark it Verified, or
+keep it Merged and name the check that is left.
 
 ## 6. Finish the plan
 
@@ -159,9 +161,9 @@ Deliver the plan update with the code:
   together, then run step 5's `origin/main` check.
 - **Local only:** commit it on top of the merge on the local target.
 - **PR/MR:** an open plan's update travels in the PR/MR. Finishing the plan
-  waits for the merge. After it, a checkpoint runs the merged phases'
-  checks on the target, and the next wrap-up finishes the plan by the
-  repo's usual route.
+  waits for the merge. If it merged during this wrap-up, finish the plan now
+  as a follow-up commit by the repo's usual route; otherwise the next
+  wrap-up finishes it after the merge.
 - A plan kept in another repo gets its own commit there, following that
   repo's rules.
 
@@ -174,6 +176,7 @@ step 6 planned fails, record what is left: in an open plan, as a row in
 "Where the work lives"; in a finished plan, as the one dated follow-up Log
 line that `plc-planning`'s
 [Ending a packet](../plc-planning/SKILL.md#ending-a-packet) rule allows.
+With no plan, step 8's report is the record.
 
 - **Merged into `main`:** remove each worktree, including the `_merge`
   checkout (run from outside it, no `--force`, after checking ignored files

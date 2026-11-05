@@ -125,7 +125,7 @@ git worktree add <absolute-target-path> <branch-name>
    - On conflicts, stop, abort the merge or rebase, and report the conflicting files. Don't resolve them without the user.
 4. Run the tests (step 5 above) on the updated branch.
 5. Record the worktree and the update in the plan, as in step 6 above.
-6. Report the plan's Current Work in a few lines: where the work stands, what changed on main since, and the next action. For a full update, run `plc-checkpoint`.
+6. Report the plan's Current Work, or with no plan the branch's state, in a few lines: where the work stands, what changed on main since, and the next action. For a full update, run `plc-checkpoint`.
 
 If the branch's base is ambiguous, report that before making changes.
 

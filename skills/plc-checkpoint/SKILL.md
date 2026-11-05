@@ -86,8 +86,9 @@ Fetch first, then collect facts. Record the commit each fact applies to.
 3. **PRs/MRs** with `gh` or `glab`: state, target, merge commit, CI, review.
 4. **Checks.** For each part the plan calls verified, the check and the commit
    it ran on. A result from an older commit doesn't verify the current one.
-   For a Merged phase, run its checks on the target commit when they can run
-   here, and record the result.
+   For a Merged phase with no result on the target commit yet, name its
+   checks in the next action; run them, in a detached checkout of the
+   target, only when they are quick.
 5. **This conversation and child reports:** decisions, scope calls,
    approvals, and open questions since the work started.
 6. **Other plans the plan waits on**, from its `Depends on` line. For one in

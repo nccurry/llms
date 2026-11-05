@@ -5,7 +5,10 @@ The parent owns this work; children release checkouts and supply evidence.
 
 ## Record ownership and the destination
 
-Record each temporary checkout in the plan's "Where the work lives" table: its absolute path under Checkout, its branch and source commit under Branch, its owner under Owner, and its purpose, final target ref/hash and cleanup state under State.
+Record each temporary checkout in the plan's "Where the work lives" table:
+its absolute path under Checkout, its branch and source commit under Branch,
+its owner under Owner, and under State its `plc-planning` state, then its
+purpose and final target ref/hash after ` — `.
 Include planning, child, integration, repair, replaced-child, review, and
 verification checkouts. Record the source of any user keep instruction.
 Create them under the PLC's campaign folder per

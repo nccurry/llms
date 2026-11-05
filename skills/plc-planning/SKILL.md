@@ -166,7 +166,7 @@ Record the check's actual result only after running it.
      greater cumulative work. Routine repairs within approved scope can proceed.
      This boundary and the finish below are `plc-execution`'s defaults; write
      them into the plan only where this work differs.
-   - Define a finish: close selected work once its requirements and required
+   - The default finish: close selected work once its requirements and required
      checks pass, authorized delivery is verified, and cleanup is completed or
      explicitly accounted for. Optional outside-scope follow-ups do not extend
      execution or reopen completed work. Evidence that an existing requirement
@@ -221,8 +221,9 @@ refer to this section instead of repeating it.
 
 - **Packet status words:** Planned, In progress, Blocked, Complete,
   Archived, Superseded.
-- **Status follows the phases:** Planned until a phase is In progress or
-  later, then In progress.
+- **Status follows the work:** Planned until work on a phase starts, then
+  In progress. Blocked, Complete, Archived and Superseded follow their own
+  rules.
 - **Approved:** what the user asked for or accepted, in the plan or the
   conversation. Anything an agent adds beyond it is an `Open question:`
   line until the user accepts it. There is no separate approval step.
@@ -531,8 +532,9 @@ call for another review.
   a later failure of one of its requirements: the new plan names the old
   packet and the requirement.
 - A packet the user drops moves to `archived/` with Status Archived and a
-  reason; one that another plan replaces gets Superseded and a
-  `Superseded by:` line. Its unfinished work is not merged.
+  reason; one that another plan replaces also moves there, with Status
+  Superseded and a `Superseded by:` line. Its unfinished work is not
+  merged.
 
 ### Rules across fields
 
