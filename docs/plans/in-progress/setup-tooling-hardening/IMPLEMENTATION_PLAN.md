@@ -58,24 +58,40 @@ Hosted Windows CI is not selected (the owner chose not now).
 - Exit criterion: every P1 requirement's check passes on `main`.
 - Rollback or fallback: revert the phase's commits; the formatting commit
   reverts cleanly on its own.
-- Evidence:
+- Evidence (code commit 1ea0b4bb947d86489cd3a14f610e61592a6c0df9 unless another commit is named):
   - Targets: ruff `target-version = "py311"` and pyright `pythonVersion = "3.11"`, with
-    py310 overrides for the two skill scripts that declare it. `git grep -n -E
+    py310 overrides in both tools for the two skill scripts that declare it. `git grep -n -E
     '^\s*except [A-Za-z_.]+, ' -- '*.py' ':!piw'` finds nothing.
-  - Baseline on the configuration commit 373f17a: ruff check 200 findings (the first draft of the
-    config, before per-file ignores, gave 528), ruff format would change 25 of 164 files,
-    pyright basic 78 errors in the first run at Python 3.14. Final: ruff check,
-    ruff format --check and pyright all report 0.
-  - Formatting commit 090d7e29ca40591faf55f171a8d71790ecbb83c8; `.git-blame-ignore-revs` lists it.
-    Running the pinned ruff 0.16.2 `format` on its parent gives tree 05b70841, equal to the
-    commit's tree.
-  - `./bootstrap.sh lint:python`, `./bootstrap.sh piw:check`, `./bootstrap.sh test` and
-    `./bootstrap.sh check` exit 0; piw 185 passed, setup-script tests 26 OK, launcher tests 3 pass.
-  - With an unused import added to `scripts/install_skills.py`, `./bootstrap.sh check` and
-    `./bootstrap.sh ci` each exit 201 and print F401 for that file (run on the earlier history;
-    the task wiring is unchanged).
-  - Changing every hash of one package in `lint/requirements.txt` makes `deps:dev-tools`
-    fail with a hash mismatch. `deps:dev-tools` is not part of `deps:install`.
+  - Baseline on the configuration commit 373f17a: ruff check 200 findings (a first draft of the
+    config gave 528), `ruff format --check` says 25 of 27 files would change, pyright basic 67
+    errors (78 with a draft config that could not see tomlkit). Final: ruff check,
+    ruff format --check and pyright (`--warnings`) all report 0.
+  - REQ-001: `ruff check --show-settings` names `ruff.toml` for `scripts/manage_agent_tools.py`
+    and `piw/pyproject.toml` for `piw/src/piw/cli.py`; `ruff check --show-files` equals
+    `git ls-files '*.py' ':!piw' ':!tests/skill-evals/**/fixture/**'` (27 files).
+  - REQ-002: `git diff 6968fd2 -- piw/` is empty; `./bootstrap.sh piw:check` exits 0 (185 passed);
+    `cd piw && uv run --locked pyright --verbose` prints "Loading pyproject.toml file at
+    …/piw/pyproject.toml".
+  - REQ-003: `./bootstrap.sh deps:dev-tools` then `./bootstrap.sh lint:python` exit 0 and print
+    ruff 0.16.2 and pyright 1.1.411. With every hash of `typing-extensions` changed (uv accepts
+    any listed hash, so one changed hash of several is not enough), `deps:dev-tools` fails with
+    "Hash mismatch for `typing-extensions==4.16.0`" and `lint:python` then refuses to run.
+  - Node and pyright come from the hash pins: `pyright[nodejs]` adds `nodejs-wheel-binaries`,
+    and `lint:python` clears the wrapper variables that would download another pyright or Node.
+    With `PATH=/usr/bin:/bin`, a temporary `HOME`, `PYRIGHT_PYTHON_FORCE_VERSION=latest` and
+    `PYRIGHT_PYTHON_USE_BUNDLED_PYRIGHT=0`, `./bootstrap.sh lint:python` exits 0 and the temporary
+    HOME stays empty (checked at 1ea0b4b; debug output showed "Using nodejs_wheel package").
+  - REQ-004: in a detached scratch worktree at 1ea0b4b with `import colorsys` added to
+    `scripts/install_skills.py`, after its own `deps:dev-tools`, `./bootstrap.sh check` and
+    `./bootstrap.sh ci` each exit 201 and print "F401 [*] `colorsys` imported but unused" at
+    `scripts/install_skills.py:13:8`. The worktree was removed afterwards.
+  - REQ-005: formatting commit 090d7e29ca40591faf55f171a8d71790ecbb83c8, listed in
+    `.git-blame-ignore-revs`. The pinned ruff 0.16.2 `format` run on its parent 373f17a gives
+    tree 05b70841291f132044521c670306101e4f14dd83, equal to the commit's tree.
+  - REQ-006: every `noqa` in scope matches `# noqa: <CODE> - <reason>`; there is no
+    `pyright: ignore`, `type: ignore` or `ruff: noqa` (checked at 1ea0b4b).
+  - At 1ea0b4b: `./bootstrap.sh test` exits 0 (piw 185 passed, setup-script tests 26 OK, launcher
+    tests 3 pass); `./bootstrap.sh check` exits 0.
 
 ### P2: Windows checks from Linux
 
