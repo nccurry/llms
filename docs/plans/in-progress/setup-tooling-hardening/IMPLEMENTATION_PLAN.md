@@ -59,6 +59,23 @@ Hosted Windows CI is not selected (the owner chose not now).
 - Rollback or fallback: revert the phase's commits; the formatting commit
   reverts cleanly on its own.
 - Evidence:
+  - Targets: ruff `target-version = "py311"` and pyright `pythonVersion = "3.11"`, with
+    py310 overrides for the two skill scripts that declare it. `git grep -n -E
+    '^\s*except [A-Za-z_.]+, ' -- '*.py' ':!piw'` finds nothing.
+  - Baseline on the configuration commit 373f17a: ruff check 200 findings (the first draft of the
+    config, before per-file ignores, gave 528), ruff format would change 25 of 164 files,
+    pyright basic 78 errors in the first run at Python 3.14. Final: ruff check,
+    ruff format --check and pyright all report 0.
+  - Formatting commit 090d7e29ca40591faf55f171a8d71790ecbb83c8; `.git-blame-ignore-revs` lists it.
+    Running the pinned ruff 0.16.2 `format` on its parent gives tree 05b70841, equal to the
+    commit's tree.
+  - `./bootstrap.sh lint:python`, `./bootstrap.sh piw:check`, `./bootstrap.sh test` and
+    `./bootstrap.sh check` exit 0; piw 185 passed, setup-script tests 26 OK, launcher tests 3 pass.
+  - With an unused import added to `scripts/install_skills.py`, `./bootstrap.sh check` and
+    `./bootstrap.sh ci` each exit 201 and print F401 for that file (run on the earlier history;
+    the task wiring is unchanged).
+  - Changing every hash of one package in `lint/requirements.txt` makes `deps:dev-tools`
+    fail with a hash mismatch. `deps:dev-tools` is not part of `deps:install`.
 
 ### P2: Windows checks from Linux
 
