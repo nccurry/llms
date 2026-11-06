@@ -9,10 +9,16 @@ vars:
     sh: 'cat "{{.ROOT_DIR}}/piw/.python-version"'
   LINT_BIN: '{{.ROOT_DIR}}/.tools/lint/{{if eq OS "windows"}}Scripts{{else}}bin{{end}}'
   LINT_PYTHON: '{{.LINT_BIN}}/python{{if eq OS "windows"}}.exe{{end}}'
-  # lint/mise.toml pins shellcheck and PowerShell apart from mise.toml. Running mise with lint/
-  # as its working directory makes it read that file (and, above it, the root mise.toml).
-  MISE_LINT: '{{.MISE}} -C "{{.ROOT_DIR}}/lint"'
+  # lint/mise.toml pins shellcheck and PowerShell apart from mise.toml. MISE_LINT runs mise with
+  # lint/ as the working directory, so it reads lint/mise.toml. MISE_CEILING_PATHS stops it
+  # reading the root mise.toml above it, and its own data directory keeps these tools out of the
+  # shim folder in .tools/mise/data: a mise install rebuilds every shim in the folder it uses.
+  MISE_LINT: 'MISE_DATA_DIR="{{.ROOT_DIR}}/.tools/lint-mise/data" MISE_CEILING_PATHS="{{.ROOT_DIR}}" {{.MISE}} -C "{{.ROOT_DIR}}/lint"'
   PSMODULES: '{{.ROOT_DIR}}/.tools/powershell-modules'
+  PS_PINS:
+    sh: 'cat "{{.ROOT_DIR}}/lint/powershell-modules.json"'
+  PESTER_DIR: '{{.PSMODULES}}/Pester/{{(fromJson .PS_PINS).modules.Pester.version}}'
+  ANALYZER_DIR: '{{.PSMODULES}}/PSScriptAnalyzer/{{(fromJson .PS_PINS).modules.PSScriptAnalyzer.version}}'
   PYTHON: '{{.UV}} run --isolated --no-project --python "{{.PYTHON_VERSION}}" --with-requirements "{{.ROOT_DIR}}/agent-runtime.txt" python'
   TARGET: '{{default "all" .TARGET}}'
   OUTPUT: '{{default "text" .OUTPUT}}'
@@ -61,9 +67,10 @@ tasks:
         msg: Run bootstrap.sh or bootstrap.ps1 to prepare project-local mise and Task.
     cmds:
       - '{{.MISE}} install --locked --yes'
-      # Shims link to the checkout that wrote them; a worktree sharing this
-      # data directory must not repoint them at a checkout that may be deleted.
-      - '[ -L "{{.ROOT_DIR}}/.tools/mise/data" ] || {{.MISE}} reshim'
+      # mise points every shim at the mise it runs from. A worktree sharing another checkout's
+      # data directory must not leave the shims pointing at a checkout that may be deleted.
+      # The script is skipped on Windows, where shims are copies and there is no sh to run it.
+      - '{{if eq OS "windows"}}true{{else}}sh "{{.ROOT_DIR}}/scripts/reshim_shared_data.sh" {{.MISE}}{{end}}'
 
   deps:dev-tools:
     desc: Install the development-only tools (Python lint tools, shellcheck, PowerShell 7, Pester, PSScriptAnalyzer); not part of deps:install.
@@ -72,12 +79,19 @@ tasks:
       - >-
         {{.UV}} pip install --require-hashes --python "{{.LINT_PYTHON}}"
         -r "{{.ROOT_DIR}}/lint/requirements.txt"
-      - '{{.MISE}} trust --yes --quiet "{{.ROOT_DIR}}/lint/mise.toml"'
+      - '{{.MISE_LINT}} trust --yes --quiet "{{.ROOT_DIR}}/lint/mise.toml"'
       - '{{.MISE_LINT}} install --locked --yes'
       # Each download is checked against the SHA-256 in lint/powershell-modules.json before it is unpacked.
       - '"{{.LINT_PYTHON}}" "{{.ROOT_DIR}}/lint/install_powershell_modules.py" "{{.ROOT_DIR}}/lint/powershell-modules.json" "{{.PSMODULES}}"'
       # Written last: lint:python treats a missing or different copy as a stale or half-built install.
       - 'cat "{{.ROOT_DIR}}/lint/requirements.txt" > "{{.ROOT_DIR}}/.tools/lint/requirements.txt"'
+
+  deps:dev-tools:lock:
+    desc: Regenerate lint/requirements.txt (with hashes) and lint/mise.lock after editing lint/requirements.in or lint/mise.toml.
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - '{{.UV}} pip compile --generate-hashes --python-version 3.14 lint/requirements.in -o lint/requirements.txt'
+      - '{{.MISE_LINT}} lock -p linux-x64,linux-arm64,macos-x64,macos-arm64,windows-x64,windows-arm64'
 
   deps:verify:
     desc: Show resolved native development tools.
@@ -158,7 +172,7 @@ tasks:
     desc: Run the setup-script tests (agent config, skill installer, fake host); no network.
     env:
       PYTHONDONTWRITEBYTECODE: '1'
-    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_windows_branches'
+    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_windows_branches tests.test_install_powershell_modules tests.test_powershell_runners tests.test_reshim_shared_data'
 
   test:agent-launchers:
     desc: Check pinned GitNexus launchers and emitted refresh commands.
@@ -193,29 +207,30 @@ tasks:
       - '"{{.LINT_BIN}}/pyright" --warnings -p lint/pyrightconfig.json'
 
   lint:shell:
-    desc: Run shellcheck on bootstrap.sh; needs deps:dev-tools first.
+    desc: Run shellcheck on bootstrap.sh and the other shell script; needs deps:dev-tools first.
     preconditions:
       - sh: '{{.MISE_LINT}} which shellcheck'
         msg: Run `task deps:dev-tools` to install shellcheck.
     cmds:
       - '{{.MISE_LINT}} exec -- shellcheck --version'
-      - '{{.MISE_LINT}} exec -- shellcheck ../bootstrap.sh'
+      - '{{.MISE_LINT}} exec -- shellcheck ../bootstrap.sh ../scripts/reshim_shared_data.sh'
 
   lint:powershell:
     desc: Run PSScriptAnalyzer (with the Windows PowerShell 5.1 checks) on every tracked .ps1 file; needs deps:dev-tools first.
     preconditions:
-      - sh: '{{.MISE_LINT}} which pwsh && [ -d "{{.PSMODULES}}/PSScriptAnalyzer" ]'
+      - sh: '{{.MISE_LINT}} which pwsh && [ -d "{{.ANALYZER_DIR}}" ]'
         msg: Run `task deps:dev-tools` to install PowerShell and PSScriptAnalyzer.
     dir: '{{.ROOT_DIR}}'
     env:
-      # Only the pinned modules; PowerShell adds its own built-in modules itself.
+      # The runner imports the pinned module by its exact path. PSModulePath is not a fence:
+      # PowerShell adds the user, shared and built-in module folders to it.
       PSModulePath: '{{.PSMODULES}}'
     cmd: '{{.MISE_LINT}} exec -- pwsh -NoProfile -File "{{.ROOT_DIR}}/lint/run_psscriptanalyzer.ps1"'
 
   test:powershell:
     desc: Run the Pester tests for bootstrap.ps1; needs deps:dev-tools first.
     preconditions:
-      - sh: '{{.MISE_LINT}} which pwsh && [ -d "{{.PSMODULES}}/Pester" ]'
+      - sh: '{{.MISE_LINT}} which pwsh && [ -d "{{.PESTER_DIR}}" ]'
         msg: Run `task deps:dev-tools` to install PowerShell and Pester.
     dir: '{{.ROOT_DIR}}'
     env:
