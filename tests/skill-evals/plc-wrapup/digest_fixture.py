@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from fixture_lib import (  # noqa: E402
+from fixture_lib import (
     add_worktree,
     commit,
     current_work,

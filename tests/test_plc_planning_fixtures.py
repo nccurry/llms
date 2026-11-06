@@ -278,7 +278,8 @@ class SmallChangeFixtureTest(unittest.TestCase):
 
 class PacketShapeTest(unittest.TestCase):
     """packet_shape_problems must report each break from the shared template,
-    from the shipped format check or from the evals' own rules."""
+    from the shipped format check or from the evals' own rules.
+    """
 
     GOOD = GOOD_PLAN.format(head="abc1234")
 

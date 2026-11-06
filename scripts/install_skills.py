@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import copy
-from collections import deque
 import hashlib
 import json
 import os
@@ -24,6 +23,7 @@ import tempfile
 import time
 import urllib.parse
 import urllib.request
+from collections import deque
 from pathlib import Path
 from typing import Any
 

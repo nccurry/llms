@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fixture_lib import commit, git, make_repo  # noqa: E402
+from fixture_lib import commit, git, make_repo
 
 FAKE_HOST = Path(__file__).resolve().parent / "fake_host.py"
 BRANCH = "retry-backoff"
@@ -89,7 +89,8 @@ def build_app(
     capped: bool = True,
 ) -> Path:
     """Create `app.git` and `app/` with `files` and `history` on main, then
-    push the `retry-backoff` branch. The primary checkout stays on main."""
+    push the `retry-backoff` branch. The primary checkout stays on main.
+    """
     app = make_repo(
         dest,
         "app",

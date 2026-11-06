@@ -299,13 +299,15 @@ def uncommented(lines):
 
 def ends_paragraph(line):
     """True for a line that ends the paragraph above it: a blank line, a heading,
-    or a line that opens a comment block."""
+    or a line that opens a comment block.
+    """
     return not line.strip() or bool(OPEN_COMMENT.match(line) or HEADING.match(line))
 
 
 def remove_comment_block(lines, out, first, start):
     """Blank, in out, the comment that opens lines[first] at column start, up to
-    its first `-->` or the end of the file. Returns the index of the next line."""
+    its first `-->` or the end of the file. Returns the index of the next line.
+    """
     for last in range(first, len(lines)):
         close = lines[last].find("-->", start + 4 if last == first else 0)
         if close >= 0:
@@ -326,7 +328,8 @@ def remove_comment_block(lines, out, first, start):
 
 def without_inline_comments(paragraph):
     """A paragraph's lines without the comments that close within it. Code
-    spans keep their text, and a comment with no `-->` is plain text."""
+    spans keep their text, and a comment with no `-->` is plain text.
+    """
     text, pos = "\n".join(paragraph), 0
     while match := CODE_SPAN_OR_COMMENT.search(text, pos):
         if match[1]:
@@ -396,7 +399,8 @@ def state_column(table):
 
 def holds_phase_state(table):
     """True for a phase table with a State, Status, Implementation, Verification or
-    Delivery column."""
+    Delivery column.
+    """
     heads = {head.lower() for head in table.header}
     has_state = state_column(table) is not None or bool(heads & OLD_STATE_COLUMNS)
     return is_phase_table(table) and has_state
@@ -591,7 +595,8 @@ def check_phase_tables(readme, lines, parts, lifecycle, strict):
 
 def phase_id(cell):
     """A phase ID as a cell writes it, without emphasis, code marks or a
-    link: `**P1**` and `[P1](IMPLEMENTATION_PLAN.md#p1-cap)` both give P1."""
+    link: `**P1**` and `[P1](IMPLEMENTATION_PLAN.md#p1-cap)` both give P1.
+    """
     text = LINK.sub(r"\1", cell)
     return re.sub(r"\*\*|__", "", text).strip("*_` ")
 
@@ -678,7 +683,8 @@ def check_other_file(path, lines):
 
 def requirement_tables(lines):
     """Every table in SRD.md's lines whose first column is ID. Fenced code and
-    HTML comments are skipped."""
+    HTML comments are skipped.
+    """
     found = tables(uncommented(unfenced(lines)))
     return [
         table for table in found if table.header and table.header[0].strip("*_` ").lower() == "id"
@@ -687,14 +693,16 @@ def requirement_tables(lines):
 
 def requirement_rows(lines):
     """The rows of every table in SRD.md's lines whose first column is ID, as
-    (1-based line, cells)."""
+    (1-based line, cells).
+    """
     return [row for table in requirement_tables(lines) for row in table.rows]
 
 
 def requirement_id(cells):
     """The requirement ID in a row's first cell: its first word that holds a
     digit, leaving out HTML tags and link targets. None for a note row such as
-    `| — |`."""
+    `| — |`.
+    """
     text = LINK_TARGET.sub("]", TAG.sub("", cells[0] if cells else ""))
     words = (word.strip("._-") for word in re.findall(r"[\w.-]+", text))
     return next((word for word in words if re.search(r"\d", word)), None)
@@ -702,7 +710,8 @@ def requirement_id(cells):
 
 def done_when_items(body):
     """The paragraphs and list items of ## Done when's lines, as (index of the
-    first line, text). A wrapped line belongs to the item above it."""
+    first line, text). A wrapped line belongs to the item above it.
+    """
     items, after_blank = [], True
     for i, line in enumerate(body):
         if not line.strip() or THEMATIC_BREAK.match(line):

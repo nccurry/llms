@@ -1,8 +1,8 @@
 """The plc-mr-review eval fixture sets up its situation, and
-check_mr_review.py passes a correct result and fails a wrong one."""
+check_mr_review.py passes a correct result and fails a wrong one.
+"""
 
 import json
-import os
 import subprocess
 import sys
 import tempfile

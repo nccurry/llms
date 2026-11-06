@@ -407,7 +407,8 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
     def convert_old_shape(self, change_readme=None, change_plan=None) -> tuple[Path, str, str]:
         """Build old-shape and write the result its grader expects, after
         `change_readme` and `change_plan` (functions from text to text) make
-        it wrong in one way. Return the packet folder, README and plan."""
+        it wrong in one way. Return the packet folder, README and plan.
+        """
         build("old-shape", self.dest)
         app = self.dest / "marina"
         packet = app / "docs/plans/audit-log"
@@ -538,7 +539,8 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
 
     def grow_plan(self, done_when=DONE_WHEN_LINE, change_readme=None, change_srd=None) -> Path:
         """Build grow-plan and write the result its grader expects, after the
-        arguments make it wrong in one way. Return the packet folder."""
+        arguments make it wrong in one way. Return the packet folder.
+        """
         build("grow-plan", self.dest)
         app = self.dest / "tides"
         packet = app / "docs/plans/in-progress/tide-cache"
@@ -980,7 +982,8 @@ class CheckStateTest(unittest.TestCase):
 
     def test_srd_rows_read_the_requirements_table(self):
         """An ID that is also in an earlier table without a Check column is
-        read from the table that has one."""
+        read from the table that has one.
+        """
         packet = Path(self.case_tmp.name) / "packet"
         packet.mkdir()
         (packet / "SRD.md").write_text(
@@ -1037,7 +1040,8 @@ class CheckStateTest(unittest.TestCase):
 
 class SideFileRequirementsTest(unittest.TestCase):
     """A one-file plan's -srd.md side file holds requirements too, also once
-    it moves into the packet as SRD.md."""
+    it moves into the packet as SRD.md.
+    """
 
     PLAN = "docs/plans/in-progress/plc-tide-cache.md"
     SIDE = "docs/plans/in-progress/plc-tide-cache-srd.md"

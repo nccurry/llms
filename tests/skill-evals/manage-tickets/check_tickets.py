@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from host_fixture import BRANCH, host_calls, host_state  # noqa: E402
+from host_fixture import BRANCH, host_calls, host_state
 
 TICKET_REF = re.compile(r"\b[A-Z][A-Z0-9]+-\d+\b|(?<![\w&!])#\d+\b")
 

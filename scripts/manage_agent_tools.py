@@ -384,10 +384,8 @@ def lock_serena() -> dict[str, Any]:
 
 def serena_constraints_current() -> bool:
     installed = TOOLS / "serena-constraints.txt"
-    return (
-        not SERENA_CONSTRAINTS.is_file()
-        or installed.is_file()
-        and installed.read_bytes() == SERENA_CONSTRAINTS.read_bytes()
+    return not SERENA_CONSTRAINTS.is_file() or (
+        installed.is_file() and installed.read_bytes() == SERENA_CONSTRAINTS.read_bytes()
     )
 
 

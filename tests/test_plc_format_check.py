@@ -151,7 +151,8 @@ def edit(old, new, text=VALID):
 
 def with_done_when(body, text=VALID):
     """A README with `## Done when` holding body, just before `## Log`, so the
-    section's heading is line 18 and its body starts on line 20."""
+    section's heading is line 18 and its body starts on line 20.
+    """
     return edit("## Log", f"## Done when\n\n{body}\n\n## Log", text)
 
 
@@ -646,7 +647,8 @@ class PacketRulesTest(unittest.TestCase):
 
     def test_merge_requests_forms_the_neighbouring_rules_accept(self):
         """Linked and bold phase IDs, emphasis in State, any header case, and
-        links whose target holds parentheses or is an autolink."""
+        links whose target holds parentheses or is an autolink.
+        """
         linked = edit(
             "| P1 | Cap retries | | Planned |",
             "| [P1](IMPLEMENTATION_PLAN.md#p1-cap) | Cap | | Planned |",
@@ -1050,7 +1052,8 @@ class TemplateTest(unittest.TestCase):
 
     def write_filled_packet(self, sadd=lambda text: text):
         """Fill every default-packet template into the packet, passing the
-        SADD template through sadd first."""
+        SADD template through sadd first.
+        """
         for source in sorted((SKILL / "assets" / "default-packet").glob("*.md")):
             text = source.read_text(encoding="utf-8")
             if source.name == "SADD.md":
@@ -1069,7 +1072,8 @@ class TemplateTest(unittest.TestCase):
     def test_visual_aids_rule(self):
         """plc-planning states the visual aids rule once, among its rules:
         encouraged, not required, which kind for which information, and where
-        each lives."""
+        each lives.
+        """
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         self.assertEqual(text.count("#### Visual aids\n"), 1)
         self.assertEqual(" ".join(text.split()).count("never required"), 1)
@@ -1099,7 +1103,8 @@ class TemplateTest(unittest.TestCase):
     def test_sadd_diagram_examples_stay_in_comments(self):
         """The SADD template's Mermaid examples sit in HTML comments, so an
         unfilled diagram is not copied into a plan, and a plan that takes them
-        out of their comments still passes the strict check."""
+        out of their comments still passes the strict check.
+        """
         text = (SKILL / "assets" / "default-packet" / "SADD.md").read_text(encoding="utf-8")
         lines = text.splitlines()
         self.assertFalse(any("```mermaid" in line for line in fc.uncommented(lines)))
@@ -1138,7 +1143,8 @@ class TemplateTest(unittest.TestCase):
 
     def test_fixed_fields_match_the_templates(self):
         """Every template in assets/ is in the skill's Fixed fields list, and
-        holds the fields the list gives it, exactly."""
+        holds the fields the list gives it, exactly.
+        """
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         rules = text.split("### Rules\n", 1)[1]
 
@@ -1187,7 +1193,8 @@ class TemplateTest(unittest.TestCase):
 
     def test_independent_review_has_one_home(self):
         """plc-planning states when a plan gets an independent review; the
-        skills that write or grow plans point there instead of restating it."""
+        skills that write or grow plans point there instead of restating it.
+        """
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         rule = text.split("#### Independent review\n", 1)[1].split("\n#### ", 1)[0]
         self.assertIn("../review-and-fix-plc/SKILL.md", rule)

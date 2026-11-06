@@ -22,7 +22,6 @@ import io
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -408,7 +407,7 @@ def glab_ci(state: dict, args: list[str], json_out: bool = False) -> None:
         branch = state["mrs"][0]["source"] if state["mrs"] else state["default_branch"]
     sha = head_of(branch)
     ci = ci_for(sha)
-    if args and args[0] in ("trace", "get") or "trace" in args:
+    if (args and args[0] in ("trace", "get")) or "trace" in args:
         print(ci["log"])
         return
     data = {

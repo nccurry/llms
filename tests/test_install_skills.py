@@ -9,7 +9,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-
 spec = importlib.util.spec_from_file_location(
     "install_skills", Path(__file__).resolve().parents[1] / "scripts/install_skills.py"
 )
@@ -38,17 +37,19 @@ class ExternalRefreshTests(unittest.TestCase):
 
     def test_refresh_uses_one_revision_for_the_repository_and_hashes_payloads(self):
         original = self.manifest()
-        with patch.object(
-            installer.subprocess,
-            "run",
-            return_value=SimpleNamespace(stdout="b" * 40 + "\tHEAD\n"),
-        ) as remote:
-            with patch.object(
+        with (
+            patch.object(
+                installer.subprocess,
+                "run",
+                return_value=SimpleNamespace(stdout="b" * 40 + "\tHEAD\n"),
+            ) as remote,
+            patch.object(
                 installer.urllib.request,
                 "urlopen",
                 side_effect=lambda *a, **k: io.BytesIO(b"upstream"),
-            ):
-                result = installer.refresh_external_specs(original)
+            ),
+        ):
+            result = installer.refresh_external_specs(original)
         self.assertEqual(remote.call_count, 1)
         for item in result["external_skills"]:
             self.assertEqual(item["commit"], "b" * 40)
@@ -58,26 +59,30 @@ class ExternalRefreshTests(unittest.TestCase):
 
     def test_failed_download_keeps_the_original_pins(self):
         original = self.manifest()
-        with patch.object(
-            installer.subprocess,
-            "run",
-            return_value=SimpleNamespace(stdout="b" * 40 + "\tHEAD\n"),
+        with (
+            patch.object(
+                installer.subprocess,
+                "run",
+                return_value=SimpleNamespace(stdout="b" * 40 + "\tHEAD\n"),
+            ),
+            patch.object(installer.urllib.request, "urlopen", side_effect=OSError("offline")),
         ):
-            with patch.object(installer.urllib.request, "urlopen", side_effect=OSError("offline")):
-                with self.assertRaisesRegex(OSError, "offline"):
-                    installer.refresh_external_specs(original)
+            with self.assertRaisesRegex(OSError, "offline"):
+                installer.refresh_external_specs(original)
         self.assertEqual(original, self.manifest())
 
     def test_invalid_revision_stops_before_downloading(self):
-        with patch.object(
-            installer.subprocess,
-            "run",
-            return_value=SimpleNamespace(stdout="invalid\tHEAD\n"),
+        with (
+            patch.object(
+                installer.subprocess,
+                "run",
+                return_value=SimpleNamespace(stdout="invalid\tHEAD\n"),
+            ),
+            patch.object(installer.urllib.request, "urlopen") as download,
         ):
-            with patch.object(installer.urllib.request, "urlopen") as download:
-                with self.assertRaisesRegex(ValueError, "resolve upstream HEAD"):
-                    installer.refresh_external_specs(self.manifest())
-                download.assert_not_called()
+            with self.assertRaisesRegex(ValueError, "resolve upstream HEAD"):
+                installer.refresh_external_specs(self.manifest())
+            download.assert_not_called()
 
     def test_folded_description_preserves_following_upstream_fields(self):
         with tempfile.TemporaryDirectory() as temp:

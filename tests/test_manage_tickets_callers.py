@@ -1,6 +1,7 @@
 """manage-tickets owns the ticket workflow. Each of its five callers names
 it in one conditional sentence, plc-checkpoint only reads ticket state, and
-no other skill restates the workflow."""
+no other skill restates the workflow.
+"""
 
 import re
 import unittest
@@ -31,7 +32,8 @@ def text(skill: str) -> str:
 
 def sentences(skill: str) -> list[str]:
     """The skill's sentences: each paragraph, list item or heading split at
-    sentence ends, with line breaks joined."""
+    sentence ends, with line breaks joined.
+    """
     blocks = re.split(r"\n\s*\n|\n(?=\s*(?:[-*]|\d+\.|#+)\s)", text(skill))
     found = []
     for block in blocks:

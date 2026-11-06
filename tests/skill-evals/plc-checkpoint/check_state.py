@@ -58,14 +58,14 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import fixture_lib  # noqa: E402
-from fixture_lib import (  # noqa: E402
+import fixture_lib
+from fixture_lib import (
     LOG_DATE,
+    PLACEHOLDER,
     is_ancestor,
     listed_checkouts,
     packet_file_hashes,
     phase_rule_problem,
-    PLACEHOLDER,
     remote_refs,
     requirements_by_id,
     section_lines,
@@ -85,7 +85,8 @@ LINE_BREAK = re.compile(r"<br\s*/?>", re.IGNORECASE)
 
 def done_when_problem(readme: str, line: str) -> str | None:
     """How the README's `## Done when` fails to sit directly after `## Phases`
-    holding only `line`, or None."""
+    holding only `line`, or None.
+    """
     names = section_names(readme)
     if "Done when" not in names:
         return "README has no ## Done when"
@@ -101,7 +102,8 @@ def done_when_problem(readme: str, line: str) -> str | None:
 def has_check(cell: str | None) -> bool:
     """True when a requirement row's Check cell holds a check: not missing,
     empty, a dash, or a placeholder such as TBD, N/A or `<command>`. Text in
-    code spans, such as `show --max-age <n>`, and <br> line breaks are fine."""
+    code spans, such as `show --max-age <n>`, and <br> line breaks are fine.
+    """
     if cell is None:
         return False
     text = cell.strip(" *_`")
@@ -112,7 +114,8 @@ def has_check(cell: str | None) -> bool:
 
 def check_cell(header: list[str], cells: list[str]) -> str | None:
     """A requirement row's Check cell: the column named Check, or else the
-    last column. None when the row is too short to have it."""
+    last column. None when the row is too short to have it.
+    """
     names = [name.strip("*_` ").lower() for name in header]
     column = names.index("check") if "check" in names else len(header) - 1
     return cells[column] if column < len(cells) else None
@@ -121,7 +124,8 @@ def check_cell(header: list[str], cells: list[str]) -> str | None:
 def srd_row_problems(packet: Path, expected: dict[str, list[str]]) -> list[str]:
     """How SRD.md's requirement rows break `srd_rows` from _expect.json. For an
     ID with rows in several tables, the first row in a table with a Check
-    column counts."""
+    column counts.
+    """
     srd_path = packet / "SRD.md"
     if not srd_path.is_file():
         return ["SRD.md is missing"]
@@ -144,7 +148,8 @@ def srd_row_problems(packet: Path, expected: dict[str, list[str]]) -> list[str]:
 
 def keeps(old_cells: list[str], new_cells: list[str]) -> bool:
     """True when new_cells holds each of old_cells in the same order, perhaps
-    with added cells between them, such as a new Priority column."""
+    with added cells between them, such as a new Priority column.
+    """
     remaining = iter(new_cells)
     return all(any(cell == new for new in remaining) for cell in old_cells)
 
@@ -152,7 +157,8 @@ def keeps(old_cells: list[str], new_cells: list[str]) -> bool:
 def lost_requirements(old: str, new: str) -> list[str] | None:
     """The IDs of old requirement-file text's rows that new text removed or
     changed, or None when old text has no requirement rows to compare. A row
-    is kept when a new row with its ID holds its cells in order."""
+    is kept when a new row with its ID holds its cells in order.
+    """
     before = requirements_by_id(old)
     if not before:
         return None
@@ -174,7 +180,8 @@ def srd_violations(
     is allowed, in place or in a moved copy among `new_srds`, such as a side
     file renamed to SRD.md. Changing or removing a row is not. Without the
     snapshot's own text, or without requirement rows to compare, any change
-    is a violation."""
+    is a violation.
+    """
     shown = fixture_lib.run_git(checkout, "show", f"{head}:{rel_file}").stdout
     old = shown if hashlib.sha256(shown.encode("utf-8")).hexdigest() == digest else None
     path = checkout / rel_file
@@ -198,7 +205,8 @@ def packet_content_problems(
     dest: Path, content: dict, removed_worktrees: list[str], registered: set[str]
 ) -> list[str]:
     """Each way the packet's text breaks _expect.json's `packet_content`.
-    `registered` holds the worktrees still registered, relative to `dest`."""
+    `registered` holds the worktrees still registered, relative to `dest`.
+    """
     label = content["path"]
     packet = dest / label
     one_file_plan = content.get("one_file_plan")
@@ -257,7 +265,8 @@ def sha256(path: Path) -> str | None:
 
 def moved_files(before: dict[str, str], now: dict[str, str]) -> dict[str, str]:
     """Map each packet file that is gone from its path to the new path that
-    holds exactly its content, if there is one."""
+    holds exactly its content, if there is one.
+    """
     moved: dict[str, str] = {}
     for old, digest in before.items():
         if old in now:

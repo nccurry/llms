@@ -51,7 +51,8 @@ def build(case: str, dest: Path) -> None:
 
 def env_writing_bytecode() -> dict[str, str]:
     """GIT_ENV with bytecode writing on and no cache folder elsewhere, as on
-    most machines, so the fixture's .gitignore must keep checkouts clean."""
+    most machines, so the fixture's .gitignore must keep checkouts clean.
+    """
     off = ("PYTHONDONTWRITEBYTECODE", "PYTHONPYCACHEPREFIX")
     return {key: value for key, value in GIT_ENV.items() if key not in off}
 
@@ -89,7 +90,8 @@ class WrapThisUpFixtureTest(unittest.TestCase):
     The unmet-requirement and direct-mid-stream results rewrite the plan the
     way their graders expect: Current Work, phase notes, open questions and
     Log. Every other result is checker-only: it changes just what
-    check_wrap.py reads and leaves the rest of the plan to the graders."""
+    check_wrap.py reads and leaves the rest of the plan to the graders.
+    """
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -179,7 +181,8 @@ class WrapThisUpFixtureTest(unittest.TestCase):
     def drop_checkout_rows(self, *worktrees: str) -> None:
         """Remove the "Where the work lives" rows naming `worktrees`, leaving
         the template's None row when no row is left. A row already gone is
-        skipped, so a later plan rewrite can call this again."""
+        skipped, so a later plan rewrite can call this again.
+        """
         path = self.merge_dir / PLAN / "README.md"
         text = path.read_text(encoding="utf-8")
         for worktree in worktrees:
@@ -202,7 +205,8 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         """Mark the plan Complete with P1 Verified, drop P1's checkout row, move
         the plan to completed/, and update AGENTS.md's link to it. Checker-only:
         Last updated and Next action keep their old values. `historical` is
-        "plain", "item" (a list item) or "none"."""
+        "plain", "item" (a list item) or "none".
+        """
         line = f"Historical record as of `{merge}`; the code is the current truth."
         opening = {"plain": f"{line}\n\n", "item": f"- {line}\n", "none": ""}[historical]
         if drop_row:
@@ -222,7 +226,8 @@ class WrapThisUpFixtureTest(unittest.TestCase):
     def finish_p1(self, drop_row: bool = True) -> str:
         """Merge P1, drop its checkout row from the plan, push, and remove its
         worktree and branches; return the merge. Checker-only: the rest of
-        the plan is left to the graders."""
+        the plan is left to the graders.
+        """
         merge = self.merge("plc/digest-p1")
         if drop_row:
             self.drop_checkout_rows(P1_WORKTREE)
@@ -242,7 +247,8 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         rewritten with DIG-003 recorded as missing, and everything cleaned up.
         `p1_state` and `new_rows` may name `{merge}`, the merge commit. When
         DIG-003 has moved to the new row `moved_to`, the open question blocks
-        that row and P1's changed word gets its own Log line."""
+        that row and P1's changed word gets its own Log line.
+        """
         merge = self.finish_p1(drop_row=drop_row)
         self.set_key("Last updated", f"2026-11-03, `main` at `{merge}`")
         self.set_key(
@@ -280,7 +286,8 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         merge commit. With `merge_p2` false, P2's branch is left unmerged.
         When channel posting has moved to the new row `moved_to`, P2's changed
         word gets its own Log line. `drop_rows` names the checkouts whose
-        "Where the work lives" rows the plan update removes."""
+        "Where the work lives" rows the plan update removes.
+        """
         p1 = self.merge("plc/digest-p1")
         p2 = self.merge("plc/digest-p2") if merge_p2 else p1
         self.set_key("Last updated", f"2026-11-03, `main` at `{p2}`")
@@ -942,7 +949,8 @@ MR_ROW = (
 class MrForReviewFixtureTest(unittest.TestCase):
     """The mr-for-review fixture sets up an unopened merge request, and
     check_mr_route.py fails what breaks a rule, while a missing
-    `## Merge requests` row or `Plan:` line is only a missed suggestion."""
+    `## Merge requests` row or `Plan:` line is only a missed suggestion.
+    """
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

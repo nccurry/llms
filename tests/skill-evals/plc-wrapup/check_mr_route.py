@@ -38,7 +38,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from fixture_lib import (  # noqa: E402
+from fixture_lib import (
     GIT_ENV,
     format_check,
     listed_checkouts,
@@ -49,14 +49,15 @@ from fixture_lib import (  # noqa: E402
     section_lines,
     worktree_paths,
 )
-from host_fixture import host_state  # noqa: E402
+from host_fixture import host_state
 
 REPO = "app"
 
 
 def plan_on_branch(dest: Path, branch: str, path: str) -> str | None:
     """A tar archive of the plan folder on the remote branch, or None when
-    the branch or folder is not there."""
+    the branch or folder is not there.
+    """
     archive = subprocess.run(
         [
             "git",
@@ -75,7 +76,8 @@ def plan_on_branch(dest: Path, branch: str, path: str) -> str | None:
 
 def names_mr(cell: str, number: int) -> bool:
     """True when a Merge request cell names merge request `number`: `!N`, a
-    URL ending in `/N`, or a link whose text or target does."""
+    URL ending in `/N`, or a link whose text or target does.
+    """
     return re.search(rf"(?:!|/){number}(?![\d])", cell) is not None
 
 

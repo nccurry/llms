@@ -40,7 +40,8 @@ PHASES_HEADER = "| Phase | Name | Owner | State |"
 
 def _isolated_git_env() -> dict[str, str]:
     """The environment for git commands: no global or system git config, and
-    no GIT_* variables from the caller."""
+    no GIT_* variables from the caller.
+    """
     env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
     env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
     return env
@@ -382,7 +383,8 @@ def _sections(text: str) -> list[tuple[str, list[str], list[str]]]:
 
 def section_lines(text: str, name: str) -> list[str]:
     """The lines of the first `## <name>` section, with fenced lines and HTML
-    comments blanked."""
+    comments blanked.
+    """
     return next((lines for heading, lines, _ in _sections(text) if heading == name), [])
 
 
@@ -405,7 +407,8 @@ def _phase_rows(readme: str) -> list[list[str]]:
 
 def phase_cell(readme: str, phase: str) -> str | None:
     """The State (or Status) cell of `phase`'s row in a README's `## Phases`
-    table: its word and note."""
+    table: its word and note.
+    """
     rows = _phase_rows(readme)
     header = [cell.lower() for cell in rows[0]] if rows else []
     column = next((header.index(name) for name in ("state", "status") if name in header), None)
@@ -469,7 +472,8 @@ def requirements_by_id(srd: str) -> dict[str, list[tuple[list[str], list[str]]]]
     """Each requirement row in SRD.md's text, by requirement ID, as (its
     table's header cells, its cells), as the shipped format check reads them:
     rows of a table whose first column is ID, outside fenced code and HTML
-    comments. An ID can have rows in several such tables, in file order."""
+    comments. An ID can have rows in several such tables, in file order.
+    """
     fc = format_check()
     rows: dict[str, list[tuple[list[str], list[str]]]] = {}
     for table in fc.requirement_tables(srd.splitlines()):
@@ -481,7 +485,8 @@ def requirements_by_id(srd: str) -> dict[str, list[tuple[list[str], list[str]]]]
 
 def listed_checkouts(readme: str) -> list[str]:
     """The Checkout cell of each row of Current Work's "Where the work lives"
-    table, without the header and divider."""
+    table, without the header and divider.
+    """
     lines = section_lines(readme, "Current Work")
     start = next(
         (i for i, line in enumerate(lines) if line.startswith("Where the work lives")), None

@@ -58,7 +58,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from fixture_lib import (  # noqa: E402
+from fixture_lib import (
     GIT_ENV,
     is_ancestor,
     listed_checkouts,
@@ -78,7 +78,8 @@ CURRENT_TRUTH = "the code is the current truth"
 
 def worktree_records(listing: str) -> dict[Path, list[str]]:
     """Map each worktree in `git worktree list --porcelain` output to its
-    other attribute lines, such as `branch ...` or `locked ...`."""
+    other attribute lines, such as `branch ...` or `locked ...`.
+    """
     records = {}
     for block in listing.split("\n\n"):
         lines = block.strip().splitlines()
@@ -96,7 +97,8 @@ def relative(dest: Path, path: Path) -> str:
 
 def opens_with_historical_record(readme: str) -> bool:
     """True when Current Work's first line is the historical-record line, as a
-    plain line or a list item."""
+    plain line or a list item.
+    """
     first = next((line for line in section_lines(readme, "Current Work") if line.strip()), "")
     first = first.strip().removeprefix("- ")
     return first.startswith(HISTORICAL) and CURRENT_TRUTH in first
@@ -268,7 +270,8 @@ class Checker:
 
     def check_plan(self, plan: dict) -> None:
         """Extract the packet from the remote's main and judge it by the
-        template's rules, its status word, its owner and its historical line."""
+        template's rules, its status word, its owner and its historical line.
+        """
         path = plan["path"]
         label = f"plan {path} on origin/main"
         archive = subprocess.run(

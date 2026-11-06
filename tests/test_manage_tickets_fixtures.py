@@ -1,5 +1,6 @@
 """The manage-tickets eval fixtures set up their situations, and
-check_tickets.py passes a correct result and fails a wrong one."""
+check_tickets.py passes a correct result and fails a wrong one.
+"""
 
 import json
 import os

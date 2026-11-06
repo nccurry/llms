@@ -1,6 +1,7 @@
 """The fake code host behaves like the real tools on the calls agents probe:
 `--help` changes nothing, an empty note is refused, and `-q`/`--jq`
-returns the selected field."""
+returns the selected field.
+"""
 
 import json
 import subprocess

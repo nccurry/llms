@@ -23,8 +23,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from fixture_lib import git  # noqa: E402
-from host_fixture import BRANCH, host_calls, host_state  # noqa: E402
+from fixture_lib import git
+from host_fixture import BRANCH, host_calls, host_state
 
 FAKE_USER = "dev"
 # The fixture's tests. Weakening or deleting one is not a CI fix.
