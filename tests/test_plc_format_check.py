@@ -327,6 +327,16 @@ class PacketRulesTest(unittest.TestCase):
             self.check(thirteen), [f"{R}:5: Current Work: 13 keys; at most 12 are allowed"]
         )
 
+    def test_priority_is_optional_and_starts_with_a_priority_word(self):
+        after = "- Last updated: 2026-11-03\n"
+        for value in ("High", "medium — after PLC-011", "**Low**"):
+            self.assertEqual(self.check(edit(after, after + f"- Priority: {value}\n")), [])
+        message = "Current Work: Priority does not start with High, Medium or Low"
+        for value, shown in (("P1", "P1"), ("Highest", "Highest"), ("", "(empty)")):
+            bad = edit(after, after + f"- Priority: {value}\n")
+            self.assertEqual(self.check(bad), [f"{R}:10: {message}: {shown}"])
+        self.assertEqual(fc.DEFAULT_PRIORITY, "Medium")
+
     def test_last_updated_starts_with_a_date(self):
         message = "Current Work: Last updated does not start with a YYYY-MM-DD date"
         for value in ("today, 2026-11-03", "2026-11, later"):

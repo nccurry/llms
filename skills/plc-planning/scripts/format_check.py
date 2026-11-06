@@ -27,7 +27,8 @@ in SRD.md whose first column is ID. An optional ## Merge requests section
 holds one table, | Phase | Merge request | State | Note |: each row's phase is
 an ID from the ## Phases table, its merge request is !12, #34 or a full URL,
 and its State is Open, Merged @ <commit> or Closed — <reason>. HTML comments
-and fenced code blocks are ignored.
+and fenced code blocks are ignored. An optional Priority line in Current Work
+starts with High, Medium or Low; a packet without one is Medium.
 
 --strict also checks the five rules across fields:
   1. Status matches the lifecycle folder.
@@ -42,12 +43,15 @@ Prints one line per finding. Exit 0: nothing found. 1: findings. 2: a bad path
 or argument, nothing to check, or a file that could not be read.
 
 Python API, for tools that load this file by path:
-  PACKET_WORDS, PHASE_WORDS
+  PACKET_WORDS, PHASE_WORDS, PRIORITY_WORDS
       Each canonical word, mapped to the older spellings it accepts.
+  DEFAULT_PRIORITY
+      The priority of a packet with no Priority line: Medium.
   cells(line) -> list[str]
       The cells of a Markdown table row.
   lookup_word(words, text) -> str | None
-      The canonical word from PACKET_WORDS or PHASE_WORDS that starts text.
+      The canonical word from PACKET_WORDS, PHASE_WORDS or PRIORITY_WORDS
+      that starts text.
   check_packet(path, people=(), strict=False, lifecycle=None) -> list[str]
       The finding lines for one packet, exactly as printed. Raises ReadError
       when a file cannot be read.
@@ -97,6 +101,8 @@ PHASE_WORDS = {
     "Deferred": [],
     "Dropped": [],
 }
+PRIORITY_WORDS = {"High": [], "Medium": [], "Low": []}
+DEFAULT_PRIORITY = "Medium"
 
 # The rules across fields (--strict).
 FOLDER_STATUS = {
@@ -498,6 +504,12 @@ def check_current_work(readme, lines, parts, people, *, strict, lifecycle):
     elif not DATE.match(updated.value):
         message = "Current Work: Last updated does not start with a YYYY-MM-DD date"
         found.append(finding(readme, updated.line, message))
+
+    priority = first.get("priority")
+    if priority is not None and lookup_word(PRIORITY_WORDS, priority.value) is None:
+        value = priority.value[:60] or "(empty)"
+        message = f"Current Work: Priority does not start with High, Medium or Low: {value}"
+        found.append(finding(readme, priority.line, message))
 
     if strict and status is not None and status_word:
         allowed = FOLDER_STATUS.get(lifecycle)
