@@ -35,7 +35,7 @@ REAL_MANIFEST: dict[str, Any] = json.loads(
 TOOL_NAMES = ", ".join(REAL_MANIFEST["tools"])
 INSTALLER_NAMES = "uv, npm, github-release"
 ENTRY_RULE = "must be a path inside the package when runs_with is node"
-RELEASE_RULE = "must be an https URL containing /download/<tag>, with the tag ending in the version"
+RELEASE_RULE = "must be <source>/releases/download/<tag>, with the tag ending in the version"
 
 
 def real_entry(name: str) -> dict[str, Any]:
@@ -261,7 +261,7 @@ class ManifestValidationTests(TempManifestCase):
                 self.check_message(f"tools.{tool}.{field} {message}")
 
     def test_names_that_leave_the_tools_folder_are_refused(self) -> None:
-        bad = ["../x", "/abs", "C:x", "-x", "a/b", "a\\b", "x..y", "", " x"]
+        bad = ["../x", "/abs", "C:x", "-x", "a/b", "a\\b", "x..y", "", " x", "a\n"]
         for value in bad:
             for tool in ("cq", "serena", "ast-grep"):
                 with self.subTest(tool=tool, field="bin", value=value):
@@ -285,7 +285,9 @@ class ManifestValidationTests(TempManifestCase):
         self.assertIn("gitnexus", setup.manifest()["tools"])
 
     def test_entries_must_stay_inside_the_package(self) -> None:
-        for value in ["../x", "a/../x", "/abs", "C:x", "a\\b", ""]:
+        bad = ["../x", "a/../x", "/abs", "C:x", "a\\b", "", "x.js\n"]
+        bad += [".. /x", "a/.. ", " ..", "a/. /b", "a/b.", "a /b", "./a"]
+        for value in bad:
             with self.subTest(value=value):
                 self.with_field("gitnexus", "entry", value)
                 self.check_message(f"tools.gitnexus.entry {ENTRY_RULE}")
@@ -295,11 +297,38 @@ class ManifestValidationTests(TempManifestCase):
             "https://github.com/mozilla-ai/cq/releases/download/cli/v9.9.9",
             "https://github.com/x/y/releases/latest",
             "http://github.com/x/y/releases/download/v0.18.0",
+            "https://evil.com/download/v0.18.0",
+            "https://github.com@evil.com/o/r/releases/download/v0.18.0",
+            "https://evil.com/x?/download/v0.18.0",
+            "https://github.com/o/r/releases/download/../../../../evil/v0.18.0",
+            "https://github.com/other/repo/releases/download/cli/v0.18.0",
+            "https://github.com/mozilla-ai/cq/releases/download/cli/v0.18.0?x=1",
+            "https://github.com/mozilla-ai/cq/releases/download/cli/v0.18.0\n",
+            "https://github.com/mozilla-ai/cq/releases/download/cli/#v0.18.0",
         ]
         for value in wrong:
             with self.subTest(value=value):
                 self.with_field("cq", "release", value)
                 self.check_message(f"tools.cq.release {RELEASE_RULE}")
+
+    def test_a_trailing_newline_is_refused_everywhere(self) -> None:
+        cases = [
+            ("serena", "bin", "serena\n"),
+            ("serena", "package", "serena-agent\n"),
+            ("serena", "version", "1.7.0\n"),
+            ("serena", "python", "3.13\n"),
+            ("gitnexus", "package", "@s/p\n"),
+            ("gitnexus", "entry", "dist/x.js\n"),
+            ("cq", "source", "https://github.com/mozilla-ai/cq\n"),
+            ("serena", "extra_bins", ["serena-hooks\n"]),
+            ("serena", "dependency_overrides", {"urllib3\n": "2.8.0"}),
+            ("serena", "dependency_overrides", {"urllib3": "2.8.0\n"}),
+        ]
+        for tool, field, value in cases:
+            with self.subTest(tool=tool, field=field, value=value):
+                self.with_field(tool, field, value)
+                with self.assertRaises(setup.ManifestError):
+                    setup.manifest()
 
     def test_the_source_must_be_a_github_repository(self) -> None:
         for value in ["https://example.com/a/b", "https://github.com/a", "git@github.com:a/b", 5]:

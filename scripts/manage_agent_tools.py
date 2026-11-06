@@ -64,8 +64,9 @@ PLAIN_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 PACKAGE_NAME = re.compile(r"^(@[A-Za-z0-9][A-Za-z0-9._-]*/)?[A-Za-z0-9][A-Za-z0-9._-]*$")
 VERSION_TEXT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+!-]*$")
 GITHUB_REPOSITORY = re.compile(
-    r"^https://github\.com/[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*/?$"
+    r"https://github\.com/[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*/?"
 )
+RELEASE_TAG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*")
 PLAIN_RULE = (
     "must be a plain name: letters, digits, '.', '_' and '-', starting with a letter or digit"
 )
@@ -98,18 +99,23 @@ def manifest_error(name: str, field: str, rule: str) -> ManifestError:
 
 
 def is_plain(value: object, pattern: re.Pattern[str] = PLAIN_NAME) -> bool:
-    return isinstance(value, str) and bool(pattern.match(value)) and ".." not in value
+    return isinstance(value, str) and bool(pattern.fullmatch(value)) and ".." not in value
 
 
 def is_relative_path(value: object) -> bool:
-    """Tell whether the value is a file path inside a folder: no root, drive, backslash or `..`."""
+    """Tell whether the value is a file path inside a folder.
+
+    No root, drive, backslash or `..`, and no part that is only dots and spaces or that ends in
+    a dot or space, because Windows trims those.
+    """
     return (
         isinstance(value, str)
         and bool(value)
+        and value.isprintable()
         and not value.startswith("/")
         and "\\" not in value
         and ":" not in value
-        and ".." not in value.split("/")
+        and all(part.strip(" .") and part == part.rstrip(" .") for part in value.split("/"))
     )
 
 
@@ -161,21 +167,24 @@ def npm_fields(name: str, spec: dict[str, Any], version: str) -> dict[str, Any]:
 
 def release_fields(name: str, spec: dict[str, Any], version: str) -> dict[str, Any]:
     source = spec.get("source")
-    if not isinstance(source, str) or not GITHUB_REPOSITORY.match(source):
+    if not isinstance(source, str) or not GITHUB_REPOSITORY.fullmatch(source):
         raise manifest_error(
             name, "source", "must be a GitHub repository URL when installer is github-release"
         )
     release = spec.get("release")
-    tag = release.partition("/download/")[2] if isinstance(release, str) else ""
-    if (
-        not isinstance(release, str)
-        or not release.startswith("https://")
-        or not (tag.endswith(version) and len(tag) > len(version))
+    prefix = source.rstrip("/") + "/releases/download/"
+    tag = release.removeprefix(prefix) if isinstance(release, str) else ""
+    if not (
+        isinstance(release, str)
+        and release.startswith(prefix)
+        and is_plain(tag, RELEASE_TAG)
+        and tag.endswith(version)
+        and len(tag) > len(version)
     ):
         raise manifest_error(
             name,
             "release",
-            "must be an https URL containing /download/<tag>, with the tag ending in the version",
+            "must be <source>/releases/download/<tag>, with the tag ending in the version",
         )
     checksums = spec.get("checksums")
     if not isinstance(checksums, dict) or not all(
