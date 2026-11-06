@@ -482,7 +482,7 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("fixture")
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--protect", action="append", default=[])

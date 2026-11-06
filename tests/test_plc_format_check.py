@@ -145,6 +145,13 @@ SRD = """\
 """
 
 
+def search(pattern, text, flags=0):
+    """Return the match of `pattern` in `text`, failing the test when there is none."""
+    found = re.search(pattern, text, flags)
+    assert found is not None, f"{pattern!r} not found"
+    return found
+
+
 def edit(old, new, text=VALID):
     assert text.count(old) == 1, old
     return text.replace(old, new)
@@ -1064,7 +1071,7 @@ class TemplateTest(unittest.TestCase):
         # With SRD.md, the requirements leave ## Done when for the pointer line.
         readme = self.packet / "README.md"
         text = readme.read_text(encoding="utf-8")
-        requirement = re.search(r"^- REQ-001: .*$", text, flags=re.MULTILINE)[0]
+        requirement = search(r"^- REQ-001: .*$", text, flags=re.MULTILINE)[0]
         readme.write_text(edit(requirement, POINTER, text), encoding="utf-8")
 
     def test_default_packet_passes_when_filled(self):
@@ -1169,7 +1176,7 @@ class TemplateTest(unittest.TestCase):
 
         # The README's sections and keys are the ones the rules name.
         sections = re.findall(r"`(## [^`]+)`", rule("Order and format").split(" - ")[0])
-        keys = re.search(
+        keys = search(
             r"- (Status), (Owner) and (Last updated) come first.*?Then ([^.]+)\.",
             rule("Current Work"),
         )
@@ -1211,16 +1218,16 @@ class TemplateTest(unittest.TestCase):
     def test_skill_word_list_matches_the_check(self):
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         words = " ".join(text.split("### Words\n", 1)[1].split("\n### ", 1)[0].split())
-        packet = re.search(r"\*\*Packet status words:\*\* (.+?)\. - ", words)[1].split(", ")
-        ladder = re.search(r"\*\*Phase state words, in order:\*\*(.+?)- \*\*Side states", words)[1]
+        packet = search(r"\*\*Packet status words:\*\* (.+?)\. - ", words)[1].split(", ")
+        ladder = search(r"\*\*Phase state words, in order:\*\*(.+?)- \*\*Side states", words)[1]
         phases = re.findall(r"- ([A-Z][a-z]+(?: [a-z]+)?)[;:]", ladder)
-        phases += re.search(r"\*\*Side states:\*\* ([^.]+)\.", words)[1].split(", ")
+        phases += search(r"\*\*Side states:\*\* ([^.]+)\.", words)[1].split(", ")
         self.assertEqual(packet, list(fc.PACKET_WORDS))
         self.assertEqual(phases, list(fc.PHASE_WORDS))
         for kind, table in (("packets", fc.PACKET_WORDS), ("phases", fc.PHASE_WORDS)):
             older = {}
-            for group in re.search(rf"For {kind}: (.+?)\. - ", words)[1].split("; "):
-                spellings, canonical = re.fullmatch(r"(.+) \((.+)\)", group).groups()
+            for group in search(rf"For {kind}: (.+?)\. - ", words)[1].split("; "):
+                spellings, canonical = search(r"^(.+) \((.+)\)$", group).groups()
                 older[canonical] = re.split(r", | and ", spellings)
             self.assertEqual(
                 older, {canonical: spellings for canonical, spellings in table.items() if spellings}

@@ -109,7 +109,7 @@ class WrapThisUpFixtureTest(unittest.TestCase):
     def build(self, case: str) -> None:
         build(case, self.dest)
         self.p1_tip = git(self.p1, "rev-parse", "HEAD")
-        self.p2_tip = git(self.p2, "rev-parse", "HEAD") if self.p2.exists() else None
+        self.p2_tip = git(self.p2, "rev-parse", "HEAD") if self.p2.exists() else ""
 
     # Steps of a wrap-up.
 

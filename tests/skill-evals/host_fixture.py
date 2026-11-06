@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import shutil
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -85,7 +86,7 @@ class BackoffTest(unittest.TestCase):
 def build_app(
     dest: Path,
     files: dict[str, str],
-    history: list[tuple[str, dict[str, str]]] = (),
+    history: Sequence[tuple[str, dict[str, str]]] = (),
     capped: bool = True,
 ) -> Path:
     """Create `app.git` and `app/` with `files` and `history` on main, then

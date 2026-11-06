@@ -27,6 +27,7 @@ import sys
 import tempfile
 import urllib.parse
 from pathlib import Path
+from typing import NoReturn
 
 HOST_DIR = Path(__file__).resolve().parent
 STATE = HOST_DIR / "state.json"
@@ -48,7 +49,7 @@ def log(argv: list[str]) -> None:
         file.write(json.dumps({"argv": argv}) + "\n")
 
 
-def fail(message: str) -> None:
+def fail(message: str) -> NoReturn:
     print(message, file=sys.stderr)
     sys.exit(1)
 

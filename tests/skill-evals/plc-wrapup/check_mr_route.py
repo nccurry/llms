@@ -54,7 +54,7 @@ from host_fixture import host_state
 REPO = "app"
 
 
-def plan_on_branch(dest: Path, branch: str, path: str) -> str | None:
+def plan_on_branch(dest: Path, branch: str, path: str) -> bytes | None:
     """A tar archive of the plan folder on the remote branch, or None when
     the branch or folder is not there.
     """

@@ -125,7 +125,7 @@ def plan_files(variant: str, start: str) -> dict[str, str]:
             "- Requirements: DIG-001, DIG-003\n"
             "- Checks: `test_email_header` and `test_email_footer` pass.",
         )
-    phases = [p1]
+    phases: list[tuple[str, str, str, str]] = [p1]
     checkouts = [("notify-wt/digest/p1-email", "plc/digest-p1", "p1 child", "in progress")]
     if with_p2:
         requirements += REQ_SLACK
