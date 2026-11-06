@@ -14,7 +14,7 @@ EVALS = Path(__file__).resolve().parent / "skill-evals"
 CASES = EVALS / "manage-tickets"
 sys.path.insert(0, str(EVALS))
 from fixture_lib import GIT_ENV, git  # noqa: E402 - sys.path is set above
-from host_fixture import BRANCH, host_state  # noqa: E402 - sys.path is set above
+from host_fixture import BRANCH, host_command, host_state  # noqa: E402 - sys.path is set above
 
 
 class ManageTicketsFixtureTest(unittest.TestCase):
@@ -38,7 +38,7 @@ class ManageTicketsFixtureTest(unittest.TestCase):
         env = dict(GIT_ENV, PYTHONDONTWRITEBYTECODE="1")
         env["PATH"] = f"{self.dest / 'bin'}{os.pathsep}{env.get('PATH', '')}"
         result = subprocess.run(
-            [str(self.dest / "bin" / argv[0]), *argv[1:]],
+            [*host_command(self.dest, argv[0]), *argv[1:]],
             cwd=self.dest / "app",
             capture_output=True,
             text=True,

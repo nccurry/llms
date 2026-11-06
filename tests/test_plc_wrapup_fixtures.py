@@ -22,6 +22,7 @@ from fixture_lib import (  # noqa: E402 - sys.path is set above
     phase_rule_problem,
     phase_state,
 )
+from host_fixture import host_command  # noqa: E402 - sys.path is set above
 
 ALL_CASES = [
     "direct-mid-stream",
@@ -970,7 +971,7 @@ class MrForReviewFixtureTest(unittest.TestCase):
     def glab(self, *args: str) -> str:
         env = dict(GIT_ENV, PYTHONDONTWRITEBYTECODE="1")
         result = subprocess.run(
-            [str(self.dest / "bin" / "glab"), *args],
+            [*host_command(self.dest, "glab"), *args],
             cwd=self.app,
             capture_output=True,
             text=True,

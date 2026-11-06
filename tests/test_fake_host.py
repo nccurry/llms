@@ -13,6 +13,7 @@ from pathlib import Path
 EVALS = Path(__file__).resolve().parent / "skill-evals"
 sys.path.insert(0, str(EVALS))
 from fixture_lib import GIT_ENV  # noqa: E402 - sys.path is set above
+from host_fixture import host_command  # noqa: E402 - sys.path is set above
 
 
 class FakeHostTest(unittest.TestCase):
@@ -36,7 +37,7 @@ class FakeHostTest(unittest.TestCase):
     def run_tool(self, *args: str) -> subprocess.CompletedProcess:
         env = dict(GIT_ENV, PYTHONDONTWRITEBYTECODE="1")
         return subprocess.run(
-            [str(self.dest / "bin" / args[0]), *args[1:]],
+            [*host_command(self.dest, args[0]), *args[1:]],
             cwd=self.dest / "app",
             capture_output=True,
             text=True,

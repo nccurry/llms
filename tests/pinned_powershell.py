@@ -17,7 +17,9 @@ ROOT = Path(__file__).resolve().parents[1]
 INSTALLS = ROOT / ".tools/lint-mise/data/installs/powershell"
 
 # Parses a script without running it and prints the value of each word on its command line.
+# Windows writes console output in the OEM code page unless told otherwise; the caller reads UTF-8.
 PARSE_COMMAND_WORDS = """
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $errors = $null
 $tree = [System.Management.Automation.Language.Parser]::ParseInput(
     $env:LLMS_TEST_SCRIPT, [ref] $null, [ref] $errors)

@@ -34,10 +34,15 @@ class PinnedModuleTests(unittest.TestCase):
                 f"@{{ RootModule = '{name}.psm1'; ModuleVersion = '{DECOY_VERSION}';"
                 " GUID = '7c1f6a0e-1111-4222-8333-444455556666' }\n"
             )
+        # Windows keeps the user module folder under Documents, not HOME, so list the decoys there.
+        module_path = str(MODULES)
+        if os.name == "nt":
+            decoys = self.home / ".local/share/powershell/Modules"
+            module_path = os.pathsep.join([str(decoys), module_path])
         self.env = {
             **os.environ,
             "HOME": str(self.home),
-            "PSModulePath": str(MODULES),
+            "PSModulePath": module_path,
             "XDG_DATA_HOME": str(self.home / ".local/share"),
             "XDG_CONFIG_HOME": str(self.home / ".config"),
             "XDG_CACHE_HOME": str(self.home / ".cache"),

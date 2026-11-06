@@ -34,6 +34,11 @@ SYSTEM_ROOT = "D:/WinNT"
 POWERSHELL_5 = f"{SYSTEM_ROOT}/System32/WindowsPowerShell/v1.0/powershell.exe"
 
 
+def native(path):
+    """A path as the script writes it on this host: with backslashes when run on Windows."""
+    return str(Path(path))
+
+
 class WindowsOs:
     """The `os` module, except that `name` is "nt"."""
 
@@ -62,7 +67,7 @@ class WindowsBranchTests(unittest.TestCase):
             hook = setup.serena_hook(setup.adapter_for("codex"), "activate")
         self.assertEqual(
             hook["command"],
-            '"C:/Program Files/Tools/bin/serena-hooks.exe" activate --client=codex',
+            f'"{native("C:/Program Files/Tools/bin/serena-hooks.exe")}" activate --client=codex',
         )
         self.assertEqual(hook["type"], "command")
         self.assertNotIn("args", hook)
@@ -73,14 +78,14 @@ class WindowsBranchTests(unittest.TestCase):
             hook = setup.serena_hook(setup.adapter_for("codex"), "remind")
         self.assertEqual(
             hook["command"],
-            "\"C:/Users/O\u2019Brien/My 'Repos'/llms/.tools/agent-tools/bin/serena-hooks.exe\""
+            f'"{native(f"{REPOSITORY}/.tools/agent-tools/bin/serena-hooks.exe")}"'
             " remind --client=codex",
         )
 
     def test_claude_serena_hook_keeps_the_command_and_arguments_apart(self):
         with patch.object(setup, "TOOLS", Path("C:/Program Files/Tools")):
             hook = setup.serena_hook(setup.adapter_for("claude"), "remind")
-        self.assertEqual(hook["command"], "C:/Program Files/Tools/bin/serena-hooks.exe")
+        self.assertEqual(hook["command"], native("C:/Program Files/Tools/bin/serena-hooks.exe"))
         self.assertEqual(hook["args"], ["remind", "--client=claude-code"])
 
     def gitnexus_codex_launch(self):
@@ -156,20 +161,20 @@ class WindowsBranchTests(unittest.TestCase):
                 copy_from=Path("C:/Users/O\u2019Brien/.codex/config.toml.bak"),
             )
         base = [
-            POWERSHELL_5,
+            native(POWERSHELL_5),
             "-NoProfile",
             "-ExecutionPolicy",
             "Bypass",
             "-File",
-            f"{REPOSITORY}/scripts/set_private_permissions.ps1",
+            native(f"{REPOSITORY}/scripts/set_private_permissions.ps1"),
             "-Path",
-            "C:/Users/O\u2019Brien/.codex/config.toml",
+            native("C:/Users/O\u2019Brien/.codex/config.toml"),
         ]
         self.assertEqual(
             calls,
             [
                 (base,),
-                ([*base, "-CopyFrom", "C:/Users/O\u2019Brien/.codex/config.toml.bak"],),
+                ([*base, "-CopyFrom", native("C:/Users/O\u2019Brien/.codex/config.toml.bak")],),
             ],
         )
 

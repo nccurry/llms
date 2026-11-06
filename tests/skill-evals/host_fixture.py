@@ -152,6 +152,22 @@ def install_host(dest: Path, host: str, tools: tuple[str, ...], state: dict | No
             encoding="utf-8",
         )
         wrapper.chmod(0o755)
+        # Windows runs neither shebang scripts nor files without an extension, so
+        # PowerShell and cmd find this wrapper instead. cmd cuts an argument at a
+        # newline; Git Bash runs the shell wrapper above, which keeps them.
+        (bin_dir / f"{tool}.cmd").write_text(
+            f'@"{sys.executable}" "{host_dir / "fake_host.py"}" {tool} %*\r\n',
+            encoding="utf-8",
+        )
+
+
+def host_command(dest: Path, tool: str) -> list[str]:
+    """The command that runs a fake CLI with every argument intact on this platform."""
+    if not (dest / "bin" / tool).is_file():
+        raise FileNotFoundError(f"fake {tool} is not installed in {dest / 'bin'}")
+    if sys.platform == "win32":
+        return [sys.executable, str(dest / "_host" / "fake_host.py"), tool]
+    return [str(dest / "bin" / tool)]
 
 
 def host_state(dest: Path) -> dict:

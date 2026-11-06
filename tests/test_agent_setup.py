@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -98,13 +99,17 @@ class ConfigWriteTests(unittest.TestCase):
         target.parent.mkdir()
         target.write_text("{}\n")
         link = self.root / "settings.json"
-        link.symlink_to(target)
+        try:
+            link.symlink_to(target)
+        except OSError as error:  # Windows needs Developer Mode or admin rights for symlinks.
+            self.skipTest(f"cannot create a symlink here: {error}")
 
         self.assertEqual(setup.update_file(link, '{"a": 1}\n'), "updated")
 
         self.assertTrue(link.is_symlink())
         self.assertEqual(target.read_text(), '{"a": 1}\n')
 
+    @unittest.skipIf(os.name == "nt", "Windows uses ACLs, checked in test_windows_branches")
     def test_update_drops_group_and_world_write(self):
         path = self.root / "hooks.json"
         path.write_text("{}\n")
@@ -197,7 +202,8 @@ class ConfigWriteTests(unittest.TestCase):
         settings.write_text(json.dumps({"env": {"PATH": "/stale/dir", "KEEP": "1"}}))
         with (
             patch.object(Path, "home", return_value=home),
-            patch.object(setup, "tool_env", return_value={"PATH": "/usr/bin"}),
+            # Keep the rest of the environment: Windows PowerShell cannot start without SystemRoot.
+            patch.object(setup, "tool_env", return_value={**os.environ, "PATH": "/usr/bin"}),
         ):
             setup.configure_claude_environment()
         self.assertEqual(

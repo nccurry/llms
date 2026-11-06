@@ -19,6 +19,7 @@ the upstream installers and the server list.
 
 import importlib.util
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -32,6 +33,8 @@ assert spec is not None and spec.loader is not None
 setup = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(setup)
 
+# The setup script always writes an absolute Serena home; "/serena" has no drive on Windows.
+SERENA_HOME = str(Path("/serena").resolve())
 SERENA_ARGS = ["start-mcp-server", "--context", "", "--open-web-dashboard", "false"]
 
 
@@ -40,7 +43,7 @@ def managed_servers() -> dict:
         "serena": {
             "command": "/managed/serena",
             "args": list(SERENA_ARGS),
-            "env": {"PATH": "/managed/bin", "SERENA_HOME": "/serena"},
+            "env": {"PATH": "/managed/bin", "SERENA_HOME": SERENA_HOME},
             "startup_timeout_sec": 60,
         },
         "gitnexus": {
@@ -152,7 +155,7 @@ class HostTestCase(unittest.TestCase):
             patch.object(setup, "serena_configuration", return_value={}),
             patch.object(setup, "servers", side_effect=managed_servers),
             patch.object(setup, "required_tool_paths", return_value=set()),
-            patch.object(setup, "serena_home", return_value=Path("/serena")),
+            patch.object(setup, "serena_home", return_value=Path(SERENA_HOME)),
             patch.object(setup, "node_command", return_value="/managed/node"),
             patch.object(setup.shutil, "which", return_value=None),
             patch.object(
@@ -162,6 +165,10 @@ class HostTestCase(unittest.TestCase):
             ),
             patch.object(setup, "run", side_effect=self.run_upstream),
         ]
+        if os.name == "nt":
+            # Windows tightens file access through PowerShell, which would show up in the
+            # recorded commands; test_windows_branches checks that command.
+            patchers.append(patch.object(setup, "private_permissions"))
         for patcher in patchers:
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -214,7 +221,7 @@ class FakeHostTests(HostTestCase):
             {
                 "command": "/managed/serena",
                 "args": ["start-mcp-server", "--context", "fake-context", *SERENA_ARGS[3:]],
-                "vars": {"PATH": "/managed/bin", "SERENA_HOME": "/serena"},
+                "vars": {"PATH": "/managed/bin", "SERENA_HOME": SERENA_HOME},
             },
         )
         # No serena setup, GitNexus or hooks for this host; cq installs for it by name.
@@ -322,7 +329,8 @@ class RichHostTests(HostTestCase):
                         {
                             "type": "command",
                             "timeout": 5,
-                            "command": str(self.home / "tools/bin/serena-hooks"),
+                            "command": str(self.home / "tools/bin/serena-hooks")
+                            + (".exe" if os.name == "nt" else ""),
                             "args": ["activate", "--client=rich-code"],
                         }
                     ]

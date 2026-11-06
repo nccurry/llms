@@ -13,7 +13,7 @@ EVALS = Path(__file__).resolve().parent / "skill-evals"
 CASES = EVALS / "plc-mr-review"
 sys.path.insert(0, str(EVALS))
 from fixture_lib import GIT_ENV, configure, git  # noqa: E402 - sys.path is set above
-from host_fixture import BRANCH, host_state  # noqa: E402 - sys.path is set above
+from host_fixture import BRANCH, host_command, host_state  # noqa: E402 - sys.path is set above
 
 
 class PlcMrReviewFixtureTest(unittest.TestCase):
@@ -33,7 +33,7 @@ class PlcMrReviewFixtureTest(unittest.TestCase):
     def glab(self, *args: str) -> str:
         env = dict(GIT_ENV, PYTHONDONTWRITEBYTECODE="1")
         result = subprocess.run(
-            [str(self.dest / "bin" / "glab"), *args],
+            [*host_command(self.dest, "glab"), *args],
             cwd=self.dest / "app",
             capture_output=True,
             text=True,

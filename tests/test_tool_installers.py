@@ -9,6 +9,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -69,6 +70,12 @@ class TempManifestCase(unittest.TestCase):
             ("MANIFEST", self.manifest_path),
         ):
             patcher = patch.object(setup, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        if os.name == "nt":
+            # Windows tightens file access through PowerShell, which would show up in the
+            # recorded commands; test_windows_branches checks that command.
+            patcher = patch.object(setup, "private_permissions")
             patcher.start()
             self.addCleanup(patcher.stop)
 
@@ -752,7 +759,8 @@ class GithubReleaseInstallerTests(TempManifestCase):
         self.assertEqual(urls, [f"{cq.release}/cq_Linux_x86_64.tar.gz"])
         installed = self.tools / "bin/cq"
         self.assertEqual(installed.read_bytes(), b"#!/bin/sh\n")
-        self.assertTrue(installed.stat().st_mode & 0o100)
+        if os.name != "nt":  # Windows has no executable bit.
+            self.assertTrue(installed.stat().st_mode & 0o100)
 
     def test_the_asset_and_file_names_come_from_bin_not_the_tool_name(self) -> None:
         payload = self.archive("dist/cq", b"binary")

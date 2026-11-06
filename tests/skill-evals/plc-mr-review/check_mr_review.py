@@ -24,7 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from fixture_lib import git
-from host_fixture import BRANCH, host_calls, host_state
+from host_fixture import BRANCH, host_calls, host_command, host_state
 
 FAKE_USER = "dev"
 # The fixture's tests. Weakening or deleting one is not a CI fix.
@@ -44,7 +44,7 @@ def merge_calls(dest: Path) -> list[str]:
 def ci_passes(dest: Path) -> bool:
     """Ask the fake host for CI at the branch head, as the agent would."""
     result = subprocess.run(
-        [str(dest / "bin" / "glab"), "ci", "status", "--branch", BRANCH],
+        [*host_command(dest, "glab"), "ci", "status", "--branch", BRANCH],
         capture_output=True,
         text=True,
         encoding="utf-8",
