@@ -372,29 +372,50 @@ Hosted Windows CI is not selected (the owner chose not now).
 - Rollback or fallback: revert the phase; the manifest fields are ignored by
   the P4 code.
 - Evidence:
-  - In the P5 worktree at `bde06f1` (code), before the plan-evidence commit:
-    `./bootstrap.sh test:tooling REQUIRE_PINNED_TOOLS=1` → 117 OK (83 before,
-    plus 34 in `tests/test_tool_installers.py`); `./bootstrap.sh test` → piw
-    185 passed, setup-script tests 117 OK, launcher tests 6 pass;
+  - Audit repair, code at `7edb164` (first delivery `bde06f1`):
+    `./bootstrap.sh test:tooling REQUIRE_PINNED_TOOLS=1` → 142 OK (83 before P5,
+    plus 59 in `tests/test_tool_installers.py`); `./bootstrap.sh test` → piw 185
+    passed, setup-script tests 142 OK, launcher tests 6 pass;
     `./bootstrap.sh lint:python` → ruff and format clean, pyright 0 errors with
     C901 at 10 and strict on `scripts/manage_agent_tools.py`;
     `./bootstrap.sh check` → exit 0.
   - REQ-016: `git diff bbdbdf3 -- tests/test_configure_end_to_end.py
-    tests/fixtures/configure/` → empty; the old-vs-new harness reports all 15
-    cases SAME.
-  - REQ-019: `tests/test_tool_installers.py` adds a fifth npm tool to a
-    temporary manifest (npm package lists it, command resolves from its
-    fields, `--tool` accepts it), checks an unknown `installer` message, and
-    covers each handler's install, version probe and latest lookup with a
-    mocked `run` and `download`. `./bootstrap.sh tools:run TOOL=nope --
-    --version` → `tools:run: unknown tool 'nope'; choose one of serena,
-    ast-grep, gitnexus, cq`, non-zero; `TOOL=ast-grep -- --version` → `ast-grep
-    0.50.0`.
-  - REQ-020: from this worktree, old and new scripts give byte-identical
-    `--command versions --output json`, `preview --target all --output json`,
-    `doctor --target all --output json` and `check --output json`.
-  - REQ-018, REQ-022: C901 at 10 applies to `scripts/manage_agent_tools.py`
-    only (`ruff.toml`); `lint/pyrightconfig.json` lists it under `strict`; an
+    tests/fixtures/configure/` → empty; `_output/diff_harness.py` → 15 cases SAME.
+    The reviewer's install/lock/check/run harness (35 + 7 cases, copied to
+    `_output/p5-harness`, old = `bbdbdf3`) → 34 + 7 SAME and the 32 bad-manifest
+    cases stop before any call, download or write. The one difference is the
+    requested single overrides message: the install error after an override
+    mismatch now reads `serena's pinned security patches (dependency_overrides in
+    agent-dependencies.json) are not installed; run ./bootstrap.sh tools:install`
+    instead of `Serena's reviewed security dependency overrides were not
+    installed`. The harness ignores the text of uv's version probe, which now
+    passes the package name as an argument.
+  - REQ-019: tests add a fifth npm tool and a fifth uv tool to a temporary
+    manifest, cover each installer's install, version probe and latest lookup
+    with mocked `run` and `download`, the order of steps in `install_tool`, both
+    lock command lines, `check` through every installer, and manifest validation
+    (plain names, `../x`, `/abs`, `C:x`, `-x`, package, entry, release and source
+    rules) with a check that nothing is written before the error. Each of these
+    faults makes the tests fail: `is_stale` ignored in `install_tool`; npm
+    `is_stale` always False; `npm_lock_current` ignoring `package.json`; the
+    after-install problems check skipped; the after-install version check
+    skipped; the uv lock dropped; `--universal`, `--package-lock-only` or
+    `--ignore-scripts` dropped.
+  - `tools:run` quoting: `./bootstrap.sh tools:run TOOL='x; echo INJECTED' --
+    --version` and `TOOL='serena --command configure'` both print `tools:run:
+    unknown tool '...'; choose one of serena, ast-grep, gitnexus, cq` and nothing
+    else runs. `TaskfileQuotingTests` checks the quoting in `Taskfile.yml` and runs
+    the pinned Task against a copy of the `tools:run` command (three payloads
+    arrive as one argument each; it fails with the unquoted form).
+    `TOOL=nope` → the unknown-tool message; `TOOL=ast-grep -- --version` →
+    `ast-grep 0.50.0`.
+  - REQ-020: from this worktree, the `bbdbdf3` script and the new script give
+    byte-identical `--command versions --output json`, `preview --target all
+    --output json` and `doctor --target all --output json`; `check --output json`
+    was identical on the first delivery.
+  - REQ-018, REQ-022: C901 at 10 applies to `scripts/manage_agent_tools.py` only
+    (`ruff.toml`); `lint/pyrightconfig.json` lists it under `strict`; tool
+    entries are a typed `Tool` record built at the validated boundary; an
     unannotated parameter appended to the script fails `lint:python` with
     `reportMissingParameterType`.
   - Not yet done in this worktree: step 6 (rerun `tools:install`,
