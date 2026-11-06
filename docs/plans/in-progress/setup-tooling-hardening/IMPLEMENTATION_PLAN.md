@@ -359,7 +359,8 @@ Hosted Windows CI is not selected (the owner chose not now).
   2. Add the handlers and replace each hard-coded tool name.
   3. Add the fifth-tool and bad-installer tests.
   4. Enable C901 for `manage_agent_tools.py` (and any package split out of
-     it) and bring its functions under the limit.
+     it) and bring its functions under the limit (after P4: `install`, `emit`,
+     `main` and `server_problems` are over it).
   5. Switch those files to pyright strict and fix what it reports (REQ-022).
   6. Rerun `tools:install`, `agents:configure` and `doctor` on this machine.
 - Validation: golden test unchanged; REQ-019 tests; `./bootstrap.sh
