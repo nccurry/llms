@@ -129,8 +129,9 @@ def run(
     cwd: Path | None = None,
     input_text: str | None = None,
 ) -> str:
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603 - args are fixed tool commands built by this script
         args,
+        check=False,
         cwd=cwd,
         env=tool_env(),
         input=input_text,
@@ -207,7 +208,7 @@ def installed_version(name: str) -> str | None:
                 ],
                 timeout=20,
             )
-        output = run(tool_command(name) + ["--version"], timeout=30)
+        output = run([*tool_command(name), "--version"], timeout=30)
         match = re.search(r"\d+\.\d+\.\d+", output)
         return match.group() if match else None
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, KeyError):
@@ -231,8 +232,10 @@ def serena_dependency_versions() -> dict[str, str]:
 
 
 def download(url: str) -> bytes:
-    request = urllib.request.Request(url, headers={"User-Agent": "llms-bootstrap"})
-    with urllib.request.urlopen(request, timeout=60) as response:
+    request = urllib.request.Request(  # noqa: S310 - callers pass https URLs pinned in agent-dependencies.json
+        url, headers={"User-Agent": "llms-bootstrap"}
+    )
+    with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310 - callers pass https URLs pinned in agent-dependencies.json
         return response.read()
 
 
@@ -266,7 +269,8 @@ def install_cq(spec: dict[str, Any]) -> None:
             if len(files) != 1:
                 raise RuntimeError("cq archive must contain exactly one executable")
             stream = archive.extractfile(files[0])
-            assert stream is not None
+            if stream is None:
+                raise RuntimeError("cq archive executable could not be read")
             executable = stream.read()
     destination = TOOLS / "bin" / name
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -309,7 +313,7 @@ def install_npm_tools() -> None:
     update_file(TOOLS / "npm/package.json", json.dumps(npm_package(), indent=2) + "\n")
     update_file(TOOLS / "npm/package-lock.json", source.read_text(encoding="utf-8"))
     run(
-        npm_command() + ["ci", "--prefix", str(TOOLS / "npm"), "--no-audit", "--no-fund"],
+        [*npm_command(), "ci", "--prefix", str(TOOLS / "npm"), "--no-audit", "--no-fund"],
         timeout=1200,
     )
 
@@ -322,8 +326,8 @@ def lock_npm_tools() -> dict[str, Any]:
         if destination.exists():
             shutil.copyfile(destination, path / "package-lock.json")
         run(
-            npm_command()
-            + [
+            [
+                *npm_command(),
                 "install",
                 "--package-lock-only",
                 "--ignore-scripts",
@@ -469,7 +473,7 @@ def install() -> dict[str, Any]:
 def private_permissions(path: Path, *, copy_from: Path | None = None) -> None:
     if os.name == "nt":
         powershell = (
-            Path(os.environ.get("SystemRoot", "C:/Windows"))
+            Path(os.environ.get("SystemRoot", "C:/Windows"))  # noqa: SIM112 - Windows spells this variable SystemRoot
             / "System32/WindowsPowerShell/v1.0/powershell.exe"
         )
         command = [
@@ -596,7 +600,7 @@ def merge_json(path: Path, servers: dict[str, Any], host: str, *, dry_run: bool 
 
 
 def merge_codex(path: Path, servers: dict[str, Any], *, dry_run: bool = False) -> str:
-    import tomlkit
+    import tomlkit  # noqa: PLC0415 - only Codex files need tomlkit, so import it when used
 
     text = path.read_text(encoding="utf-8") if path.exists() else ""
     document = tomlkit.parse(text)
@@ -674,9 +678,11 @@ def servers() -> dict[str, Any]:
         },
         "gitnexus": {
             "command": node_command(),
-            "args": [str(ROOT / "scripts/run_gitnexus.mjs")]
-            + tool_command("gitnexus")[1:]
-            + ["mcp"],
+            "args": [
+                str(ROOT / "scripts/run_gitnexus.mjs"),
+                *tool_command("gitnexus")[1:],
+                "mcp",
+            ],
             "env": {
                 **launch_env,
                 "GITNEXUS_STORAGE_ROOT": environment["GITNEXUS_STORAGE_ROOT"],
@@ -790,7 +796,7 @@ def restore_servers(snapshot: dict[Path, str | None]) -> None:
     back, onto the current file, so edits made meanwhile by a running host
     survive. A file the installer created that holds nothing else is removed.
     """
-    import tomlkit
+    import tomlkit  # noqa: PLC0415 - only Codex files need tomlkit, so import it when used
 
     for path, original in snapshot.items():
         if not path.is_file():
@@ -921,7 +927,10 @@ def preview(target: str) -> dict[str, Any]:
                 "managed_servers": list(expected),
                 "environment_action": environment_action,
                 "serena_hooks": configure_serena_hooks(host, dry_run=True),
-                "upstream_setup": "would run supported upstream installers; native plugin changes are host-dependent",
+                "upstream_setup": (
+                    "would run supported upstream installers; "
+                    "native plugin changes are host-dependent"
+                ),
             }
         )
     return {
@@ -935,7 +944,8 @@ def skill_health(target: str) -> dict[str, Any]:
     spec = importlib.util.spec_from_file_location(
         "llms_install_skills", ROOT / "scripts/install_skills.py"
     )
-    assert spec is not None and spec.loader is not None
+    if spec is None or spec.loader is None:
+        raise RuntimeError("scripts/install_skills.py could not be loaded")
     installer = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(installer)
     source = ROOT / "skills"
@@ -1014,12 +1024,14 @@ def gitnexus_hook_launch(host: str) -> dict[str, Any]:
     script = "& " + " ".join("'" + arg.replace("'", "''") + "'" for arg in arguments)
     encoded = base64.b64encode(script.encode("utf-16-le")).decode("ascii")
     powershell = (
-        Path(os.environ.get("SystemRoot", "C:/Windows"))
+        Path(os.environ.get("SystemRoot", "C:/Windows"))  # noqa: SIM112 - Windows spells this variable SystemRoot
         / "System32/WindowsPowerShell/v1.0/powershell.exe"
     ).as_posix()
     return {
         "command": shlex.join(arguments),
-        "commandWindows": f"{powershell} -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand {encoded}",
+        "commandWindows": (
+            f"{powershell} -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand {encoded}"
+        ),
     }
 
 
@@ -1175,14 +1187,15 @@ def configure(target: str) -> dict[str, Any]:
             host == "codex" or (host == "claude" and shutil.which("claude"))
         ) and not existing_server(host, "serena"):
             try:
-                upstream.append(run(tool_command("serena") + ["setup", client], timeout=90))
+                upstream.append(run([*tool_command("serena"), "setup", client], timeout=90))
             except RuntimeError as error:
                 if "not found or not functional" not in str(error) and not (
                     host == "claude" and "requires remote managed settings" in str(error)
                 ):
                     raise
                 limitations.append(
-                    f"serena setup {client} failed, so this script wrote Serena's MCP entry itself: {error}"
+                    f"serena setup {client} failed, so this script wrote Serena's MCP entry "
+                    f"itself: {error}"
                 )
         # Upstream installers own their skills and hooks but rewrite MCP server
         # entries; the managed merge below writes those.
@@ -1199,8 +1212,12 @@ def configure(target: str) -> dict[str, Any]:
             try:
                 upstream.append(
                     run(
-                        tool_command("gitnexus")
-                        + ["setup", "-c", "claude" if host == "claude" else host],
+                        [
+                            *tool_command("gitnexus"),
+                            "setup",
+                            "-c",
+                            "claude" if host == "claude" else host,
+                        ],
                         timeout=90,
                     )
                 )
@@ -1212,18 +1229,20 @@ def configure(target: str) -> dict[str, Any]:
         if host != "claude" or shutil.which("claude"):
             snapshot = snapshot_configs(server_paths) if host != "pi" else {}
             try:
-                upstream.append(run(tool_command("cq") + ["install", "--target", host], timeout=90))
+                upstream.append(run([*tool_command("cq"), "install", "--target", host], timeout=90))
             except RuntimeError as error:
                 if host != "claude" or "requires remote managed settings" not in str(error):
                     raise
                 limitations.append(
-                    f"cq plugin setup unavailable; rerun agents:configure after claude auth login: {error}"
+                    "cq plugin setup unavailable; rerun agents:configure after "
+                    f"claude auth login: {error}"
                 )
             finally:
                 restore_servers(snapshot)
         else:
             limitations.append(
-                "cq's Claude plugin installation requires Claude CLI; rerun agents:configure after installing that client"
+                "cq's Claude plugin installation requires Claude CLI; "
+                "rerun agents:configure after installing that client"
             )
         hooks_action = configure_serena_hooks(host)
         selected = host_servers(host) if host != "pi" else {}
@@ -1251,14 +1270,16 @@ def configure(target: str) -> dict[str, Any]:
                             environment.setdefault(key, value)
                         elif key not in {"PATH", "CQ_ADDR"}:
                             limitations.append(
-                                f"dropped {key} from the old cq server entry; set it again where cq needs it"
+                                f"dropped {key} from the old cq server entry; "
+                                "set it again where cq needs it"
                             )
                     update_file(settings_path, json.dumps(settings, indent=2) + "\n")
                     del data["mcpServers"]["cq"]
                     update_file(path, json.dumps(data, indent=2) + "\n")
                 elif manual:
                     raise RuntimeError(
-                        "An existing unmanaged Claude cq server conflicts with the cq plugin; preserve its settings and resolve that entry before configuring"
+                        "An existing unmanaged Claude cq server conflicts with the cq plugin; "
+                        "preserve its settings and resolve that entry before configuring"
                     )
             action = merge_json(path, selected, host)
         results.append(
@@ -1270,9 +1291,11 @@ def configure(target: str) -> dict[str, Any]:
                 "client_available": bool(shutil.which(host)),
                 "upstream_installers": bool(upstream),
                 "limitations": limitations,
-                "note": "MCP servers configured; client connection and hook trust require verification"
-                if host != "pi"
-                else "cq CLI mapping; other CLIs available through Task",
+                "note": (
+                    "MCP servers configured; client connection and hook trust require verification"
+                    if host != "pi"
+                    else "cq CLI mapping; other CLIs available through Task"
+                ),
             }
         )
     return {
@@ -1500,18 +1523,20 @@ def main(argv: list[str] | None = None) -> int:
                 parser.error("--command run requires --tool")
             spec = manifest()["tools"][args.tool]
             if spec.get("integration_enabled") is False:
-                raise RuntimeError(
-                    f"{args.tool} is turned off (integration_enabled: false in agent-dependencies.json); "
+                raise RuntimeError(  # noqa: TRY301 - the except below prints it as the command's error
+                    f"{args.tool} is turned off "
+                    "(integration_enabled: false in agent-dependencies.json); "
                     f"its license is at {spec.get('license_url')}"
                 )
             if installed_version(args.tool) != spec["version"]:
-                raise RuntimeError(
-                    f"The pinned {args.tool} is not installed. Run ./bootstrap.sh tools:install first."
+                raise RuntimeError(  # noqa: TRY301 - the except below prints it as the command's error
+                    f"The pinned {args.tool} is not installed. "
+                    "Run ./bootstrap.sh tools:install first."
                 )
             arguments = args.arguments[1:] if args.arguments[:1] == ["--"] else args.arguments
             cwd = Path(os.environ.get("LLMS_CALLER_CWD", str(Path.cwd())))
-            return subprocess.run(
-                tool_command(args.tool) + arguments, cwd=cwd, env=tool_env()
+            return subprocess.run(  # noqa: S603 - runs the pinned tool the user asked for
+                [*tool_command(args.tool), *arguments], check=False, cwd=cwd, env=tool_env()
             ).returncode
         if args.command == "install":
             result = install()
