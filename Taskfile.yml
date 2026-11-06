@@ -95,7 +95,7 @@ tasks:
       - '{{.PYTHON}} scripts/manage_agent_tools.py --command configure --target {{.TARGET}} --output {{.OUTPUT}}'
 
   tools:lock:
-    desc: Refresh the npm tool lock after changing declared package pins.
+    desc: Refresh the npm lock and Serena's dependency constraints after changing pins.
     cmd: '{{.PYTHON}} scripts/manage_agent_tools.py --command lock --output {{.OUTPUT}}'
 
   tools:run:
@@ -125,7 +125,7 @@ tasks:
     desc: Preview agent tools, skills, and configuration without installing them.
     cmds:
       - '{{.PYTHON}} scripts/manage_agent_tools.py --command preview --target {{.TARGET}} --output {{.OUTPUT}}'
-      - '{{.PYTHON}} scripts/install_skills.py --target {{.TARGET}} --dry-run --output {{.OUTPUT}}'
+      - '{{.PYTHON}} scripts/install_skills.py --target {{.TARGET}} --dry-run --locked --output {{.OUTPUT}}'
 
   test:
     desc: Run application and agent launcher tests without live Docker Sandboxes.
@@ -185,7 +185,7 @@ tasks:
 
   skills:dry-run:
     desc: Show what skill installation would change for TARGET (default all).
-    cmd: '{{.PYTHON}} scripts/install_skills.py --target {{.TARGET}} --dry-run --output {{.OUTPUT}}'
+    cmd: '{{.PYTHON}} scripts/install_skills.py --target {{.TARGET}} --dry-run --locked --output {{.OUTPUT}}'
 
   skills:dry-run:codex:
     desc: Show what the Codex skill installation would change.
@@ -212,7 +212,11 @@ tasks:
         vars: {TARGET: opencode}
 
   skills:install:
-    desc: Install managed and required external skills for TARGET (default all).
+    desc: Install managed skills and the external skill commits recorded in agent-dependencies.json.
+    cmd: '{{.PYTHON}} scripts/install_skills.py --target {{.TARGET}} --locked --output {{.OUTPUT}}'
+
+  skills:update:
+    desc: Move external skills to upstream's latest commit, record it in agent-dependencies.json, and install.
     cmd: '{{.PYTHON}} scripts/install_skills.py --target {{.TARGET}} --output {{.OUTPUT}}'
 
   skills:install:codex:

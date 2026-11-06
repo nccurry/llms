@@ -13,6 +13,8 @@
         "web_dashboard_interface": "browser"
       },
       "dependency_overrides": {
+        "filelock": "4.2.9",
+        "mcp": "1.30.0",
         "urllib3": "2.8.0",
         "werkzeug": "3.1.9"
       }

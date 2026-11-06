@@ -1225,9 +1225,11 @@ def main(argv: list[str]) -> int:
 
         result = install_skills(source, targets, args.dry_run, manifest=manifest)
         if not args.dry_run and manifest and not args.locked:
-            (repo_root() / "agent-dependencies.json").write_text(
-                json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
-            )
+            # Replace atomically: setup reads this manifest on every run.
+            destination = repo_root() / "agent-dependencies.json"
+            staged = destination.with_name(destination.name + ".new")
+            staged.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+            os.replace(staged, destination)
         emit(result, args.output)
         return 0
     except Exception as error:

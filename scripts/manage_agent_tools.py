@@ -55,8 +55,15 @@ def tool_env() -> dict[str, str]:
         UV_PYTHON_INSTALL_DIR=str(ROOT / ".tools" / "python"),
         UV_CACHE_DIR=str(ROOT / ".tools" / "uv-cache"),
         npm_config_cache=str(TOOLS / "npm-cache"),
+        # The committed lock must resolve from the public registry only.
+        npm_config_userconfig=os.devnull,
+        npm_config_registry="https://registry.npmjs.org/",
         GITNEXUS_STORAGE_ROOT=str(TOOLS / "gitnexus-indexes"),
         CQ_ADDR="",
+        # Embeddings are off, so skip onnxruntime's unverified CUDA download,
+        # and keep npm installs from sending Scarf install telemetry.
+        ONNXRUNTIME_NODE_INSTALL="skip",
+        SCARF_ANALYTICS="false",
     )
     env.pop("GITNEXUS_STORAGE_PATH", None)
     paths = [str(TOOLS / "bin")]
@@ -347,12 +354,71 @@ def lock_npm_tools() -> dict[str, Any]:
     return {"lockfile": str(destination), "action": action}
 
 
+SERENA_CONSTRAINTS = ROOT / "agent-tools/serena-constraints.txt"
+
+
+def serena_overrides_file(spec: dict[str, Any]) -> Path:
+    path = TOOLS / "serena-overrides.txt"
+    update_file(
+        path,
+        "".join(
+            f"{package}=={version}\n"
+            for package, version in spec.get("dependency_overrides", {}).items()
+        ),
+    )
+    return path
+
+
+def lock_serena() -> dict[str, Any]:
+    """Resolve Serena's whole dependency tree once, for every platform."""
+    spec = manifest()["tools"]["serena"]
+    uv = shutil.which("uv")
+    if not uv:
+        raise RuntimeError("uv is missing. Run ./bootstrap.sh deps:install first.")
+    with tempfile.TemporaryDirectory(prefix="llms-serena-lock-") as workspace:
+        output = Path(workspace) / "constraints.txt"
+        run(
+            [
+                uv,
+                "pip",
+                "compile",
+                "-",
+                "--universal",
+                "--python-version",
+                spec["python"],
+                "--overrides",
+                str(serena_overrides_file(spec)),
+                "--no-header",
+                "--no-annotate",
+                "--output-file",
+                str(output),
+            ],
+            input_text=f"{spec['package']}=={spec['version']}\n",
+        )
+        action = update_file(SERENA_CONSTRAINTS, output.read_text(encoding="utf-8"))
+    return {"lockfile": str(SERENA_CONSTRAINTS), "action": action}
+
+
+def serena_constraints_current() -> bool:
+    installed = TOOLS / "serena-constraints.txt"
+    return (
+        not SERENA_CONSTRAINTS.is_file()
+        or installed.is_file()
+        and installed.read_bytes() == SERENA_CONSTRAINTS.read_bytes()
+    )
+
+
 def install() -> dict[str, Any]:
     node = shutil.which("node")
     if not node:
         raise RuntimeError("Node is missing. Run bootstrap deps:install first.")
     TOOLS.mkdir(parents=True, exist_ok=True)
     runtime = {name: shutil.which(name) for name in ("node", "uv", "task")}
+    # .tools/bin/task forwards to this repo's bootstrap; agents get the real Task.
+    wrappers = ROOT / ".tools/bin"
+    if runtime["task"] and Path(runtime["task"]).parent == wrappers:
+        mise = wrappers / ("mise.exe" if os.name == "nt" else "mise")
+        runtime["task"] = run([str(mise), "which", "task"], timeout=30)
     update_file(TOOLS / "runtime.json", json.dumps(runtime, indent=2) + "\n")
     results = []
     npm_reinstalled = False
@@ -363,7 +429,10 @@ def install() -> dict[str, Any]:
             before != expected
             or (
                 name == "serena"
-                and serena_dependency_versions() != spec.get("dependency_overrides", {})
+                and (
+                    serena_dependency_versions() != spec.get("dependency_overrides", {})
+                    or not serena_constraints_current()
+                )
             )
             or (name in {"ast-grep", "gitnexus"} and not npm_lock_current())
         )
@@ -372,7 +441,7 @@ def install() -> dict[str, Any]:
                 uv = shutil.which("uv")
                 if not uv:
                     raise RuntimeError(
-                        "uv is missing. Run bootstrap deps:install first."
+                        "uv is missing. Run ./bootstrap.sh deps:install first."
                     )
                 command = [
                     uv,
@@ -382,19 +451,17 @@ def install() -> dict[str, Any]:
                     spec["python"],
                     "--force",
                     f"{spec['package']}=={expected}",
+                    "--overrides",
+                    str(serena_overrides_file(spec)),
                 ]
-                overrides = spec.get("dependency_overrides", {})
-                if overrides:
-                    path = TOOLS / "serena-overrides.txt"
-                    update_file(
-                        path,
-                        "".join(
-                            f"{package}=={version}\n"
-                            for package, version in overrides.items()
-                        ),
-                    )
-                    command.extend(["--overrides", str(path)])
+                if SERENA_CONSTRAINTS.is_file():
+                    command.extend(["--constraints", str(SERENA_CONSTRAINTS)])
                 run(command)
+                if SERENA_CONSTRAINTS.is_file():
+                    update_file(
+                        TOOLS / "serena-constraints.txt",
+                        SERENA_CONSTRAINTS.read_text(encoding="utf-8"),
+                    )
             elif name == "cq":
                 install_cq(spec)
             else:
@@ -1389,8 +1456,8 @@ def emit(result: dict[str, Any], output: str) -> None:
     if result.get("error"):
         print(f"{result['command']}: {result['error']}")
         return
-    if result.get("lockfile"):
-        print(f"npm lock: {result['action']}; {result['lockfile']}")
+    for lock in result.get("locks", []):
+        print(f"lock: {lock['action']}; {lock['lockfile']}")
     if result.get("serena"):
         serena = result["serena"]
         print(
@@ -1464,7 +1531,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "install":
             result = install()
         elif args.command == "lock":
-            result = lock_npm_tools()
+            result = {"locks": [lock_npm_tools(), lock_serena()]}
         elif args.command == "configure":
             result = configure(args.target)
         elif args.command == "doctor":
