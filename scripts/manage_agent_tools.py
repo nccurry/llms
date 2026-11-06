@@ -23,9 +23,9 @@ import tomllib
 import urllib.parse
 import urllib.request
 import zipfile
-from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, NamedTuple, Protocol, cast
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,65 +56,192 @@ REMOTE_SERVER_FIELDS = (
 
 MANIFEST = ROOT / "agent-dependencies.json"
 
-# A tool entry in the manifest (agent-dependencies.json), checked by `manifest()`.
-ToolSpec = dict[str, Any]
-
-INSTALLER_TYPES = ("uv", "npm", "github-release")
 NPM_RUNNERS = ("native", "node")
+
+# Names that become file names or command arguments stay plain: no separators, drive letters or
+# leading dashes, so a manifest entry cannot reach outside .tools or add an option.
+PLAIN_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+PACKAGE_NAME = re.compile(r"^(@[A-Za-z0-9][A-Za-z0-9._-]*/)?[A-Za-z0-9][A-Za-z0-9._-]*$")
+VERSION_TEXT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+!-]*$")
+GITHUB_REPOSITORY = re.compile(
+    r"^https://github\.com/[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*/?$"
+)
+PLAIN_RULE = (
+    "must be a plain name: letters, digits, '.', '_' and '-', starting with a letter or digit"
+)
 
 
 class ManifestError(ValueError):
-    """An entry in agent-dependencies.json is invalid; the message names the entry and field."""
+    """agent-dependencies.json is invalid; the message names the entry and field."""
+
+
+class Tool(NamedTuple):
+    """One validated entry of `tools` in agent-dependencies.json."""
+
+    name: str
+    version: str
+    installer: str
+    bin: str  # the main program the tool installs
+    extra_bins: tuple[str, ...]  # other programs it installs; informational
+    package: str = ""  # uv and npm: the package name
+    python: str = ""  # uv: the Python version of its environment
+    dependency_overrides: Mapping[str, str] = MappingProxyType({})  # uv: package -> pinned version
+    runs_with: str = ""  # npm: native or node
+    entry: str = ""  # npm run with node: the script inside the package
+    source: str = ""  # github-release: the repository URL
+    release: str = ""  # github-release: the download folder of the pinned tag
+    checksums: Mapping[str, str] = MappingProxyType({})  # github-release: asset -> SHA-256
 
 
 def manifest_error(name: str, field: str, rule: str) -> ManifestError:
     return ManifestError(f"agent-dependencies.json tools.{name}.{field} {rule}")
 
 
-def is_text(value: object) -> bool:
-    return isinstance(value, str) and bool(value)
+def is_plain(value: object, pattern: re.Pattern[str] = PLAIN_NAME) -> bool:
+    return isinstance(value, str) and bool(pattern.match(value)) and ".." not in value
 
 
-def check_npm_fields(name: str, spec: ToolSpec) -> None:
-    if spec["installer"] != "npm":
+def is_relative_path(value: object) -> bool:
+    """Tell whether the value is a file path inside a folder: no root, drive, backslash or `..`."""
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and not value.startswith("/")
+        and "\\" not in value
+        and ":" not in value
+        and ".." not in value.split("/")
+    )
+
+
+def plain_field(
+    name: str,
+    spec: dict[str, Any],
+    field: str,
+    pattern: re.Pattern[str] = PLAIN_NAME,
+    rule: str = PLAIN_RULE,
+) -> str:
+    value = spec.get(field)
+    if not isinstance(value, str) or not is_plain(value, pattern):
+        raise manifest_error(name, field, rule)
+    return value
+
+
+def uv_fields(name: str, spec: dict[str, Any], version: str) -> dict[str, Any]:
+    overrides = spec.get("dependency_overrides", {})
+    valid = isinstance(overrides, dict) and all(
+        is_plain(package, PACKAGE_NAME) and is_plain(pinned, VERSION_TEXT)
+        for package, pinned in cast("dict[object, object]", overrides).items()
+    )
+    if not valid:
+        raise manifest_error(name, "dependency_overrides", "must map package names to versions")
+    return {
+        "package": plain_field(name, spec, "package", PACKAGE_NAME, "must be a package name"),
+        "python": plain_field(
+            name, spec, "python", VERSION_TEXT, "must be a Python version such as 3.13"
+        ),
+        "dependency_overrides": cast("dict[str, str]", overrides),
+    }
+
+
+def npm_fields(name: str, spec: dict[str, Any], version: str) -> dict[str, Any]:
+    runs_with = spec.get("runs_with")
+    if runs_with not in NPM_RUNNERS:
+        raise manifest_error(name, "runs_with", "must be one of " + ", ".join(NPM_RUNNERS))
+    entry = spec.get("entry", "")
+    if runs_with == "node" and not is_relative_path(entry):
+        raise manifest_error(
+            name, "entry", "must be a path inside the package when runs_with is node"
+        )
+    return {
+        "package": plain_field(name, spec, "package", PACKAGE_NAME, "must be a package name"),
+        "runs_with": runs_with,
+        "entry": entry,
+    }
+
+
+def release_fields(name: str, spec: dict[str, Any], version: str) -> dict[str, Any]:
+    source = spec.get("source")
+    if not isinstance(source, str) or not GITHUB_REPOSITORY.match(source):
+        raise manifest_error(
+            name, "source", "must be a GitHub repository URL when installer is github-release"
+        )
+    release = spec.get("release")
+    tag = release.partition("/download/")[2] if isinstance(release, str) else ""
+    if (
+        not isinstance(release, str)
+        or not release.startswith("https://")
+        or not (tag.endswith(version) and len(tag) > len(version))
+    ):
+        raise manifest_error(
+            name,
+            "release",
+            "must be an https URL containing /download/<tag>, with the tag ending in the version",
+        )
+    checksums = spec.get("checksums")
+    if not isinstance(checksums, dict) or not all(
+        isinstance(asset, str) and isinstance(digest, str)
+        for asset, digest in cast("dict[object, object]", checksums).items()
+    ):
+        raise manifest_error(name, "checksums", "must map asset names to SHA-256 checksums")
+    return {
+        "source": source,
+        "release": release,
+        "checksums": cast("dict[str, str]", checksums),
+    }
+
+
+def parse_tool(name: str, entry: object) -> Tool:
+    """Check one manifest entry and return it as a typed record."""
+    if not is_plain(name) or not isinstance(entry, dict):
+        raise ManifestError(
+            f"agent-dependencies.json tools.{name} must be a plain name and an object"
+        )
+    spec = cast("dict[str, Any]", entry)
+    installer = spec.get("installer")
+    if not isinstance(installer, str) or installer not in INSTALLERS:
+        raise manifest_error(name, "installer", "must be one of " + ", ".join(INSTALLERS))
+    version = plain_field(name, spec, "version", VERSION_TEXT, "must be a version")
+    extra = spec.get("extra_bins", [])
+    if not isinstance(extra, list) or not all(
+        is_plain(item) for item in cast("list[object]", extra)
+    ):
+        raise manifest_error(name, "extra_bins", "must be a list of plain names")
+    if installer != "npm":
         for field in ("runs_with", "entry"):
             if field in spec:
                 raise manifest_error(name, field, "is only for tools whose installer is npm")
-        return
-    if spec.get("runs_with") not in NPM_RUNNERS:
-        raise manifest_error(name, "runs_with", "must be one of " + ", ".join(NPM_RUNNERS))
-    if spec["runs_with"] == "node" and not is_text(spec.get("entry")):
-        raise manifest_error(name, "entry", "must be a non-empty string when runs_with is node")
+    return Tool(
+        name=name,
+        version=version,
+        installer=installer,
+        bin=plain_field(name, spec, "bin"),
+        extra_bins=tuple(cast("list[str]", extra)),
+        **INSTALLERS[installer].fields(name, spec, version),
+    )
 
 
-def check_tool_entry(name: str, entry: object) -> None:
-    if not isinstance(entry, dict):
-        raise ManifestError(f"agent-dependencies.json tools.{name} must be an object")
-    spec = cast("ToolSpec", entry)
-    if spec.get("installer") not in INSTALLER_TYPES:
-        raise manifest_error(name, "installer", "must be one of " + ", ".join(INSTALLER_TYPES))
-    if not is_text(spec.get("bin")):
-        raise manifest_error(name, "bin", "must be a non-empty string")
-    extra = spec.get("extra_bins", [])
-    if not isinstance(extra, list) or not all(
-        is_text(item) for item in cast("list[object]", extra)
-    ):
-        raise manifest_error(name, "extra_bins", "must be a list of non-empty strings")
-    if spec["installer"] == "uv" and not is_text(spec.get("python")):
-        raise manifest_error(name, "python", "must be a non-empty string when installer is uv")
-    check_npm_fields(name, spec)
-
-
-def manifest() -> dict[str, Any]:
-    data: dict[str, Any] = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    if data.get("schema_version") != 1:
-        raise ValueError("Unsupported agent-dependencies.json schema")
+def parse_tools(data: dict[str, Any]) -> dict[str, Tool]:
     tools = data.get("tools")
     if not isinstance(tools, dict):
         raise ManifestError("agent-dependencies.json tools must be an object")
-    for name, entry in cast("dict[str, object]", tools).items():
-        check_tool_entry(name, entry)
-    return data
+    return {
+        name: parse_tool(name, entry) for name, entry in cast("dict[str, object]", tools).items()
+    }
+
+
+def manifest() -> dict[str, Any]:
+    """Read agent-dependencies.json, stopping with a ManifestError if any tool entry is invalid."""
+    data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or cast("dict[str, Any]", data).get("schema_version") != 1:
+        raise ManifestError("Unsupported agent-dependencies.json schema")
+    document = cast("dict[str, Any]", data)
+    parse_tools(document)
+    return document
+
+
+def tools() -> dict[str, Tool]:
+    """Return the manifest's tools as typed records, in manifest order."""
+    return parse_tools(manifest())
 
 
 def tool_env() -> dict[str, str]:
@@ -245,51 +372,61 @@ def npm_command() -> list[str]:
     raise RuntimeError("The selected Node installation does not contain npm.")
 
 
-# ---- Tools: each manifest entry names its installer, and that installer's handler
-# builds the install command, the command that runs the tool, and both version lookups.
-
-
-class Installer(ABC):
-    """What differs between the ways a tool can be installed."""
-
-    # One install covers every tool of this type, so one run installs them all.
-    shared_install = False
-
-    @abstractmethod
-    def command(self, name: str, spec: ToolSpec) -> list[str]:
-        """Return the command that runs the tool."""
-
-    @abstractmethod
-    def install(self, name: str, spec: ToolSpec) -> None:
-        """Install the pinned version."""
-
-    @abstractmethod
-    def latest_version(self, name: str, spec: ToolSpec) -> str:
-        """Look up the newest published version (network)."""
-
-    def installed_version(self, name: str, spec: ToolSpec) -> str | None:
-        """Ask the tool for its version; None when the output has no version."""
-        output = run([*self.command(name, spec), "--version"], timeout=30)
-        match = re.search(r"\d+\.\d+\.\d+", output)
-        return match.group() if match else None
-
-    def is_stale(self, name: str, spec: ToolSpec) -> bool:
-        """Tell whether the right version is installed but something it depends on is not."""
-        return False
-
-    def check_installed(self, name: str, spec: ToolSpec) -> None:  # noqa: B027 - most installers check nothing
-        """Raise when an install left something other than the pins in place."""
+# ---- Tools: each manifest entry names its installer. An installer is a record of functions
+# that build the install command, the command that runs the tool, and the version lookups.
 
 
 def bin_path(binary: str) -> Path:
     return TOOLS / "bin" / (binary + (".exe" if os.name == "nt" else ""))
 
 
-def uv_python(spec: ToolSpec) -> Path:
-    """Return the Python of the tool's own environment, which `uv tool install` makes."""
-    return (
-        TOOLS / "uv" / spec["package"] / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-    )
+def never_stale(tool: Tool) -> bool:
+    return False
+
+
+def no_problems(tool: Tool) -> list[str]:
+    return []
+
+
+def no_locks(group: list[Tool]) -> list[dict[str, Any]]:
+    return []
+
+
+def command_of(tool: Tool) -> list[str]:
+    return INSTALLERS[tool.installer].command(tool)
+
+
+def version_from_command(tool: Tool) -> str | None:
+    """Ask the tool for its version with `--version`; None when the output has none."""
+    output = run([*command_of(tool), "--version"], timeout=30)
+    match = re.search(r"\d+\.\d+\.\d+", output)
+    return match.group() if match else None
+
+
+class Installer(NamedTuple):
+    """What differs between the ways a tool can be installed."""
+
+    fields: Callable[[str, dict[str, Any], str], dict[str, Any]]  # check this type's own fields
+    command: Callable[[Tool], list[str]]  # the command that runs the tool
+    install: Callable[[Tool], None]  # install the pinned version
+    latest_version: Callable[[Tool], str]  # look up the newest published version (network)
+    installed_version: Callable[[Tool], str | None] = version_from_command
+    # True when the right version is installed but something it depends on is not.
+    is_stale: Callable[[Tool], bool] = never_stale
+    # What is wrong with the installed tool beyond its version, as doctor messages.
+    problems: Callable[[Tool], list[str]] = no_problems
+    # Write the committed lock for the tools of this type (`tools:lock`).
+    lock: Callable[[list[Tool]], list[dict[str, Any]]] = no_locks
+    # One install covers every tool of this type, so one run installs them all.
+    shared_install: bool = False
+
+
+# ---- uv: a Python package in its own environment, made by `uv tool install`
+
+
+def uv_python(tool: Tool) -> Path:
+    """Return the Python of the tool's own environment."""
+    return TOOLS / "uv" / tool.package / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 
 
 def required_uv() -> str:
@@ -299,107 +436,103 @@ def required_uv() -> str:
     return uv
 
 
-def constraints_source(name: str) -> Path:
+def constraints_source(tool: Tool) -> Path:
     """Return the committed constraints file that `tools:lock` writes for a uv tool."""
-    return ROOT / f"agent-tools/{name}-constraints.txt"
+    return ROOT / f"agent-tools/{tool.name}-constraints.txt"
 
 
-def overrides_file(name: str, spec: ToolSpec) -> Path:
-    path = TOOLS / f"{name}-overrides.txt"
+def overrides_file(tool: Tool) -> Path:
+    path = TOOLS / f"{tool.name}-overrides.txt"
     update_file(
         path,
         "".join(
-            f"{package}=={version}\n"
-            for package, version in spec.get("dependency_overrides", {}).items()
+            f"{package}=={version}\n" for package, version in tool.dependency_overrides.items()
         ),
     )
     return path
 
 
-def constraints_current(name: str) -> bool:
-    installed = TOOLS / f"{name}-constraints.txt"
-    source = constraints_source(name)
+def constraints_current(tool: Tool) -> bool:
+    installed = TOOLS / f"{tool.name}-constraints.txt"
+    source = constraints_source(tool)
     return not source.is_file() or (
         installed.is_file() and installed.read_bytes() == source.read_bytes()
     )
 
 
-def override_versions(spec: ToolSpec) -> dict[str, str]:
+def override_versions(tool: Tool) -> dict[str, str]:
     """Read the versions of the `dependency_overrides` packages now installed."""
-    packages = spec.get("dependency_overrides", {})
-    if not packages:
+    if not tool.dependency_overrides:
         return {}
     code = (
         "import importlib.metadata as m, json; print(json.dumps({p:m.version(p) for p in "
-        + repr(list(packages))
+        + repr(list(tool.dependency_overrides))
         + "}))"
     )
     try:
-        return json.loads(run([str(uv_python(spec)), "-c", code], timeout=20))
+        return json.loads(run([str(uv_python(tool)), "-c", code], timeout=20))
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
         return {}
 
 
-def overrides_installed(spec: ToolSpec) -> bool:
-    return override_versions(spec) == spec.get("dependency_overrides", {})
+def overrides_problems(tool: Tool) -> list[str]:
+    if override_versions(tool) == tool.dependency_overrides:
+        return []
+    return [
+        f"{tool.name}'s pinned security patches (dependency_overrides in "
+        "agent-dependencies.json) are not installed; run ./bootstrap.sh tools:install"
+    ]
 
 
-class UvInstaller(Installer):
-    """A Python package installed into its own environment with `uv tool install`."""
-
-    def command(self, name: str, spec: ToolSpec) -> list[str]:
-        return [str(bin_path(spec["bin"]))]
-
-    def installed_version(self, name: str, spec: ToolSpec) -> str | None:
-        return run(
-            [
-                str(uv_python(spec)),
-                "-c",
-                "import importlib.metadata; "
-                f"print(importlib.metadata.version('{spec['package']}'))",
-            ],
-            timeout=20,
-        )
-
-    def is_stale(self, name: str, spec: ToolSpec) -> bool:
-        return not overrides_installed(spec) or not constraints_current(name)
-
-    def check_installed(self, name: str, spec: ToolSpec) -> None:
-        if not overrides_installed(spec):
-            raise RuntimeError(
-                f"{name.capitalize()}'s reviewed security dependency overrides were not installed"
-            )
-
-    def install(self, name: str, spec: ToolSpec) -> None:
-        command = [
-            required_uv(),
-            "tool",
-            "install",
-            "--python",
-            spec["python"],
-            "--force",
-            f"{spec['package']}=={spec['version']}",
-            "--overrides",
-            str(overrides_file(name, spec)),
-        ]
-        source = constraints_source(name)
-        if source.is_file():
-            command.extend(["--constraints", str(source)])
-        run(command)
-        if source.is_file():
-            update_file(TOOLS / f"{name}-constraints.txt", source.read_text(encoding="utf-8"))
-
-    def latest_version(self, name: str, spec: ToolSpec) -> str:
-        return json.loads(download(f"https://pypi.org/pypi/{spec['package']}/json"))["info"][
-            "version"
-        ]
+def bin_command(tool: Tool) -> list[str]:
+    return [str(bin_path(tool.bin))]
 
 
-def lock_uv_tool(name: str, spec: ToolSpec) -> dict[str, Any]:
+def uv_installed_version(tool: Tool) -> str | None:
+    return run(
+        [
+            str(uv_python(tool)),
+            "-c",
+            "import sys, importlib.metadata as m; print(m.version(sys.argv[1]))",
+            tool.package,
+        ],
+        timeout=20,
+    )
+
+
+def uv_is_stale(tool: Tool) -> bool:
+    return bool(overrides_problems(tool)) or not constraints_current(tool)
+
+
+def uv_install(tool: Tool) -> None:
+    command = [
+        required_uv(),
+        "tool",
+        "install",
+        "--python",
+        tool.python,
+        "--force",
+        f"{tool.package}=={tool.version}",
+        "--overrides",
+        str(overrides_file(tool)),
+    ]
+    source = constraints_source(tool)
+    if source.is_file():
+        command.extend(["--constraints", str(source)])
+    run(command)
+    if source.is_file():
+        update_file(TOOLS / f"{tool.name}-constraints.txt", source.read_text(encoding="utf-8"))
+
+
+def uv_latest_version(tool: Tool) -> str:
+    return json.loads(download(f"https://pypi.org/pypi/{tool.package}/json"))["info"]["version"]
+
+
+def lock_uv_tool(tool: Tool) -> dict[str, Any]:
     """Resolve a uv tool's whole dependency tree once, for every platform."""
     uv = required_uv()
-    source = constraints_source(name)
-    with tempfile.TemporaryDirectory(prefix=f"llms-{name}-lock-") as workspace:
+    source = constraints_source(tool)
+    with tempfile.TemporaryDirectory(prefix=f"llms-{tool.name}-lock-") as workspace:
         output = Path(workspace) / "constraints.txt"
         run(
             [
@@ -409,24 +542,29 @@ def lock_uv_tool(name: str, spec: ToolSpec) -> dict[str, Any]:
                 "-",
                 "--universal",
                 "--python-version",
-                spec["python"],
+                tool.python,
                 "--overrides",
-                str(overrides_file(name, spec)),
+                str(overrides_file(tool)),
                 "--no-header",
                 "--no-annotate",
                 "--output-file",
                 str(output),
             ],
-            input_text=f"{spec['package']}=={spec['version']}\n",
+            input_text=f"{tool.package}=={tool.version}\n",
         )
         action = update_file(source, output.read_text(encoding="utf-8"))
     return {"lockfile": str(source), "action": action}
 
 
-def tools_with(installer: str) -> dict[str, ToolSpec]:
-    return {
-        name: spec for name, spec in manifest()["tools"].items() if spec["installer"] == installer
-    }
+def lock_uv_tools(group: list[Tool]) -> list[dict[str, Any]]:
+    return [lock_uv_tool(tool) for tool in group]
+
+
+# ---- npm: packages in one shared folder, installed together from the committed lock
+
+
+def tools_with(installer: str) -> list[Tool]:
+    return [tool for tool in tools().values() if tool.installer == installer]
 
 
 def npm_package() -> dict[str, Any]:
@@ -434,7 +572,7 @@ def npm_package() -> dict[str, Any]:
         "name": "llms-agent-tools",
         "version": "0.0.0",
         "private": True,
-        "dependencies": {spec["package"]: spec["version"] for spec in tools_with("npm").values()},
+        "dependencies": {tool.package: tool.version for tool in tools_with("npm")},
     }
 
 
@@ -451,7 +589,7 @@ def npm_lock_current() -> bool:
     )
 
 
-def install_npm_tools() -> None:
+def install_npm_tools(tool: Tool) -> None:
     source = ROOT / "agent-tools/package-lock.json"
     lock = json.loads(source.read_text(encoding="utf-8"))
     if lock.get("packages", {}).get("", {}).get("dependencies") != npm_package()["dependencies"]:
@@ -464,7 +602,9 @@ def install_npm_tools() -> None:
     )
 
 
-def lock_npm_tools() -> dict[str, Any]:
+def lock_npm_tools(group: list[Tool]) -> list[dict[str, Any]]:
+    if not group:
+        return []
     with tempfile.TemporaryDirectory(prefix="llms-npm-lock-") as workspace:
         path = Path(workspace)
         (path / "package.json").write_text(json.dumps(npm_package()), encoding="utf-8")
@@ -484,39 +624,33 @@ def lock_npm_tools() -> dict[str, Any]:
             ]
         )
         action = update_file(destination, (path / "package-lock.json").read_text(encoding="utf-8"))
-    return {"lockfile": str(destination), "action": action}
+    return [{"lockfile": str(destination), "action": action}]
 
 
-class NpmInstaller(Installer):
-    """A package in the shared npm folder, installed all at once from the committed lock."""
+def npm_command_for(tool: Tool) -> list[str]:
+    package_root = TOOLS / "npm/node_modules" / tool.package
+    metadata_path = package_root / "package.json"
+    if metadata_path.is_file():
+        bins = json.loads(metadata_path.read_text(encoding="utf-8"))["bin"]
+        entry = bins if isinstance(bins, str) else bins[tool.bin]
+    else:
+        # The manifest's entry point lets a fresh-machine preview describe absent tools.
+        entry = tool.entry if tool.runs_with == "node" else tool.bin
+    path = package_root / entry
+    if tool.runs_with == "native":
+        return [str(path.with_suffix(".exe") if os.name == "nt" else path)]
+    return [node_command(), str(path)]
 
-    shared_install = True
 
-    def command(self, name: str, spec: ToolSpec) -> list[str]:
-        package_root = TOOLS / "npm/node_modules" / spec["package"]
-        metadata_path = package_root / "package.json"
-        if metadata_path.is_file():
-            bins = json.loads(metadata_path.read_text(encoding="utf-8"))["bin"]
-            entry = bins if isinstance(bins, str) else bins[spec["bin"]]
-        else:
-            # The manifest's entry point lets a fresh-machine preview describe absent tools.
-            entry = spec["entry"] if spec["runs_with"] == "node" else spec["bin"]
-        path = package_root / entry
-        if spec["runs_with"] == "native":
-            return [str(path.with_suffix(".exe") if os.name == "nt" else path)]
-        return [node_command(), str(path)]
+def npm_stale(tool: Tool) -> bool:
+    return not npm_lock_current()
 
-    def is_stale(self, name: str, spec: ToolSpec) -> bool:
-        return not npm_lock_current()
 
-    def install(self, name: str, spec: ToolSpec) -> None:
-        install_npm_tools()
+def npm_latest_version(tool: Tool) -> str:
+    return json.loads(download(f"https://registry.npmjs.org/{tool.package}/latest"))["version"]
 
-    def latest_version(self, name: str, spec: ToolSpec) -> str:
-        return json.loads(download(f"https://registry.npmjs.org/{spec['package']}/latest"))[
-            "version"
-        ]
 
+# ---- github-release: an archive from a GitHub release, checked against the manifest's SHA-256
 
 RELEASE_SYSTEMS = {"Windows": "Windows", "Linux": "Linux", "Darwin": "Darwin"}
 RELEASE_MACHINES = {
@@ -549,72 +683,88 @@ def release_executable(payload: bytes, system: str, binary: str, name: str) -> b
         return stream.read()
 
 
-class GithubReleaseInstaller(Installer):
-    """A release archive downloaded from GitHub and checked against the manifest's SHA-256."""
+def release_install(tool: Tool) -> None:
+    system = RELEASE_SYSTEMS[platform.system()]
+    machine = RELEASE_MACHINES[platform.machine().lower()]
+    asset = f"{tool.bin}_{system}_{machine}.{'zip' if system == 'Windows' else 'tar.gz'}"
+    payload = download(f"{tool.release}/{asset}")
+    if hashlib.sha256(payload).hexdigest() != tool.checksums[asset]:
+        raise RuntimeError(f"{tool.name} release checksum mismatch: {asset}")
+    binary = tool.bin + (".exe" if system == "Windows" else "")
+    executable = release_executable(payload, system, binary, tool.name)
+    destination = TOOLS / "bin" / binary
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    staged = destination.with_suffix(".new")
+    staged.write_bytes(executable)
+    staged.chmod(0o755)
+    staged.replace(destination)
 
-    def command(self, name: str, spec: ToolSpec) -> list[str]:
-        return [str(bin_path(spec["bin"]))]
 
-    def install(self, name: str, spec: ToolSpec) -> None:
-        system = RELEASE_SYSTEMS[platform.system()]
-        machine = RELEASE_MACHINES[platform.machine().lower()]
-        asset = f"{spec['bin']}_{system}_{machine}.{'zip' if system == 'Windows' else 'tar.gz'}"
-        payload = download(f"{spec['release']}/{asset}")
-        if hashlib.sha256(payload).hexdigest() != spec["checksums"][asset]:
-            raise RuntimeError(f"{name} release checksum mismatch: {asset}")
-        binary = spec["bin"] + (".exe" if system == "Windows" else "")
-        executable = release_executable(payload, system, binary, name)
-        destination = TOOLS / "bin" / binary
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        staged = destination.with_suffix(".new")
-        staged.write_bytes(executable)
-        staged.chmod(0o755)
-        staged.replace(destination)
-
-    def latest_version(self, name: str, spec: ToolSpec) -> str:
-        """Find the newest stable release, whose tag is the pinned tag with its version swapped."""
-        source: str = spec["source"]
-        repository = urllib.parse.urlparse(source).path.strip("/")
-        tag = spec["release"].split("/download/", 1)[1]
-        prefix = tag.removesuffix(spec["version"])
-        releases = json.loads(
-            download(f"https://api.github.com/repos/{repository}/releases?per_page=30")
-        )
-        return next(
-            release["tag_name"].removeprefix(prefix)
-            for release in releases
-            if release["tag_name"].startswith(prefix) and not release["prerelease"]
-        )
+def release_latest_version(tool: Tool) -> str:
+    """Find the newest stable release, whose tag is the pinned tag with its version swapped."""
+    repository = urllib.parse.urlparse(tool.source).path.strip("/")
+    prefix = tool.release.partition("/download/")[2].removesuffix(tool.version)
+    releases = json.loads(
+        download(f"https://api.github.com/repos/{repository}/releases?per_page=30")
+    )
+    for release in releases:
+        if release["tag_name"].startswith(prefix) and not release["prerelease"]:
+            return release["tag_name"].removeprefix(prefix)
+    raise RuntimeError(f"{tool.name}: no stable release with a tag starting {prefix!r} was found")
 
 
 INSTALLERS: dict[str, Installer] = {
-    "uv": UvInstaller(),
-    "npm": NpmInstaller(),
-    "github-release": GithubReleaseInstaller(),
+    "uv": Installer(
+        fields=uv_fields,
+        command=bin_command,
+        install=uv_install,
+        latest_version=uv_latest_version,
+        installed_version=uv_installed_version,
+        is_stale=uv_is_stale,
+        problems=overrides_problems,
+        lock=lock_uv_tools,
+    ),
+    "npm": Installer(
+        fields=npm_fields,
+        command=npm_command_for,
+        install=install_npm_tools,
+        latest_version=npm_latest_version,
+        is_stale=npm_stale,
+        lock=lock_npm_tools,
+        shared_install=True,
+    ),
+    "github-release": Installer(
+        fields=release_fields,
+        command=bin_command,
+        install=release_install,
+        latest_version=release_latest_version,
+    ),
 }
 
 
-def installer_for(name: str) -> tuple[ToolSpec, Installer]:
-    spec = manifest()["tools"][name]
-    return spec, INSTALLERS[spec["installer"]]
-
-
 def tool_command(name: str) -> list[str]:
-    spec, installer = installer_for(name)
-    return installer.command(name, spec)
+    return command_of(tools()[name])
+
+
+def node_script(name: str) -> str:
+    """Return the script of a tool that runs with Node, for launchers that supply Node."""
+    _, *script = tool_command(name)
+    if len(script) != 1:
+        raise RuntimeError(f"{name} does not run with Node, so it has no script to launch")
+    return script[0]
 
 
 def installed_version(name: str) -> str | None:
     try:
-        spec, installer = installer_for(name)
-        return installer.installed_version(name, spec)
+        tool = tools()[name]
+        return INSTALLERS[tool.installer].installed_version(tool)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, KeyError):
         return None
 
 
 def latest_version(name: str) -> str:
-    spec, installer = installer_for(name)
-    return installer.latest_version(name, spec)
+    tool = tools()[name]
+    return INSTALLERS[tool.installer].latest_version(tool)
 
 
 def download(url: str) -> bytes:
@@ -641,35 +791,41 @@ def record_runtime() -> None:
     update_file(TOOLS / "runtime.json", json.dumps(runtime, indent=2) + "\n")
 
 
-def install_tool(name: str, spec: ToolSpec, installed_types: set[str]) -> dict[str, Any]:
+def install_tool(tool: Tool, installed_types: set[str]) -> dict[str, Any]:
     """Install one tool if its version or its dependencies are not the pinned ones."""
-    installer = INSTALLERS[spec["installer"]]
-    expected = spec["version"]
-    needs_install = installed_version(name) != expected or installer.is_stale(name, spec)
+    installer = INSTALLERS[tool.installer]
+    needs_install = installed_version(tool.name) != tool.version or installer.is_stale(tool)
     if needs_install:
-        installer.install(name, spec)
-        installed_types.add(spec["installer"])
-    actual = installed_version(name)
-    if actual != expected:
-        raise RuntimeError(f"{name}: expected {expected}, installed version is {actual!r}")
-    installer.check_installed(name, spec)
-    covered = installer.shared_install and spec["installer"] in installed_types
+        installer.install(tool)
+        installed_types.add(tool.installer)
+    actual = installed_version(tool.name)
+    if actual != tool.version:
+        raise RuntimeError(f"{tool.name}: expected {tool.version}, installed version is {actual!r}")
+    problems = installer.problems(tool)
+    if problems:
+        raise RuntimeError(problems[0])
+    covered = installer.shared_install and tool.installer in installed_types
     return {
-        "tool": name,
+        "tool": tool.name,
         "version": actual,
         "action": "installed" if needs_install or covered else "unchanged",
-        "command": tool_command(name),
+        "command": command_of(tool),
     }
 
 
 def install() -> dict[str, Any]:
     record_runtime()
     installed_types: set[str] = set()
-    return {
-        "tools": [
-            install_tool(name, spec, installed_types) for name, spec in manifest()["tools"].items()
-        ]
-    }
+    return {"tools": [install_tool(tool, installed_types) for tool in tools().values()]}
+
+
+def lock() -> dict[str, Any]:
+    """Write every tool type's committed lock; the shared (npm) lock comes first."""
+    locks: list[dict[str, Any]] = []
+    ordered = sorted(INSTALLERS.items(), key=lambda item: not item[1].shared_install)
+    for installer_name, installer in ordered:
+        locks.extend(installer.lock(tools_with(installer_name)))
+    return {"locks": locks}
 
 
 def private_permissions(path: Path, *, copy_from: Path | None = None) -> None:
@@ -774,9 +930,8 @@ def serena_home() -> Path:
 
 
 def serena_configuration(*, apply: bool = False, dry_run: bool = False) -> dict[str, Any]:
-    serena = manifest()["tools"]["serena"]
-    settings = serena["config"]
-    python = uv_python(serena)
+    settings = manifest()["tools"]["serena"]["config"]
+    python = uv_python(tools()["serena"])
     if not python.is_file():
         return {
             "action": "requires tools:install",
@@ -827,7 +982,7 @@ def servers() -> dict[str, Any]:
             "command": node_command(),
             "args": [
                 str(ROOT / "scripts/run_gitnexus.mjs"),
-                *tool_command("gitnexus")[1:],
+                node_script("gitnexus"),
                 "mcp",
             ],
             "env": {
@@ -976,7 +1131,7 @@ def gitnexus_hook_launch(adapter: HostAdapter) -> dict[str, Any]:
         (ROOT / "scripts/run_gitnexus_hook.mjs").as_posix(),
         (TOOLS / "gitnexus-indexes").as_posix(),
         hook.as_posix(),
-        Path(tool_command("gitnexus")[1]).as_posix(),
+        Path(node_script("gitnexus")).as_posix(),
     ]
     if adapter.hook_exec_form:
         return {"command": arguments[0], "args": arguments[1:]}
@@ -1058,14 +1213,12 @@ def configure_gitnexus_hooks(adapter: HostAdapter) -> None:
     update_file(path, json.dumps(data, indent=2) + "\n")
 
 
-def serena_hooks_binary() -> str:
-    """Return the hook executable Serena installs: the first of its `extra_bins`."""
-    extra = manifest()["tools"].get("serena", {}).get("extra_bins", [])
-    return extra[0] if extra else "serena-hooks"
+# The program Serena installs for host hooks; `extra_bins` in the manifest only documents it.
+SERENA_HOOKS = "serena-hooks"
 
 
 def serena_hook(adapter: HostAdapter, action: str) -> dict[str, Any]:
-    binary = str(bin_path(serena_hooks_binary()))
+    binary = str(bin_path(SERENA_HOOKS))
     arguments = [action, "--client=" + adapter.serena_client]
     hook: dict[str, Any] = {"type": "command", "timeout": 3 if action == "cleanup" else 5}
     if adapter.hook_exec_form:
@@ -1090,7 +1243,7 @@ def configure_serena_hooks(adapter: HostAdapter, *, dry_run: bool = False) -> st
             group["hooks"] = [
                 hook
                 for hook in group.get("hooks", [])
-                if "serena-hooks" not in " ".join([hook.get("command", ""), *hook.get("args", [])])
+                if SERENA_HOOKS not in " ".join([hook.get("command", ""), *hook.get("args", [])])
             ]
         hooks[event] = [group for group in hooks[event] if group.get("hooks")]
         if not hooks[event]:
@@ -1927,7 +2080,7 @@ def host_problems(host: str) -> list[str]:
 
 
 def doctor(target: str) -> dict[str, Any]:
-    tools = [
+    pins = [
         {
             "tool": name,
             "expected": spec["version"],
@@ -1938,15 +2091,11 @@ def doctor(target: str) -> dict[str, Any]:
     problems = [
         f"{t['tool']}: installed {t['installed'] or 'none'}, expected {t['expected']}; "
         "run ./bootstrap.sh tools:install"
-        for t in tools
+        for t in pins
         if t["installed"] != t["expected"]
     ]
-    problems.extend(
-        f"{name.capitalize()}'s pinned security patches (dependency_overrides in "
-        "agent-dependencies.json) are not installed; run ./bootstrap.sh tools:install"
-        for name, spec in manifest()["tools"].items()
-        if spec.get("installer") == "uv" and not overrides_installed(spec)
-    )
+    for tool in tools().values():
+        problems.extend(INSTALLERS[tool.installer].problems(tool))
     hosts: list[dict[str, Any]] = []
     for host in selected_hosts(target):
         reasons = host_problems(host)
@@ -1972,7 +2121,7 @@ def doctor(target: str) -> dict[str, Any]:
             "run ./bootstrap.sh agents:configure"
         )
     return {
-        "tools": tools,
+        "tools": pins,
         "serena": serena,
         "hosts": hosts,
         "skills": skills,
@@ -2032,43 +2181,14 @@ def emit(result: dict[str, Any], output: str) -> None:
         print(result["note"])
 
 
-COMMANDS = ("install", "configure", "doctor", "preview", "versions", "check", "run", "lock")
-
-# The task that runs each command, for errors that name the task the user ran.
-TASK_NAMES = {
-    "install": "tools:install",
-    "configure": "agents:configure",
-    "doctor": "doctor",
-    "preview": "install:dry-run",
-    "versions": "deps:versions",
-    "check": "deps:check",
-    "run": "tools:run",
-    "lock": "tools:lock",
-}
-
-
 class UnknownToolError(ValueError):
     """`--tool` names a tool that is not in agent-dependencies.json."""
 
 
 def require_known_tool(name: str) -> None:
-    tools = manifest()["tools"]
-    if name not in tools:
-        raise UnknownToolError(f"unknown tool '{name}'; choose one of {', '.join(tools)}")
-
-
-def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--command", choices=COMMANDS, required=True)
-    parser.add_argument("--target", choices=("all", *ADAPTERS), default="all")
-    parser.add_argument("--output", choices=("json", "text"), default="text")
-    # The valid names come from agent-dependencies.json, so main() checks them.
-    parser.add_argument("--tool")
-    parser.add_argument("arguments", nargs=argparse.REMAINDER)
-    args = parser.parse_args(argv)
-    if args.command == "run" and not args.tool:
-        parser.error("--command run requires --tool")
-    return args
+    known = manifest()["tools"]
+    if name not in known:
+        raise UnknownToolError(f"unknown tool '{name}'; choose one of {', '.join(known)}")
 
 
 def run_tool(name: str, extra_arguments: list[str]) -> int:
@@ -2125,43 +2245,71 @@ def versions_result(target: str, *, latest: bool) -> dict[str, Any]:
     return result
 
 
-def lock_result() -> dict[str, Any]:
-    locks: list[dict[str, Any]] = []
-    if tools_with("npm"):
-        locks.append(lock_npm_tools())
-    locks.extend(lock_uv_tool(name, spec) for name, spec in tools_with("uv").items())
-    return {"locks": locks}
+class Command(NamedTuple):
+    """A `--command` value: the task that runs it and how it produces its result."""
+
+    task: str  # named in errors, so the message matches what the user typed
+    result: Callable[[str], dict[str, Any]] | None  # None: `run` handles itself
 
 
-def command_result(args: argparse.Namespace) -> dict[str, Any]:
-    """Run every command except `run` and return its result."""
-    results: dict[str, Callable[[], dict[str, Any]]] = {
-        "install": install,
-        "lock": lock_result,
-        "configure": lambda: configure(args.target),
-        "doctor": lambda: doctor(args.target),
-        "preview": lambda: preview_result(args.target),
-        "versions": lambda: versions_result(args.target, latest=False),
-        "check": lambda: versions_result(args.target, latest=True),
-    }
-    return results[args.command]()
+def installed_versions(target: str) -> dict[str, Any]:
+    return versions_result(target, latest=False)
+
+
+def latest_versions(target: str) -> dict[str, Any]:
+    return versions_result(target, latest=True)
+
+
+def install_result(target: str) -> dict[str, Any]:
+    return install()
+
+
+def lock_result(target: str) -> dict[str, Any]:
+    return lock()
+
+
+COMMANDS: dict[str, Command] = {
+    "install": Command("tools:install", install_result),
+    "configure": Command("agents:configure", configure),
+    "doctor": Command("doctor", doctor),
+    "preview": Command("install:dry-run", preview_result),
+    "versions": Command("deps:versions", installed_versions),
+    "check": Command("deps:check", latest_versions),
+    "run": Command("tools:run", None),
+    "lock": Command("tools:lock", lock_result),
+}
+
+
+def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--command", choices=tuple(COMMANDS), required=True)
+    parser.add_argument("--target", choices=("all", *ADAPTERS), default="all")
+    parser.add_argument("--output", choices=("json", "text"), default="text")
+    # The valid names come from agent-dependencies.json, so main() checks them.
+    parser.add_argument("--tool")
+    parser.add_argument("arguments", nargs=argparse.REMAINDER)
+    args = parser.parse_args(argv)
+    if args.command == "run" and not args.tool:
+        parser.error("--command run requires --tool")
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_arguments(argv)
+    command = COMMANDS[args.command]
     try:
         # Check the manifest first, so a bad entry stops the command before any download.
         manifest()
         if args.tool:
             require_known_tool(args.tool)
-        if args.command == "run":
+        if command.result is None:
             return run_tool(args.tool, args.arguments)
-        result = command_result(args)
+        result = command.result(args.target)
         result["command"] = args.command
         emit(result, args.output)
         return 1 if result.get("problems") else 0
     except (ManifestError, UnknownToolError) as error:
-        emit({"command": TASK_NAMES[args.command], "error": str(error)}, args.output)
+        emit({"command": command.task, "error": str(error)}, args.output)
         return 1
     except (
         OSError,

@@ -135,7 +135,7 @@ tasks:
     requires:
       vars:
         - name: TOOL
-    cmd: '{{.PYTHON}} scripts/manage_agent_tools.py --command run --tool {{.TOOL}} -- {{.CLI_ARGS}}'
+    cmd: '{{.PYTHON}} scripts/manage_agent_tools.py --command run --tool {{shellQuote .TOOL}} -- {{.CLI_ARGS}}'
 
   doctor:
     desc: Report native and agent tool versions and host configuration state.

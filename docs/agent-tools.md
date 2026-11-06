@@ -28,29 +28,37 @@ and language-server behavior; record the conflicts when reporting the result.
 ## Tool entries in agent-dependencies.json
 
 Each `tools.<name>` entry says how its tool is installed, so install, the command that
-runs the tool, version checks, `task deps:check`, `tools:lock` and `tools:run` all read
-the entry; the install, command, version and lock code in `scripts/manage_agent_tools.py`
-names no tool. Besides the
-version pin and `source`, an entry has:
+runs the tool, version checks, `task deps:check`, `tools:lock`, `doctor` and `tools:run`
+all read the entry; the install, command, version and lock code in
+`scripts/manage_agent_tools.py` names no tool. Every entry has `version`, `installer` and
+`bin`, plus these fields for its installer:
 
 | Field | Meaning |
 | --- | --- |
-| `installer` | Required. `uv` (a Python package in its own environment), `npm` (a package in the shared npm folder, installed from `agent-tools/package-lock.json`) or `github-release` (an archive checked against `checksums`) |
-| `bin` | Required. The main program the tool installs |
-| `extra_bins` | Optional list of other programs it installs, such as `serena-hooks` |
+| `installer` | `uv` (a Python package in its own environment), `npm` (a package in the shared npm folder, installed from `agent-tools/package-lock.json`) or `github-release` (an archive checked against `checksums`) |
+| `bin` | The main program the tool installs |
+| `extra_bins` | Optional list of other programs it installs, such as `serena-hooks`. Informational: nothing reads it, and host hooks name the programs they call |
+| `package` | `uv` and `npm`: the package name (`@scope/name` is allowed for npm) |
+| `python`, `dependency_overrides` | `uv`: the Python version of its environment, and optional reviewed `package: version` overrides |
 | `runs_with` | `npm` only, required. `native` runs the file directly; `node` runs it with the pinned Node |
-| `entry` | `npm` with `runs_with: node` only, required. The script path inside the package, used when the package is not installed yet |
+| `entry` | Required when `runs_with` is `node`; not allowed for other installers. The script path inside the package, used when the package is not installed yet |
+| `source`, `release`, `checksums` | `github-release`: the GitHub repository URL; the download folder of the pinned tag (`.../download/<tag>`, the tag ending in `version`); SHA-256 per asset named `<bin>_<system>_<machine>.<ext>` |
 
-A `uv` entry also has `python`, `package` and optionally `dependency_overrides`; an `npm`
-entry has `package`; a `github-release` entry has `release` (the download folder of the
-pinned tag) and `checksums` (SHA-256 per asset named `<bin>_<system>_<machine>.<ext>`).
-A missing or invalid value stops every command before it downloads anything, with a
-message such as `tools:install: agent-dependencies.json tools.gitnexus.installer must be one
-of uv, npm, github-release`.
+Setup checks every entry when it reads the file and stops with a message such as
+`tools:install: agent-dependencies.json tools.gitnexus.installer must be one of uv, npm, github-release`
+before it downloads or writes anything. It also refuses names and paths that could leave
+`.tools`: the tool name, `bin` and `extra_bins` must be plain names (letters, digits, `.`,
+`_`, `-`, starting with a letter or digit); `package` must be a package name; `entry`
+must stay inside the package; and `version`, `python` and override versions must look like
+versions.
 
 To add another tool that installs one of these ways, add its entry and, for `uv` or `npm`,
-run `task tools:lock`. A new way of installing needs a new handler in
-`scripts/manage_agent_tools.py`; wiring the tool into each agent host is separate work.
+run `task tools:lock`. Install, `tools:run`, `doctor` and `deps:check` then work with no
+code change, and `configure` requires every pinned tool to install cleanly. Connecting a
+tool to each agent host is separate code in `scripts/manage_agent_tools.py`: `servers()`
+for the MCP server entries, the per-host native setup steps (`register_serena`,
+`set_up_gitnexus`, the cq install) and the hook helpers. A new way of installing needs a
+new installer record in `INSTALLERS` in the same file.
 
 ## Agent configuration
 
