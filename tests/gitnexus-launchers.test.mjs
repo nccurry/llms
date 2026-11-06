@@ -141,6 +141,12 @@ test('CLI launcher preserves an explicit storage root and forwards the exit code
   assert.equal(result.bufferPool, '0');
   assert.deepEqual(result.args, ['status']);
 
+  delete env.GITNEXUS_LBUG_BUFFER_POOL_SIZE;
+  const server = output(spawnSync(process.execPath, [runner, cli, 'mcp'], {
+    env, encoding: 'utf8',
+  }));
+  assert.equal(server.bufferPool, undefined);
+
   writeFileSync(cli, 'process.exitCode = 7;');
   assert.equal(spawnSync(process.execPath, [runner, cli], { env }).status, 7);
 });
