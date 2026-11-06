@@ -30,14 +30,16 @@ Hosted Windows CI is not selected (the owner chose not now).
 - Out of scope: C901 and pyright strict (both enabled in P5); any `piw/` file.
 - Prerequisite: None.
 - Steps:
-  1. Write `ruff.toml`: line length 100, target Python 3.14, piw's rule
+  1. Write `ruff.toml`: line length 100, target Python 3.11 (3.10 for the two
+     skill scripts that declare it), piw's rule
      families minus D100 to D107, `extend-exclude` for `piw/` and
      `tests/skill-evals/**/fixture/`, test per-file ignores as in piw.
   2. Write `lint/pyrightconfig.json` (paths resolve from `lint/`): basic
-     mode, Python 3.14, include `../scripts`, `../tests`, `../skills`; exclude `piw`, eval fixtures and
+     mode, Python 3.11 (3.10 for those two skill scripts), include `../scripts`, `../tests`, `../skills`; exclude `piw`, eval fixtures and
      `scripts/render_serena_config.py`; an execution environment for
      `tests/skill-evals` with its harness folder in `extraPaths`.
-  3. Pin ruff 0.16.2, pyright 1.1.411 (piw's current versions) and `tomlkit`
+  3. Pin ruff 0.16.2, pyright 1.1.411 with its `nodejs` extra (piw's current
+     versions; Node then comes from a hash-pinned wheel) and `tomlkit`
      (as in `agent-runtime.txt`) with hashes in `lint/requirements.txt` via
      `uv pip compile --generate-hashes`.
   4. Add `deps:dev-tools` (installs `.tools/lint/` with

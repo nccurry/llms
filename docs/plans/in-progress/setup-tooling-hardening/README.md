@@ -9,13 +9,13 @@ in one place.
 
 - Status: In progress
 - Owner: @nccurry
-- Last updated: 2026-11-06, `main` at `284290e`
+- Last updated: 2026-11-06, `main` at `1ea0b4b` (P1 merged)
 - Selected work: P1 to P5 — REQ-001 to REQ-020 and REQ-022; delivered by direct merges into `main`, each phase closing when its requirements' checks pass on `main`.
-- Next action: P1 child (Sonnet) adds `ruff.toml` and the `lint/` folder in its worktree.
+- Next action: Start P2 (Windows checks) and P3 (end-to-end configure test) in parallel, each in its own Sonnet child worktree from `main`.
 - Blocker: None
 - Depends on: None
-- Current state: Execution started; no phase merged.
-- Resume check: `./bootstrap.sh test` → piw 185 passed, setup-script tests 26 OK, launcher tests 3 pass.
+- Current state: P1 Verified on `main`; P2 to P5 not started.
+- Resume check: `./bootstrap.sh deps:dev-tools && ./bootstrap.sh lint:python` → 0 errors; `./bootstrap.sh test` → piw 185 passed, setup-script tests 26 OK, launcher tests 3 pass.
 
 Where the work lives:
 
@@ -27,7 +27,7 @@ Where the work lives:
 
 | Phase | Name | Owner | State |
 | --- | --- | --- | --- |
-| [P1](IMPLEMENTATION_PLAN.md#p1-separate-lint-and-type-checks-for-python-outside-piw) | Separate lint and type checks for Python outside piw | | Planned |
+| [P1](IMPLEMENTATION_PLAN.md#p1-separate-lint-and-type-checks-for-python-outside-piw) | Separate lint and type checks for Python outside piw | | Verified — lint:python 0 findings, test and check pass @ 1ea0b4b; merged by fast-forward |
 | [P2](IMPLEMENTATION_PLAN.md#p2-windows-checks-from-linux) | Windows checks from Linux | | Planned |
 | [P3](IMPLEMENTATION_PLAN.md#p3-end-to-end-configure-test) | End-to-end configure test | | Planned |
 | [P4](IMPLEMENTATION_PLAN.md#p4-host-adapters-and-a-split-configure) | Host adapters and a split configure | | Planned |
@@ -44,3 +44,4 @@ The requirements and their checks are in [SRD.md](SRD.md).
 - 2026-11-06 Decision: P2 fixes the two Windows defects (REQ-009 CRLF part, REQ-012); shellcheck stays (REQ-007); hosted Windows CI not now; pyright strict for the setup script added as REQ-022 in P5 ([SADD](SADD.md#decisions-and-alternatives)).
 - 2026-11-06 Decision: removed the commit-scan requirement (formerly REQ-021) at the owner's request.
 - 2026-11-06 Started execution: Opus parent, Sonnet implementation children, direct merges into `main`.
+- 2026-11-06 P1 merged by fast-forward and verified: strict audit (six domains) PASS after one repair batch; decisions on targets, Node for pyright and test ignores recorded in [SADD](SADD.md#decisions-and-alternatives).
