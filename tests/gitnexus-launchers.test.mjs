@@ -20,9 +20,11 @@ function fixture(t) {
     args: process.argv.slice(2),
     storageRoot: process.env.GITNEXUS_STORAGE_ROOT,
     storagePath: process.env.GITNEXUS_STORAGE_PATH,
+    bufferPool: process.env.GITNEXUS_LBUG_BUFFER_POOL_SIZE,
   }));`);
   const env = { ...process.env, GITNEXUS_STORAGE_PATH: path.join(directory, 'wrong index') };
   delete env.GITNEXUS_STORAGE_ROOT;
+  delete env.GITNEXUS_LBUG_BUFFER_POOL_SIZE;
   return { directory, cli, env };
 }
 
@@ -65,6 +67,7 @@ test('stale reminder executes the pinned CLI with quoted paths and required flag
     assert.deepEqual(result.args, ['analyze', '--index-only', ...(embeddings ? ['--embeddings'] : [])]);
     assert.equal(result.storageRoot, storageRoot);
     assert.equal(result.storagePath, undefined);
+    assert.equal(result.bufferPool, String(4 * 1024 ** 3));
   }
 });
 
@@ -129,11 +132,13 @@ test('installed upstream hook emits an executable reminder only for a stale succ
 test('CLI launcher preserves an explicit storage root and forwards the exit code', (t) => {
   const { directory, cli, env } = fixture(t);
   env.GITNEXUS_STORAGE_ROOT = path.join(directory, 'custom indexes');
+  env.GITNEXUS_LBUG_BUFFER_POOL_SIZE = '0';
   const result = output(spawnSync(process.execPath, [runner, cli, 'status'], {
     env, encoding: 'utf8',
   }));
   assert.equal(result.storageRoot, env.GITNEXUS_STORAGE_ROOT);
   assert.equal(result.storagePath, undefined);
+  assert.equal(result.bufferPool, '0');
   assert.deepEqual(result.args, ['status']);
 
   writeFileSync(cli, 'process.exitCode = 7;');

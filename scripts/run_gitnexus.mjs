@@ -4,5 +4,7 @@ import { pathToFileURL } from 'node:url';
 const [node, , cli, ...args] = process.argv;
 if (!cli) throw new Error('The pinned GitNexus CLI path is required.');
 delete process.env.GITNEXUS_STORAGE_PATH;
+// LadybugDB's 256 MiB default buffer pool runs out while analyzing mid-size repos.
+process.env.GITNEXUS_LBUG_BUFFER_POOL_SIZE ??= String(4 * 1024 ** 3);
 process.argv = [node, cli, ...args];
 await import(pathToFileURL(cli).href);
