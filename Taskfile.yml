@@ -9,6 +9,16 @@ vars:
     sh: 'cat "{{.ROOT_DIR}}/piw/.python-version"'
   LINT_BIN: '{{.ROOT_DIR}}/.tools/lint/{{if eq OS "windows"}}Scripts{{else}}bin{{end}}'
   LINT_PYTHON: '{{.LINT_BIN}}/python{{if eq OS "windows"}}.exe{{end}}'
+  # lint/mise.toml pins shellcheck and PowerShell apart from mise.toml. MISE_LINT runs mise with
+  # lint/ as the working directory, so it reads lint/mise.toml. MISE_CEILING_PATHS stops it
+  # reading the root mise.toml above it, and its own data directory keeps these tools out of the
+  # shim folder in .tools/mise/data: a mise install rebuilds every shim in the folder it uses.
+  MISE_LINT: 'MISE_DATA_DIR="{{.ROOT_DIR}}/.tools/lint-mise/data" MISE_CEILING_PATHS="{{.ROOT_DIR}}" {{.MISE}} -C "{{.ROOT_DIR}}/lint"'
+  PSMODULES: '{{.ROOT_DIR}}/.tools/powershell-modules'
+  PS_PINS:
+    sh: 'cat "{{.ROOT_DIR}}/lint/powershell-modules.json"'
+  PESTER_DIR: '{{.PSMODULES}}/Pester/{{(fromJson .PS_PINS).modules.Pester.version}}'
+  ANALYZER_DIR: '{{.PSMODULES}}/PSScriptAnalyzer/{{(fromJson .PS_PINS).modules.PSScriptAnalyzer.version}}'
   PYTHON: '{{.UV}} run --isolated --no-project --python "{{.PYTHON_VERSION}}" --with-requirements "{{.ROOT_DIR}}/agent-runtime.txt" python'
   TARGET: '{{default "all" .TARGET}}'
   OUTPUT: '{{default "text" .OUTPUT}}'
@@ -56,20 +66,30 @@ tasks:
       - sh: '{{.MISE}} --version'
         msg: Run bootstrap.sh or bootstrap.ps1 to prepare project-local mise and Task.
     cmds:
-      - '{{.MISE}} install --locked --yes'
-      # Shims link to the checkout that wrote them; a worktree sharing this
-      # data directory must not repoint them at a checkout that may be deleted.
-      - '[ -L "{{.ROOT_DIR}}/.tools/mise/data" ] || {{.MISE}} reshim'
+      # mise points every shim at the mise it runs from, so a checkout sharing another's data
+      # directory must not install into it (see the script). Windows has no sh and copies its shims.
+      - '{{if eq OS "windows"}}{{.MISE}} install --locked --yes{{else}}sh "{{.ROOT_DIR}}/scripts/ensure_mise_tools.sh" {{.MISE}} install --locked --yes{{end}}'
 
   deps:dev-tools:
-    desc: Rebuild .tools/lint from the hash-pinned lint and type-check tools; not part of deps:install.
+    desc: Install the development-only tools (Python lint tools, shellcheck, PowerShell 7, Pester, PSScriptAnalyzer); not part of deps:install.
     cmds:
       - '{{.UV}} venv --clear --python "{{.PYTHON_VERSION}}" "{{.ROOT_DIR}}/.tools/lint"'
       - >-
         {{.UV}} pip install --require-hashes --python "{{.LINT_PYTHON}}"
         -r "{{.ROOT_DIR}}/lint/requirements.txt"
+      - '{{.MISE_LINT}} trust --yes --quiet "{{.ROOT_DIR}}/lint/mise.toml"'
+      - '{{.MISE_LINT}} install --locked --yes'
+      # Each download is checked against the SHA-256 in lint/powershell-modules.json before it is unpacked.
+      - '"{{.LINT_PYTHON}}" "{{.ROOT_DIR}}/lint/install_powershell_modules.py" "{{.ROOT_DIR}}/lint/powershell-modules.json" "{{.PSMODULES}}"'
       # Written last: lint:python treats a missing or different copy as a stale or half-built install.
       - 'cat "{{.ROOT_DIR}}/lint/requirements.txt" > "{{.ROOT_DIR}}/.tools/lint/requirements.txt"'
+
+  deps:dev-tools:lock:
+    desc: Regenerate lint/requirements.txt (with hashes) and lint/mise.lock after editing lint/requirements.in or lint/mise.toml.
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - '{{.UV}} pip compile --generate-hashes --python-version 3.14 lint/requirements.in -o lint/requirements.txt'
+      - '{{.MISE_LINT}} lock -p linux-x64,linux-arm64,macos-x64,macos-arm64,windows-x64,windows-arm64'
 
   deps:verify:
     desc: Show resolved native development tools.
@@ -151,7 +171,7 @@ tasks:
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       LLMS_REQUIRE_PINNED_TOOLS: '{{.REQUIRE_PINNED_TOOLS | default ""}}'
-    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_host_adapters tests.test_configure_end_to_end'
+    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_host_adapters tests.test_configure_end_to_end tests.test_windows_branches tests.test_install_powershell_modules tests.test_powershell_runners tests.test_ensure_mise_tools'
 
   test:agent-launchers:
     desc: Check pinned GitNexus launchers and emitted refresh commands.
@@ -187,11 +207,45 @@ tasks:
       - '"{{.LINT_BIN}}/ruff" format --check'
       - '"{{.LINT_BIN}}/pyright" --warnings -p lint/pyrightconfig.json'
 
+  lint:shell:
+    desc: Run shellcheck on bootstrap.sh and the other shell script; needs deps:dev-tools first.
+    preconditions:
+      - sh: '{{.MISE_LINT}} which shellcheck'
+        msg: Run `task deps:dev-tools` to install shellcheck.
+    cmds:
+      - '{{.MISE_LINT}} exec -- shellcheck --version'
+      - '{{.MISE_LINT}} exec -- shellcheck ../bootstrap.sh ../scripts/ensure_mise_tools.sh'
+
+  lint:powershell:
+    desc: Run PSScriptAnalyzer (with the Windows PowerShell 5.1 checks) on every tracked .ps1 file; needs deps:dev-tools first.
+    preconditions:
+      - sh: '{{.MISE_LINT}} which pwsh && [ -d "{{.ANALYZER_DIR}}" ]'
+        msg: Run `task deps:dev-tools` to install PowerShell and PSScriptAnalyzer.
+    dir: '{{.ROOT_DIR}}'
+    env:
+      # The runner imports the pinned module by its exact path. PSModulePath is not a fence:
+      # PowerShell adds the user, shared and built-in module folders to it.
+      PSModulePath: '{{.PSMODULES}}'
+    cmd: '{{.MISE_LINT}} exec -- pwsh -NoProfile -File "{{.ROOT_DIR}}/lint/run_psscriptanalyzer.ps1"'
+
+  test:powershell:
+    desc: Run the Pester tests for bootstrap.ps1; needs deps:dev-tools first.
+    preconditions:
+      - sh: '{{.MISE_LINT}} which pwsh && [ -d "{{.PESTER_DIR}}" ]'
+        msg: Run `task deps:dev-tools` to install PowerShell and Pester.
+    dir: '{{.ROOT_DIR}}'
+    env:
+      PSModulePath: '{{.PSMODULES}}'
+    cmd: '{{.MISE_LINT}} exec -- pwsh -NoProfile -File "{{.ROOT_DIR}}/lint/run_pester.ps1"'
+
   check:
     desc: Run every local check without installing anything; needs deps:dev-tools once first; fetches external skills.
     cmds:
       - task: piw:check
       - task: lint:python
+      - task: lint:shell
+      - task: lint:powershell
+      - task: test:powershell
       # A task's env does not reach the tasks it calls, so the requirement travels as a variable.
       - task: skills:check
         vars: {REQUIRE_PINNED_TOOLS: '1'}
@@ -208,6 +262,9 @@ tasks:
     cmds:
       - task: piw:ci
       - task: lint:python
+      - task: lint:shell
+      - task: lint:powershell
+      - task: test:powershell
       - task: skills:check
         vars: {REQUIRE_PINNED_TOOLS: '1'}
       - task: test:agent-launchers

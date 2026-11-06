@@ -60,7 +60,10 @@ flowchart LR
 | Lint and type-check targets: Python 3.11 for the setup scripts and tests, 3.10 for the two skill scripts that declare `requires-python >= 3.10` | Accepted | A 3.14 target let the formatter emit 3.14-only syntax (`except A, B:`) into scripts that must also run on older Pythons; the target is the oldest Python each file supports, and Task still runs them on 3.14 |
 | Install pyright with its `nodejs` extra and pin the wrapper's environment variables in `lint:python` | Accepted | Otherwise pyright's PyPI wrapper uses any `node` on PATH or downloads an unpinned, unchecked Node into the home folder; the extra puts Node under the same hash pin |
 | Per-file ignores beyond piw's for tests: docstring style (D205, D401), subprocess calls with fixed arguments (S603, S607), many positional fixture fields (PLR0917), typographic characters in test data (RUF001), and E501 only in `tests/test_plc_checkpoint_fixtures.py`; D205 and D401 for `skills/plc-planning/scripts/format_check.py` | Accepted | Each ignore states its reason in `ruff.toml`; the setup tests and eval harness share these patterns, and `format_check.py` documents its functions with noun phrases by design |
-| Pin shellcheck and PowerShell in `mise.toml`, so `mise.lock` records per-platform checksums | Accepted | Same pinning path as Task, uv and Node; no reliance on a global install |
+| Pin shellcheck and PowerShell through mise in `lint/mise.toml`, so `lint/mise.lock` records per-platform checksums; install them into their own data directory (`.tools/lint-mise/data`) | Accepted | Same pinning path as Task, uv and Node; a separate data directory keeps lint installs from rebuilding the shims the root tools use |
+| A checkout whose `.tools/mise/data` physically lives in another checkout never runs `mise install`; it uses the tools already there or stops with an error naming the owner (`scripts/ensure_mise_tools.sh`) | Accepted | `mise install` rebuilds every shim to point at the mise that ran it, even when the install fails part way, so installing from a worktree that shares the data left the owner's shims pointing at a checkout that may be deleted. Reshimming afterwards was tried and rejected: a partial failure, a link at a parent folder, or a missing owner mise each left the shims wrong |
+| Import Pester and PSScriptAnalyzer by exact path and check where they loaded from, before and after the run | Accepted | `pwsh` puts the user and shared module folders ahead of `PSModulePath`, so a user-installed copy would otherwise replace the pinned one |
+| Apply `PSUseCompatibleCommands` only to the scripts that run on Windows PowerShell 5.1 | Accepted | `tests/powershell/*.Tests.ps1` and `lint/*.ps1` run on PowerShell 7 and call Pester and PSScriptAnalyzer commands no 5.1 profile lists |
 | Download Pester and PSScriptAnalyzer `.nupkg` files by exact version and check a pinned SHA-256 before unpacking into `.tools/` | Accepted | The PowerShell Gallery has no lock file; `Save-Module` cannot verify a hash; Authenticode checks do not run on Linux |
 | Test Windows logic with Pester under `pwsh` on Linux and Python tests that patch `os.name` | Accepted | Covers parsing, quoting and text generation, which is where the known defects are |
 | PSScriptAnalyzer `PSUseCompatibleCommands` with its bundled Windows PowerShell 5.1 profile, beside `PSUseCompatibleSyntax` | Accepted | Also catches commands and parameters missing from 5.1 (it flags `Get-Content -AsByteStream`), not just syntax |
@@ -129,8 +132,8 @@ separate mise environment, then downloads the Pester and PSScriptAnalyzer
 `.nupkg` files, checks each SHA-256, and unpacks them into
 `.tools/powershell-modules/`. `lint:powershell` runs PSScriptAnalyzer with
 that folder as the only module path and the 5.1 syntax and command rules
-enabled. `test:powershell` runs Pester, which mocks the bootstrap's main
-function, dot-sources `bootstrap.ps1`, and calls its functions. The Python
+enabled. `test:powershell` runs Pester, which dot-sources `bootstrap.ps1`
+(its guard keeps the main function from running) and calls its functions. The Python
 Windows tests patch `os.name` to `"nt"` and check the exact commands built.
 
 ### End-to-end test

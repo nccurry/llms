@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { pathToFileURL } from 'node:url';
+import { quotePowerShell } from '../scripts/quote_powershell.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const runner = path.join(root, 'scripts/run_gitnexus.mjs');
@@ -151,4 +152,96 @@ test('CLI launcher preserves an explicit storage root and forwards the exit code
 
   writeFileSync(cli, 'process.exitCode = 7;');
   assert.equal(spawnSync(process.execPath, [runner, cli], { env }).status, 7);
+});
+
+// The PowerShell the setup installs (`task deps:dev-tools`), or any pwsh on PATH, if it runs.
+function findPowerShell() {
+  const installs = path.join(root, '.tools/lint-mise/data/installs/powershell');
+  const names = process.platform === 'win32' ? ['pwsh.exe'] : ['pwsh'];
+  const candidates = existsSync(installs)
+    ? readdirSync(installs).flatMap((version) => names.map((name) => path.join(installs, version, name)))
+    : [];
+  return [...candidates.filter((candidate) => existsSync(candidate)), 'pwsh'].find((candidate) => (
+    spawnSync(candidate, ['-NoProfile', '-NonInteractive', '-Command', 'exit 0']).status === 0
+  ));
+}
+
+const parseHeader = `
+$errors = $null
+$tree = [System.Management.Automation.Language.Parser]::ParseInput($env:LLMS_TEST_SCRIPT, [ref] $null, [ref] $errors)
+if ($errors.Count -gt 0) { [Console]::Error.WriteLine($errors[0].Message); exit 1 }
+`;
+// Prints the value of each word on the script's first command line, as PowerShell reads it.
+const parseWords = `${parseHeader}
+$isCommand = { param($node) $node -is [System.Management.Automation.Language.CommandAst] }
+ConvertTo-Json -Compress @($tree.Find($isCommand, $true).CommandElements | ForEach-Object { $_.Value })`;
+// Prints every quoted string in the script, including the value assigned to the variable.
+const allStringWords = `${parseHeader}
+$isString = { param($node) $node -is [System.Management.Automation.Language.StringConstantExpressionAst] }
+ConvertTo-Json -Compress @($tree.FindAll($isString, $true) | ForEach-Object { $_.Value })`;
+
+const quoteCharacters = ["'", '\u2018', '\u2019', '\u201a', '\u201b'];
+
+test('PowerShell quoting doubles every single-quote character', () => {
+  for (const quote of quoteCharacters) {
+    assert.equal(quotePowerShell(`a${quote}b`), `'a${quote}${quote}b'`);
+  }
+  assert.equal(quotePowerShell("C:/Users/O\u2019Brien/My 'Repos'/llms"),
+    "'C:/Users/O\u2019\u2019Brien/My ''Repos''/llms'");
+});
+
+test('PowerShell reads back every single-quote character quoted for it', (t) => {
+  const pwsh = findPowerShell();
+  if (!pwsh) {
+    assert.ok(!process.env.LLMS_REQUIRE_PINNED_TOOLS, 'PowerShell is missing; run `task deps:dev-tools`.');
+    t.skip('PowerShell is not installed; run `task deps:dev-tools` to check this.');
+    return;
+  }
+  for (const quote of quoteCharacters) {
+    const value = `a${quote}b ${quote}${quote} c${quote}`;
+    const parsed = spawnSync(pwsh, ['-NoProfile', '-NonInteractive', '-EncodedCommand',
+      Buffer.from(parseWords, 'utf16le').toString('base64')], {
+      env: { ...process.env, LLMS_TEST_SCRIPT: `& ${quotePowerShell(value)}` },
+      encoding: 'utf8', timeout: 60000,
+    });
+    assert.equal(parsed.status, 0, parsed.stderr);
+    assert.deepEqual(JSON.parse(parsed.stdout), [value]);
+  }
+});
+
+test('Windows stale reminder quotes a U+2019 path so PowerShell reads back the exact paths', (t) => {
+  const { directory, env } = fixture(t);
+  const hooks = path.join(directory, 'hooks');
+  mkdirSync(hooks);
+  writeFileSync(path.join(hooks, 'resolve-analyze-cmd.cjs'),
+    "exports.formatAnalyzeCommand = () => 'pnpm dlx gitnexus@latest analyze';");
+  const hook = path.join(hooks, 'hook.cjs');
+  writeFileSync(hook, `const {formatAnalyzeCommand} = require('./resolve-analyze-cmd.cjs');
+    console.log(JSON.stringify({command: formatAnalyzeCommand({indexOnly: true})}));`);
+  // The runner picks its quoting from process.platform when it builds the command.
+  const preload = path.join(directory, 'pretend-windows.mjs');
+  writeFileSync(preload, "Object.defineProperty(process, 'platform', { value: 'win32' });");
+  const storageRoot = "C:/Users/O\u2019Brien/My 'Repos'/a\u2018b\u201ac\u201bd/indexes";
+  const cli = 'C:/Program Files/Tools/gitnexus/dist/cli/index.js';
+
+  const { command } = output(spawnSync(process.execPath,
+    ['--import', pathToFileURL(preload).href, hookRunner, storageRoot, hook, cli], { env, encoding: 'utf8' }));
+  const words = [process.execPath, path.join(root, 'scripts/run_gitnexus.mjs'), cli, 'analyze', '--index-only'];
+  // Written out by hand, not with quotePowerShell, so a fault there cannot hide itself.
+  const quotedRoot = "'C:/Users/O\u2019\u2019Brien/My ''Repos''/a\u2018\u2018b\u201a\u201ac\u201b\u201bd/indexes'";
+  assert.equal(command,
+    `$env:GITNEXUS_STORAGE_ROOT=${quotedRoot}; & ${words.map((word) => `'${word}'`).join(' ')}`);
+
+  const pwsh = findPowerShell();
+  if (!pwsh) {
+    assert.ok(!process.env.LLMS_REQUIRE_PINNED_TOOLS, 'PowerShell is missing; run `task deps:dev-tools`.');
+    t.skip('PowerShell is not installed; run `task deps:dev-tools` to check this.');
+    return;
+  }
+  const parsed = spawnSync(pwsh, ['-NoProfile', '-NonInteractive', '-EncodedCommand',
+    Buffer.from(allStringWords, 'utf16le').toString('base64')], {
+    env: { ...env, LLMS_TEST_SCRIPT: command }, encoding: 'utf8', timeout: 60000,
+  });
+  assert.equal(parsed.status, 0, parsed.stderr);
+  assert.deepEqual(JSON.parse(parsed.stdout), [storageRoot, ...words]);
 });

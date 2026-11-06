@@ -1,0 +1,6 @@
+[settings]
+auto_install = false
+
+[tools]
+shellcheck = "0.11.0"
+powershell = "7.6.7"

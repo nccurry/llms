@@ -2,6 +2,7 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { quotePowerShell } from './quote_powershell.mjs';
 
 const [node, , storageRoot, hook, cli, ...args] = process.argv;
 if (!storageRoot || !hook || !cli) {
@@ -25,7 +26,7 @@ resolver.formatAnalyzeCommand = ({ indexOnly = false, embeddings = false } = {})
   if (indexOnly) command.push('--index-only');
   if (embeddings) command.push('--embeddings');
   const quote = process.platform === 'win32'
-    ? (value) => `'${value.replaceAll("'", "''")}'`
+    ? quotePowerShell
     : (value) => `'${value.replaceAll("'", "'\\''")}'`;
   const assignment = `GITNEXUS_STORAGE_ROOT=${quote(storageRoot)}`;
   const launch = command.map(quote).join(' ');
