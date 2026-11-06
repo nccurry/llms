@@ -9,6 +9,11 @@ BeforeDiscovery {
 
 BeforeAll {
     $script:bootstrap = Join-Path $PSScriptRoot '../../bootstrap.ps1'
+    # Without its guard, dot-sourcing would run a real bootstrap, which downloads on Windows.
+    $guard = [regex]::Escape('if ($MyInvocation.InvocationName -ne ''.'')')
+    if ([IO.File]::ReadAllText($script:bootstrap) -notmatch $guard) {
+        throw 'bootstrap.ps1 has lost its dot-source guard; refusing to dot-source it.'
+    }
     . $script:bootstrap
 
     $script:platforms = @('linux-x64', 'linux-arm64', 'macos-x64', 'macos-arm64', 'windows-x64', 'windows-arm64')
@@ -73,6 +78,9 @@ Describe 'task.cmd text' {
         $text = Get-TaskCommandText
         $text | Should -Match ([regex]::Escape('set "LLMS_POWERSHELL=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"'))
         $text | Should -Not -Match '(?m)^\s*"?powershell(\.exe)?"?\s'
+        $invocations = @($text -split "`r`n" | Where-Object { $_ -match '-File' })
+        $invocations.Count | Should -Be 2
+        foreach ($line in $invocations) { $line | Should -Match '^\s*"%LLMS_POWERSHELL%" ' }
     }
 
     It 'uses CRLF on every line' {
@@ -110,11 +118,12 @@ Describe 'Write-TaskCommand' {
         $bytes[0] | Should -Be ([byte][char] '@')
     }
 
-    It 'does not rewrite a file that has the same text and different line endings' {
+    It 'converts an existing file with LF line endings once' {
         $lfText = (Get-TaskCommandText) -replace "`r`n", "`n"
         [IO.File]::WriteAllText($script:path, $lfText)
+        Write-TaskCommand -Path $script:path | Should -BeTrue
+        [IO.File]::ReadAllText($script:path) | Should -Be (Get-TaskCommandText)
         Write-TaskCommand -Path $script:path | Should -BeFalse
-        [IO.File]::ReadAllText($script:path) | Should -Be $lfText
     }
 
     It 'does not rewrite a file that is already current' {

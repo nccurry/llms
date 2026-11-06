@@ -8,12 +8,17 @@ function ConvertTo-WindowsArgument {
 }
 
 function Invoke-Mise {
-    param([string[]] $Arguments, [switch] $CaptureOutput)
+    param(
+        [Parameter(Mandatory = $true)][string] $MisePath,
+        [Parameter(Mandatory = $true)][string] $WorkingDirectory,
+        [string[]] $Arguments,
+        [switch] $CaptureOutput
+    )
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $startInfo.FileName = $misePath
+    $startInfo.FileName = $MisePath
     $startInfo.Arguments = ($Arguments | ForEach-Object { ConvertTo-WindowsArgument $_ }) -join ' '
     $startInfo.UseShellExecute = $false
-    $startInfo.WorkingDirectory = $repoRoot
+    $startInfo.WorkingDirectory = $WorkingDirectory
     $startInfo.RedirectStandardOutput = [bool] $CaptureOutput
     $process = New-Object System.Diagnostics.Process
     $process.StartInfo = $startInfo
@@ -63,16 +68,13 @@ if "%~1"=="" (
     return ($text -replace "`r?`n", "`r`n").TrimEnd() + "`r`n"
 }
 
-# Writes task.cmd unless the file already has the same text, ignoring line endings.
-# Returns $true when it wrote the file.
+# Writes task.cmd unless the file already holds exactly this text, line endings included, so an
+# older file with LF line endings is converted once. Returns $true when it wrote the file.
 function Write-TaskCommand {
     param([Parameter(Mandatory = $true)][string] $Path)
     $text = Get-TaskCommandText
-    if (Test-Path -LiteralPath $Path) {
-        $current = [IO.File]::ReadAllText($Path)
-        if (($current -replace "`r?`n", "`n").TrimEnd() -eq ($text -replace "`r`n", "`n").TrimEnd()) {
-            return $false
-        }
+    if ((Test-Path -LiteralPath $Path) -and ([IO.File]::ReadAllText($Path) -ceq $text)) {
+        return $false
     }
     [IO.File]::WriteAllText($Path, $text, [Text.Encoding]::ASCII)
     return $true
@@ -132,7 +134,7 @@ function Invoke-Bootstrap {
         $miseShimPath = Join-Path $binDirectory 'mise-shim.exe'
         $installedVersion = ''
         if (Test-Path -LiteralPath $misePath) {
-            $versionResult = Invoke-Mise -Arguments @('--version') -CaptureOutput
+            $versionResult = Invoke-Mise -MisePath $misePath -WorkingDirectory $repoRoot -Arguments @('--version') -CaptureOutput
             if ($versionResult.ExitCode -eq 0) { $installedVersion = $versionResult.Output.Trim().Split(' ')[0] }
         }
 
@@ -163,16 +165,16 @@ function Invoke-Bootstrap {
 
         Push-Location $repoRoot
         try {
-            $trustResult = Invoke-Mise -Arguments @('trust', '--yes', '--quiet', 'mise.toml')
+            $trustResult = Invoke-Mise -MisePath $misePath -WorkingDirectory $repoRoot -Arguments @('trust', '--yes', '--quiet', 'mise.toml')
             if ($trustResult.ExitCode -ne 0) { exit $trustResult.ExitCode }
-            $installResult = Invoke-Mise -Arguments @('install', 'task', '--locked', '--quiet')
+            $installResult = Invoke-Mise -MisePath $misePath -WorkingDirectory $repoRoot -Arguments @('install', 'task', '--locked', '--quiet')
             if ($installResult.ExitCode -ne 0) { exit $installResult.ExitCode }
 
             # A bare "powershell" would resolve from the caller's current directory first.
             [void] (Write-TaskCommand -Path (Join-Path $binDirectory 'task.cmd'))
 
             if ($TaskArguments.Count -eq 0) { $TaskArguments = @('deps:install') }
-            $taskResult = Invoke-Mise -Arguments (@('exec', '--', 'task') + $TaskArguments)
+            $taskResult = Invoke-Mise -MisePath $misePath -WorkingDirectory $repoRoot -Arguments (@('exec', '--', 'task') + $TaskArguments)
             exit $taskResult.ExitCode
         }
         finally {
