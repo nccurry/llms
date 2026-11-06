@@ -1,11 +1,11 @@
 # Runs PSScriptAnalyzer on every tracked .ps1 file and exits 1 on any finding.
 # Usage: pwsh -NoProfile -File lint/run_psscriptanalyzer.ps1
-# PSModulePath must name only the folder that holds the pinned PSScriptAnalyzer
-# (the lint:powershell task sets it).
+# The pinned PSScriptAnalyzer is imported by its exact path (see import_pinned_module.ps1).
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $settings = Join-Path $PSScriptRoot 'PSScriptAnalyzerSettings.psd1'
-Import-Module PSScriptAnalyzer
+. (Join-Path $PSScriptRoot 'import_pinned_module.ps1')
+Import-PinnedModule -Name 'PSScriptAnalyzer'
 $files = @(git -C $repoRoot ls-files '*.ps1')
 if ($LASTEXITCODE -ne 0 -or $files.Count -eq 0) { throw 'git ls-files found no .ps1 files.' }
 Write-Output "PSScriptAnalyzer $((Get-Module PSScriptAnalyzer).Version) on $($files.Count) files"
