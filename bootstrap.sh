@@ -99,9 +99,8 @@ if [ "$installed_version" != "$mise_version" ]; then
 fi
 
 "$mise_bin" trust --yes --quiet mise.toml
-"$mise_bin" install task --locked --quiet
-# mise repoints every shim at the mise it runs from; a linked data directory belongs to another checkout.
-sh "$repo_root/scripts/reshim_shared_data.sh" "$mise_bin"
+# A checkout that shares another's mise data directory must not install into it.
+sh "$repo_root/scripts/ensure_mise_tools.sh" "$mise_bin" install task --locked --quiet
 
 # This optional PATH entry forwards ordinary Task calls through the pinned runtime.
 # The wrapper text is written out as is; its $ expressions run later, inside the wrapper.

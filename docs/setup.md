@@ -141,11 +141,19 @@ It regenerates the hashed `lint/requirements.txt` and `lint/mise.lock` (for the 
 
 The lint-only mise tools use their own data directory, `.tools/lint-mise/data`, and read only
 `lint/mise.toml` (Task runs mise with `lint/` as the working directory and stops it at the checkout
-root). mise rebuilds every shim in a data directory it installs into, and rebuilds them to point at
-the `mise` it runs from. Keeping these tools out of `.tools/mise/data` means `deps:dev-tools` never
-changes those shims. For the install itself, `scripts/reshim_shared_data.sh` (run by
-`bootstrap.sh` and `deps:tools`) puts the shims back, using the `mise` of the checkout that owns the
-data directory when `.tools/mise/data` is a link to another checkout's.
+root). mise rebuilds every shim in a data directory it installs into, and points each one at the
+`mise` it runs from, even when the install then fails. Keeping these tools out of
+`.tools/mise/data` means `deps:dev-tools` never changes those shims.
+
+A worktree can share another checkout's `.tools/mise/data` through a link (at `.tools`,
+`.tools/mise` or `.tools/mise/data`). That checkout owns the shims, and a worktree's `mise`
+disappears when the worktree is removed. So `bootstrap.sh` and `deps:tools` run
+`scripts/ensure_mise_tools.sh`: when the data directory resolves to a place outside the checkout,
+it never installs. It checks with the read-only `mise ls --missing`, passes when the pinned tools
+are there, and otherwise stops and names the owning checkout, where you run
+`./bootstrap.sh deps:tools`. A checkout that owns its data directory installs as usual. (This does
+not cover `deps:dev-tools` when `.tools` itself is a link; that rebuilds only the lint tools' own
+shims in the owner's `.tools/lint-mise`.)
 
 Pester and PSScriptAnalyzer are pinned in `lint/powershell-modules.json`. To change one, set the
 new version and the SHA-256 of its `.nupkg` file from
@@ -166,7 +174,7 @@ Windows itself. These behaviors need a Windows host:
   command list; they cannot catch a difference in behavior.
 - The ACLs that `scripts/set_private_permissions.ps1` writes.
 - `deps:tools` when `.tools/mise/data` is a junction to another checkout's data. On Linux, a
-  script puts the shims back; on Windows that step is skipped, and nothing has run it.
+  script refuses to install into a shared directory; on Windows that step is skipped, and nothing has run it.
 - Codex running the Windows hook commands through `cmd`: the Serena hook command line and the
   GitNexus `commandWindows` value that starts Windows PowerShell with `-EncodedCommand`.
 
@@ -181,11 +189,15 @@ PowerShell 5.1 window in the checkout, and the `cmd` commands in a `cmd.exe` win
 1. Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\bootstrap.ps1 deps:install`. It
    should end without an error and create `.tools\bin\mise.exe`, `.tools\bin\mise-shim.exe` and
    `.tools\bin\task.cmd`.
-2. Check the line endings of `task.cmd`. This should print `True`:
+2. Check the line endings of a new `task.cmd` (delete `.tools\bin\task.cmd` and run step 1 once
+   more to get one). This should print `True`:
    `$b = [IO.File]::ReadAllBytes('.tools\bin\task.cmd'); ($b | Where-Object { $_ -eq 10 }).Count -eq ($b | Where-Object { $_ -eq 13 }).Count`
-   Run step 1 again and check that the file's last write time did not change. To check an upgrade,
-   replace the file's line endings with LF, run step 1 once (the file becomes CRLF again), then
-   once more (no change).
+   Run step 1 again and check that the file's last write time did not change. A `task.cmd` that
+   differs only in line endings (for example one with LF endings) is deliberately left as it is: it
+   runs the same, and rewriting a batch file while `cmd` runs it breaks the run. To check that,
+   convert the file to LF
+   (`(Get-Content .tools\bin\task.cmd -Raw).Replace([string][char]13, '') | Set-Content -NoNewline .tools\bin\task.cmd`),
+   run step 1, and confirm the file is still LF and `task --version` (step 3) still works.
 3. In a `cmd.exe` window in a different folder, run
    `set "PATH=<checkout>\.tools\bin;%PATH%"`, then `task --version`, then `task` with no
    arguments. Both should run through the bootstrap and print Task output, not a parse error from

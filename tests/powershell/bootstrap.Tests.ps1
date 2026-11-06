@@ -118,12 +118,21 @@ Describe 'Write-TaskCommand' {
         $bytes[0] | Should -Be ([byte][char] '@')
     }
 
-    It 'converts an existing file with LF line endings once' {
+    It 'does not rewrite a file that has the same text and different line endings' {
         $lfText = (Get-TaskCommandText) -replace "`r`n", "`n"
         [IO.File]::WriteAllText($script:path, $lfText)
-        Write-TaskCommand -Path $script:path | Should -BeTrue
-        [IO.File]::ReadAllText($script:path) | Should -Be (Get-TaskCommandText)
         Write-TaskCommand -Path $script:path | Should -BeFalse
+        [IO.File]::ReadAllText($script:path) | Should -Be $lfText
+    }
+
+    It 'rewrites a file that starts with a UTF-8 byte order mark' {
+        $bom = [byte[]] (0xEF, 0xBB, 0xBF)
+        $body = [Text.Encoding]::ASCII.GetBytes((Get-TaskCommandText))
+        [IO.File]::WriteAllBytes($script:path, [byte[]] ($bom + $body))
+        Write-TaskCommand -Path $script:path | Should -BeTrue
+        $bytes = [IO.File]::ReadAllBytes($script:path)
+        $bytes[0] | Should -Be ([byte][char] '@')
+        [Text.Encoding]::ASCII.GetString($bytes) | Should -Be (Get-TaskCommandText)
     }
 
     It 'does not rewrite a file that is already current' {

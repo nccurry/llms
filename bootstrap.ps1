@@ -68,13 +68,20 @@ if "%~1"=="" (
     return ($text -replace "`r?`n", "`r`n").TrimEnd() + "`r`n"
 }
 
-# Writes task.cmd unless the file already holds exactly this text, line endings included, so an
-# older file with LF line endings is converted once. Returns $true when it wrote the file.
+# Writes task.cmd unless the file already has the same text, ignoring line endings. A task.cmd
+# with LF endings runs fine, and rewriting a batch file that is running (task.cmd runs this
+# script) makes cmd.exe resume at a stale byte offset, so only a real difference is rewritten.
+# Returns $true when it wrote the file.
 function Write-TaskCommand {
     param([Parameter(Mandatory = $true)][string] $Path)
     $text = Get-TaskCommandText
-    if ((Test-Path -LiteralPath $Path) -and ([IO.File]::ReadAllText($Path) -ceq $text)) {
-        return $false
+    if (Test-Path -LiteralPath $Path) {
+        # Decoding the bytes as ASCII turns a UTF-8 byte order mark into '???', so it counts as a
+        # difference; ReadAllText would hide it.
+        $current = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($Path))
+        if (($current -replace "`r`n", "`n") -ceq ($text -replace "`r`n", "`n")) {
+            return $false
+        }
     }
     [IO.File]::WriteAllText($Path, $text, [Text.Encoding]::ASCII)
     return $true

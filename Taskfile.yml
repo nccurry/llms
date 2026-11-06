@@ -66,11 +66,9 @@ tasks:
       - sh: '{{.MISE}} --version'
         msg: Run bootstrap.sh or bootstrap.ps1 to prepare project-local mise and Task.
     cmds:
-      - '{{.MISE}} install --locked --yes'
-      # mise points every shim at the mise it runs from. A worktree sharing another checkout's
-      # data directory must not leave the shims pointing at a checkout that may be deleted.
-      # The script is skipped on Windows, where shims are copies and there is no sh to run it.
-      - '{{if eq OS "windows"}}true{{else}}sh "{{.ROOT_DIR}}/scripts/reshim_shared_data.sh" {{.MISE}}{{end}}'
+      # mise points every shim at the mise it runs from, so a checkout sharing another's data
+      # directory must not install into it (see the script). Windows has no sh and copies its shims.
+      - '{{if eq OS "windows"}}{{.MISE}} install --locked --yes{{else}}sh "{{.ROOT_DIR}}/scripts/ensure_mise_tools.sh" {{.MISE}} install --locked --yes{{end}}'
 
   deps:dev-tools:
     desc: Install the development-only tools (Python lint tools, shellcheck, PowerShell 7, Pester, PSScriptAnalyzer); not part of deps:install.
@@ -173,7 +171,7 @@ tasks:
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       LLMS_REQUIRE_PINNED_TOOLS: '{{.REQUIRE_PINNED_TOOLS | default ""}}'
-    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_configure_end_to_end tests.test_windows_branches tests.test_install_powershell_modules tests.test_powershell_runners tests.test_reshim_shared_data'
+    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_configure_end_to_end tests.test_windows_branches tests.test_install_powershell_modules tests.test_powershell_runners tests.test_ensure_mise_tools'
 
   test:agent-launchers:
     desc: Check pinned GitNexus launchers and emitted refresh commands.
@@ -216,7 +214,7 @@ tasks:
         msg: Run `task deps:dev-tools` to install shellcheck.
     cmds:
       - '{{.MISE_LINT}} exec -- shellcheck --version'
-      - '{{.MISE_LINT}} exec -- shellcheck ../bootstrap.sh ../scripts/reshim_shared_data.sh'
+      - '{{.MISE_LINT}} exec -- shellcheck ../bootstrap.sh ../scripts/ensure_mise_tools.sh'
 
   lint:powershell:
     desc: Run PSScriptAnalyzer (with the Windows PowerShell 5.1 checks) on every tracked .ps1 file; needs deps:dev-tools first.
