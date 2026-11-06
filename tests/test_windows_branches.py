@@ -59,7 +59,7 @@ class WindowsBranchTests(unittest.TestCase):
 
     def test_codex_serena_hook_is_one_cmd_command_line_with_quoted_spaces(self):
         with patch.object(setup, "TOOLS", Path("C:/Program Files/Tools")):
-            hook = setup.serena_hook("codex", "activate")
+            hook = setup.serena_hook(setup.adapter_for("codex"), "activate")
         self.assertEqual(
             hook["command"],
             '"C:/Program Files/Tools/bin/serena-hooks.exe" activate --client=codex',
@@ -70,7 +70,7 @@ class WindowsBranchTests(unittest.TestCase):
     def test_codex_serena_hook_keeps_quotes_in_a_path_with_spaces_inside_one_pair_of_quotes(self):
         # cmd.exe gives ' and the typographic apostrophe no meaning; only the space needs quoting.
         with patch.object(setup, "TOOLS", Path(REPOSITORY) / ".tools/agent-tools"):
-            hook = setup.serena_hook("codex", "remind")
+            hook = setup.serena_hook(setup.adapter_for("codex"), "remind")
         self.assertEqual(
             hook["command"],
             "\"C:/Users/O\u2019Brien/My 'Repos'/llms/.tools/agent-tools/bin/serena-hooks.exe\""
@@ -79,14 +79,14 @@ class WindowsBranchTests(unittest.TestCase):
 
     def test_claude_serena_hook_keeps_the_command_and_arguments_apart(self):
         with patch.object(setup, "TOOLS", Path("C:/Program Files/Tools")):
-            hook = setup.serena_hook("claude", "remind")
+            hook = setup.serena_hook(setup.adapter_for("claude"), "remind")
         self.assertEqual(hook["command"], "C:/Program Files/Tools/bin/serena-hooks.exe")
         self.assertEqual(hook["args"], ["remind", "--client=claude-code"])
 
     def gitnexus_codex_launch(self):
         entry = f"{REPOSITORY}/.tools/agent-tools/npm/node_modules/gitnexus/dist/cli/index.js"
         with patch.object(setup, "tool_command", return_value=[NODE, entry]):
-            return setup.gitnexus_hook_launch("codex"), entry
+            return setup.gitnexus_hook_launch(setup.adapter_for("codex")), entry
 
     def expected_words(self, entry):
         return [
@@ -142,7 +142,7 @@ class WindowsBranchTests(unittest.TestCase):
     def test_claude_gitnexus_hook_is_a_plain_command_and_arguments(self):
         entry = f"{REPOSITORY}/cli.js"
         with patch.object(setup, "tool_command", return_value=[NODE, entry]):
-            launch = setup.gitnexus_hook_launch("claude")
+            launch = setup.gitnexus_hook_launch(setup.adapter_for("claude"))
         self.assertEqual(launch["command"], NODE)
         self.assertEqual(launch["args"][-1], entry)
         self.assertNotIn("commandWindows", launch)
