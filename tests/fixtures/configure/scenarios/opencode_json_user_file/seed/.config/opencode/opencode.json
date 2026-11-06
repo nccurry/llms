@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "theme": "example-theme",
+  "mcp": {
+    "example-local": {
+      "type": "local",
+      "command": [
+        "/opt/example/local-server"
+      ]
+    }
+  }
+}

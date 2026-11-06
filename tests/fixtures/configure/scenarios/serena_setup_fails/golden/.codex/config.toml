@@ -1,0 +1,43 @@
+# Example Codex settings. Setup must keep these comments.
+model = "example-model"
+
+[profiles.review]
+model = "example-review-model" # a profile table
+
+[mcp_servers.example-docs]
+command = "/opt/example/docs-server"
+args = ["--stdio"]
+
+[mcp_servers.serena]
+command = "{TOOLS}/bin/serena"
+args = ["start-mcp-server", "--project-from-cwd", "--context", "codex", "--open-web-dashboard", "false"]
+startup_timeout_sec = 60
+
+[mcp_servers.serena.env]
+PATH = "{TOOLS}/bin:{NODE_DIR}:{UV_DIR}:{TASK_DIR}:{CLIENT_DIR}"
+UV_PYTHON_INSTALL_DIR = "{REPO}/.tools/python"
+UV_CACHE_DIR = "{REPO}/.tools/uv-cache"
+SERENA_HOME = "{HOME}/.serena"
+
+[mcp_servers.gitnexus]
+command = "{NODE_DIR}/node"
+args = ["{REPO}/scripts/run_gitnexus.mjs", "{TOOLS}/npm/node_modules/gitnexus/dist/cli/index.js", "mcp"]
+
+[mcp_servers.gitnexus.env]
+PATH = "{TOOLS}/bin:{NODE_DIR}:{UV_DIR}:{TASK_DIR}:{CLIENT_DIR}"
+UV_PYTHON_INSTALL_DIR = "{REPO}/.tools/python"
+UV_CACHE_DIR = "{REPO}/.tools/uv-cache"
+GITNEXUS_STORAGE_ROOT = "{TOOLS}/gitnexus-indexes"
+
+[mcp_servers.cq]
+command = "{TOOLS}/bin/cq"
+args = ["mcp"]
+
+[mcp_servers.cq.env]
+PATH = "{TOOLS}/bin:{NODE_DIR}:{UV_DIR}:{TASK_DIR}:{CLIENT_DIR}"
+UV_PYTHON_INSTALL_DIR = "{REPO}/.tools/python"
+UV_CACHE_DIR = "{REPO}/.tools/uv-cache"
+CQ_ADDR = ""
+
+[agents]
+max_concurrent_threads_per_session = 3

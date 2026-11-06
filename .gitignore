@@ -11,6 +11,8 @@ dist/
 .tools/
 .task/
 .serena/
+# The end-to-end configure test's golden copy of a Serena home.
+!tests/fixtures/configure/golden/.serena/
 
 # Per-machine Claude preview servers
 .claude/launch.json

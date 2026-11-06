@@ -12,6 +12,7 @@ pins. A command this file does not know exits with status 2, so a new call
 from setup shows up as a test failure instead of being ignored.
 
 LLMS_FAKE_MANIFEST names the agent-dependencies.json whose pins are reported.
+LLMS_FAKE_SERENA_SETUP=fail makes `serena setup` fail the way a missing client does.
 """
 
 from __future__ import annotations
@@ -29,6 +30,9 @@ import tomlkit
 HOME = Path.home()
 OPENCODE_DIR = HOME / ".config/opencode"
 SERENA_TEMPLATE = Path(__file__).with_name("serena_config_template.yml")
+CQ_INSTALL_HOSTS = {"claude", "codex", "opencode", "pi"}
+GITNEXUS_SETUP_HOSTS = {"claude", "codex", "opencode"}
+SERENA_CLIENTS = {"codex", "claude-code"}
 CQ_BLOCK = re.compile(r"<!-- cq:start -->.*?<!-- cq:end -->\n?", re.DOTALL)
 
 
@@ -142,7 +146,10 @@ def add_cq_instructions(host: str, binary: str) -> None:
 def serena(wrapper: str, args: list[str]) -> int:
     if args == ["--version"]:
         print(f"serena {pinned('serena')['version']}")
-    elif len(args) == 2 and args[0] == "setup" and args[1] in {"codex", "claude-code"}:
+    elif len(args) == 2 and args[0] == "setup" and args[1] in SERENA_CLIENTS:
+        if os.environ.get("LLMS_FAKE_SERENA_SETUP") == "fail":
+            print("serena: client not found or not functional")
+            return 1
         client = "codex" if args[1] == "codex" else "claude"
         set_server(client, "serena", [wrapper, "start-mcp-server", "--context", args[1]])
         print(f"serena registered with {args[1]}")
@@ -160,17 +167,7 @@ def serena_hooks(args: list[str]) -> int:
 def cq(wrapper: str, args: list[str]) -> int:
     if args == ["--version"]:
         print(f"cq version {pinned('cq')['version']}")
-    elif (
-        len(args) == 3
-        and args[:2] == ["install", "--target"]
-        and args[2]
-        in {
-            "claude",
-            "codex",
-            "opencode",
-            "pi",
-        }
-    ):
+    elif len(args) == 3 and args[:2] == ["install", "--target"] and args[2] in CQ_INSTALL_HOSTS:
         host = args[2]
         # Claude gets cq as a plugin, which this stand-in leaves to the Claude CLI.
         if host != "claude":
@@ -193,19 +190,12 @@ def ast_grep(args: list[str]) -> int:
 def gitnexus(args: list[str]) -> int:
     if args == ["--version"]:
         print(pinned("gitnexus")["version"])
-    elif (
-        len(args) == 3
-        and args[:2] == ["setup", "-c"]
-        and args[2]
-        in {
-            "claude",
-            "codex",
-            "opencode",
-        }
-    ):
+    elif len(args) == 3 and args[:2] == ["setup", "-c"] and args[2] in GITNEXUS_SETUP_HOSTS:
         host = args[2]
-        set_server(host, "gitnexus", ["npx", "-y", "gitnexus@latest", "mcp"])
+        # OpenCode is handled by the Node entry (fake_gitnexus_cli.js), which edits an
+        # existing config in place. Upstream writes nothing here when none exists.
         if host != "opencode":
+            set_server(host, "gitnexus", ["npx", "-y", "gitnexus@latest", "mcp"])
             add_gitnexus_hooks(host)
         print(f"gitnexus set up for {host}")
     else:
