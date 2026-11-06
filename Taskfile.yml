@@ -131,11 +131,10 @@ tasks:
     cmd: '{{.PYTHON}} scripts/manage_agent_tools.py --command lock --output {{.OUTPUT}}'
 
   tools:run:
-    desc: Run a local agent tool in the caller's project or worktree.
+    desc: Run a local agent tool from agent-dependencies.json in the caller's project or worktree.
     requires:
       vars:
         - name: TOOL
-          enum: [serena, ast-grep, gitnexus, cq]
     cmd: '{{.PYTHON}} scripts/manage_agent_tools.py --command run --tool {{.TOOL}} -- {{.CLI_ARGS}}'
 
   doctor:
@@ -171,7 +170,7 @@ tasks:
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       LLMS_REQUIRE_PINNED_TOOLS: '{{.REQUIRE_PINNED_TOOLS | default ""}}'
-    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_host_adapters tests.test_configure_end_to_end tests.test_windows_branches tests.test_install_powershell_modules tests.test_powershell_runners tests.test_ensure_mise_tools'
+    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_host_adapters tests.test_configure_end_to_end tests.test_tool_installers tests.test_windows_branches tests.test_install_powershell_modules tests.test_powershell_runners tests.test_ensure_mise_tools'
 
   test:agent-launchers:
     desc: Check pinned GitNexus launchers and emitted refresh commands.

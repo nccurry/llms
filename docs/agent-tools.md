@@ -5,6 +5,7 @@
 For installation commands, see [Set up a computer](../README.md#set-up-a-computer).
 
 - [Versions and dependency updates](#versions-and-dependency-updates)
+- [Tool entries in agent-dependencies.json](#tool-entries-in-agent-dependenciesjson)
 - [Agent configuration](#agent-configuration)
 - [Check tools in a project](#check-tools-in-a-project)
 - [Serena sessions and dashboards](#serena-sessions-and-dashboards)
@@ -23,6 +24,33 @@ Reviewed Serena security overrides also live in `agent-dependencies.json`. uv ap
 these with `--overrides` because Serena 1.7.0 pins older urllib3 and Werkzeug versions.
 `uv pip check` still reports those two version conflicts. Check the reviewed versions
 and language-server behavior; record the conflicts when reporting the result.
+
+## Tool entries in agent-dependencies.json
+
+Each `tools.<name>` entry says how its tool is installed, so install, the command that
+runs the tool, version checks, `task deps:check`, `tools:lock` and `tools:run` all read
+the entry; the install, command, version and lock code in `scripts/manage_agent_tools.py`
+names no tool. Besides the
+version pin and `source`, an entry has:
+
+| Field | Meaning |
+| --- | --- |
+| `installer` | Required. `uv` (a Python package in its own environment), `npm` (a package in the shared npm folder, installed from `agent-tools/package-lock.json`) or `github-release` (an archive checked against `checksums`) |
+| `bin` | Required. The main program the tool installs |
+| `extra_bins` | Optional list of other programs it installs, such as `serena-hooks` |
+| `runs_with` | `npm` only, required. `native` runs the file directly; `node` runs it with the pinned Node |
+| `entry` | `npm` with `runs_with: node` only, required. The script path inside the package, used when the package is not installed yet |
+
+A `uv` entry also has `python`, `package` and optionally `dependency_overrides`; an `npm`
+entry has `package`; a `github-release` entry has `release` (the download folder of the
+pinned tag) and `checksums` (SHA-256 per asset named `<bin>_<system>_<machine>.<ext>`).
+A missing or invalid value stops every command before it downloads anything, with a
+message such as `tools:install: agent-dependencies.json tools.gitnexus.installer must be one
+of uv, npm, github-release`.
+
+To add another tool that installs one of these ways, add its entry and, for `uv` or `npm`,
+run `task tools:lock`. A new way of installing needs a new handler in
+`scripts/manage_agent_tools.py`; wiring the tool into each agent host is separate work.
 
 ## Agent configuration
 
@@ -106,7 +134,8 @@ task tools:run TOOL=ast-grep -- --version
 From another project, call this checkout's bootstrap by its absolute path with the
 same arguments. Bootstrap records your current folder in `LLMS_CALLER_CWD`.
 `tools:run` runs there and returns the tool's exit code. It does not install or
-configure anything.
+configure anything. `TOOL` is any tool name in `agent-dependencies.json`; an unknown
+name fails with the list of valid names.
 
 ## GitNexus indexing and licensing
 

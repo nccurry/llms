@@ -23,9 +23,10 @@ import tomllib
 import urllib.parse
 import urllib.request
 import zipfile
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, NamedTuple, Protocol
+from typing import Any, NamedTuple, Protocol, cast
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -53,10 +54,66 @@ REMOTE_SERVER_FIELDS = (
 )
 
 
+MANIFEST = ROOT / "agent-dependencies.json"
+
+# A tool entry in the manifest (agent-dependencies.json), checked by `manifest()`.
+ToolSpec = dict[str, Any]
+
+INSTALLER_TYPES = ("uv", "npm", "github-release")
+NPM_RUNNERS = ("native", "node")
+
+
+class ManifestError(ValueError):
+    """An entry in agent-dependencies.json is invalid; the message names the entry and field."""
+
+
+def manifest_error(name: str, field: str, rule: str) -> ManifestError:
+    return ManifestError(f"agent-dependencies.json tools.{name}.{field} {rule}")
+
+
+def is_text(value: object) -> bool:
+    return isinstance(value, str) and bool(value)
+
+
+def check_npm_fields(name: str, spec: ToolSpec) -> None:
+    if spec["installer"] != "npm":
+        for field in ("runs_with", "entry"):
+            if field in spec:
+                raise manifest_error(name, field, "is only for tools whose installer is npm")
+        return
+    if spec.get("runs_with") not in NPM_RUNNERS:
+        raise manifest_error(name, "runs_with", "must be one of " + ", ".join(NPM_RUNNERS))
+    if spec["runs_with"] == "node" and not is_text(spec.get("entry")):
+        raise manifest_error(name, "entry", "must be a non-empty string when runs_with is node")
+
+
+def check_tool_entry(name: str, entry: object) -> None:
+    if not isinstance(entry, dict):
+        raise ManifestError(f"agent-dependencies.json tools.{name} must be an object")
+    spec = cast("ToolSpec", entry)
+    if spec.get("installer") not in INSTALLER_TYPES:
+        raise manifest_error(name, "installer", "must be one of " + ", ".join(INSTALLER_TYPES))
+    if not is_text(spec.get("bin")):
+        raise manifest_error(name, "bin", "must be a non-empty string")
+    extra = spec.get("extra_bins", [])
+    if not isinstance(extra, list) or not all(
+        is_text(item) for item in cast("list[object]", extra)
+    ):
+        raise manifest_error(name, "extra_bins", "must be a list of non-empty strings")
+    if spec["installer"] == "uv" and not is_text(spec.get("python")):
+        raise manifest_error(name, "python", "must be a non-empty string when installer is uv")
+    check_npm_fields(name, spec)
+
+
 def manifest() -> dict[str, Any]:
-    data = json.loads((ROOT / "agent-dependencies.json").read_text(encoding="utf-8"))
+    data: dict[str, Any] = json.loads(MANIFEST.read_text(encoding="utf-8"))
     if data.get("schema_version") != 1:
         raise ValueError("Unsupported agent-dependencies.json schema")
+    tools = data.get("tools")
+    if not isinstance(tools, dict):
+        raise ManifestError("agent-dependencies.json tools must be an object")
+    for name, entry in cast("dict[str, object]", tools).items():
+        check_tool_entry(name, entry)
     return data
 
 
@@ -81,7 +138,9 @@ def tool_env() -> dict[str, str]:
     env.pop("GITNEXUS_STORAGE_PATH", None)
     paths = [str(TOOLS / "bin")]
     receipt = TOOLS / "runtime.json"
-    runtime = json.loads(receipt.read_text(encoding="utf-8")) if receipt.is_file() else {}
+    runtime: dict[str, Any] = (
+        json.loads(receipt.read_text(encoding="utf-8")) if receipt.is_file() else {}
+    )
     for name in ("node", "uv", "task"):
         executable = runtime.get(name) or shutil.which(name)
         if executable:
@@ -118,7 +177,7 @@ def stable_paths(entries: list[str]) -> list[str]:
         for root in (tempfile.gettempdir(), Path.home() / ".codex/tmp")
     ]
     seen: set[str] = set()
-    kept = []
+    kept: list[str] = []
     for entry in entries:
         key = os.path.normcase(os.path.normpath(entry))
         real = os.path.normcase(os.path.realpath(entry)) if entry else ""
@@ -186,124 +245,196 @@ def npm_command() -> list[str]:
     raise RuntimeError("The selected Node installation does not contain npm.")
 
 
-def tool_command(name: str) -> list[str]:
-    if name in {"serena", "cq"}:
-        return [str(TOOLS / "bin" / (name + (".exe" if os.name == "nt" else "")))]
-    package = "gitnexus" if name == "gitnexus" else "@ast-grep/cli"
-    package_root = TOOLS / "npm/node_modules" / package
-    metadata_path = package_root / "package.json"
-    if metadata_path.is_file():
-        bins = json.loads(metadata_path.read_text(encoding="utf-8"))["bin"]
-        entry = (
-            bins
-            if isinstance(bins, str)
-            else bins["gitnexus" if name == "gitnexus" else "ast-grep"]
-        )
-    else:
-        # Known entry points let a fresh-machine preview describe absent tools.
-        entry = "dist/cli/index.js" if name == "gitnexus" else "ast-grep"
-    path = package_root / entry
-    if name == "ast-grep" and os.name == "nt":
-        path = path.with_suffix(".exe")
-    return [str(path)] if name == "ast-grep" else [node_command(), str(path)]
+# ---- Tools: each manifest entry names its installer, and that installer's handler
+# builds the install command, the command that runs the tool, and both version lookups.
 
 
-def installed_version(name: str) -> str | None:
-    try:
-        if name == "serena":
-            venv = TOOLS / "uv/serena-agent"
-            python = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-            return run(
-                [
-                    str(python),
-                    "-c",
-                    "import importlib.metadata; print(importlib.metadata.version('serena-agent'))",
-                ],
-                timeout=20,
-            )
-        output = run([*tool_command(name), "--version"], timeout=30)
+class Installer(ABC):
+    """What differs between the ways a tool can be installed."""
+
+    # One install covers every tool of this type, so one run installs them all.
+    shared_install = False
+
+    @abstractmethod
+    def command(self, name: str, spec: ToolSpec) -> list[str]:
+        """Return the command that runs the tool."""
+
+    @abstractmethod
+    def install(self, name: str, spec: ToolSpec) -> None:
+        """Install the pinned version."""
+
+    @abstractmethod
+    def latest_version(self, name: str, spec: ToolSpec) -> str:
+        """Look up the newest published version (network)."""
+
+    def installed_version(self, name: str, spec: ToolSpec) -> str | None:
+        """Ask the tool for its version; None when the output has no version."""
+        output = run([*self.command(name, spec), "--version"], timeout=30)
         match = re.search(r"\d+\.\d+\.\d+", output)
         return match.group() if match else None
-    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, KeyError):
-        return None
+
+    def is_stale(self, name: str, spec: ToolSpec) -> bool:
+        """Tell whether the right version is installed but something it depends on is not."""
+        return False
+
+    def check_installed(self, name: str, spec: ToolSpec) -> None:  # noqa: B027 - most installers check nothing
+        """Raise when an install left something other than the pins in place."""
 
 
-def serena_dependency_versions() -> dict[str, str]:
-    packages = manifest()["tools"].get("serena", {}).get("dependency_overrides", {})
+def bin_path(binary: str) -> Path:
+    return TOOLS / "bin" / (binary + (".exe" if os.name == "nt" else ""))
+
+
+def uv_python(spec: ToolSpec) -> Path:
+    """Return the Python of the tool's own environment, which `uv tool install` makes."""
+    return (
+        TOOLS / "uv" / spec["package"] / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    )
+
+
+def required_uv() -> str:
+    uv = shutil.which("uv")
+    if not uv:
+        raise RuntimeError("uv is missing. Run ./bootstrap.sh deps:install first.")
+    return uv
+
+
+def constraints_source(name: str) -> Path:
+    """Return the committed constraints file that `tools:lock` writes for a uv tool."""
+    return ROOT / f"agent-tools/{name}-constraints.txt"
+
+
+def overrides_file(name: str, spec: ToolSpec) -> Path:
+    path = TOOLS / f"{name}-overrides.txt"
+    update_file(
+        path,
+        "".join(
+            f"{package}=={version}\n"
+            for package, version in spec.get("dependency_overrides", {}).items()
+        ),
+    )
+    return path
+
+
+def constraints_current(name: str) -> bool:
+    installed = TOOLS / f"{name}-constraints.txt"
+    source = constraints_source(name)
+    return not source.is_file() or (
+        installed.is_file() and installed.read_bytes() == source.read_bytes()
+    )
+
+
+def override_versions(spec: ToolSpec) -> dict[str, str]:
+    """Read the versions of the `dependency_overrides` packages now installed."""
+    packages = spec.get("dependency_overrides", {})
     if not packages:
         return {}
-    python = TOOLS / "uv/serena-agent" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     code = (
         "import importlib.metadata as m, json; print(json.dumps({p:m.version(p) for p in "
         + repr(list(packages))
         + "}))"
     )
     try:
-        return json.loads(run([str(python), "-c", code], timeout=20))
+        return json.loads(run([str(uv_python(spec)), "-c", code], timeout=20))
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
         return {}
 
 
-def download(url: str) -> bytes:
-    if urllib.parse.urlparse(url).scheme != "https":
-        raise ValueError(f"refusing to download a non-https URL: {url}")
-    request = urllib.request.Request(  # noqa: S310 - https is checked above
-        url, headers={"User-Agent": "llms-bootstrap"}
-    )
-    with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310 - https is checked above
-        return response.read()
+def overrides_installed(spec: ToolSpec) -> bool:
+    return override_versions(spec) == spec.get("dependency_overrides", {})
 
 
-def install_cq(spec: dict[str, Any]) -> None:
-    systems = {"Windows": "Windows", "Linux": "Linux", "Darwin": "Darwin"}
-    machines = {
-        "amd64": "x86_64",
-        "x86_64": "x86_64",
-        "arm64": "arm64",
-        "aarch64": "arm64",
+class UvInstaller(Installer):
+    """A Python package installed into its own environment with `uv tool install`."""
+
+    def command(self, name: str, spec: ToolSpec) -> list[str]:
+        return [str(bin_path(spec["bin"]))]
+
+    def installed_version(self, name: str, spec: ToolSpec) -> str | None:
+        return run(
+            [
+                str(uv_python(spec)),
+                "-c",
+                "import importlib.metadata; "
+                f"print(importlib.metadata.version('{spec['package']}'))",
+            ],
+            timeout=20,
+        )
+
+    def is_stale(self, name: str, spec: ToolSpec) -> bool:
+        return not overrides_installed(spec) or not constraints_current(name)
+
+    def check_installed(self, name: str, spec: ToolSpec) -> None:
+        if not overrides_installed(spec):
+            raise RuntimeError(
+                f"{name.capitalize()}'s reviewed security dependency overrides were not installed"
+            )
+
+    def install(self, name: str, spec: ToolSpec) -> None:
+        command = [
+            required_uv(),
+            "tool",
+            "install",
+            "--python",
+            spec["python"],
+            "--force",
+            f"{spec['package']}=={spec['version']}",
+            "--overrides",
+            str(overrides_file(name, spec)),
+        ]
+        source = constraints_source(name)
+        if source.is_file():
+            command.extend(["--constraints", str(source)])
+        run(command)
+        if source.is_file():
+            update_file(TOOLS / f"{name}-constraints.txt", source.read_text(encoding="utf-8"))
+
+    def latest_version(self, name: str, spec: ToolSpec) -> str:
+        return json.loads(download(f"https://pypi.org/pypi/{spec['package']}/json"))["info"][
+            "version"
+        ]
+
+
+def lock_uv_tool(name: str, spec: ToolSpec) -> dict[str, Any]:
+    """Resolve a uv tool's whole dependency tree once, for every platform."""
+    uv = required_uv()
+    source = constraints_source(name)
+    with tempfile.TemporaryDirectory(prefix=f"llms-{name}-lock-") as workspace:
+        output = Path(workspace) / "constraints.txt"
+        run(
+            [
+                uv,
+                "pip",
+                "compile",
+                "-",
+                "--universal",
+                "--python-version",
+                spec["python"],
+                "--overrides",
+                str(overrides_file(name, spec)),
+                "--no-header",
+                "--no-annotate",
+                "--output-file",
+                str(output),
+            ],
+            input_text=f"{spec['package']}=={spec['version']}\n",
+        )
+        action = update_file(source, output.read_text(encoding="utf-8"))
+    return {"lockfile": str(source), "action": action}
+
+
+def tools_with(installer: str) -> dict[str, ToolSpec]:
+    return {
+        name: spec for name, spec in manifest()["tools"].items() if spec["installer"] == installer
     }
-    system, machine = systems[platform.system()], machines[platform.machine().lower()]
-    asset = f"cq_{system}_{machine}.{'zip' if system == 'Windows' else 'tar.gz'}"
-    payload = download(f"{spec['release']}/{asset}")
-    if hashlib.sha256(payload).hexdigest() != spec["checksums"][asset]:
-        raise RuntimeError(f"cq release checksum mismatch: {asset}")
-    name = "cq.exe" if system == "Windows" else "cq"
-    if system == "Windows":
-        with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-            files = [member for member in archive.namelist() if Path(member).name == name]
-            if len(files) != 1:
-                raise RuntimeError("cq archive must contain exactly one executable")
-            executable = archive.read(files[0])
-    else:
-        with tarfile.open(fileobj=io.BytesIO(payload)) as archive:
-            files = [
-                member
-                for member in archive.getmembers()
-                if member.isfile() and Path(member.name).name == name
-            ]
-            if len(files) != 1:
-                raise RuntimeError("cq archive must contain exactly one executable")
-            stream = archive.extractfile(files[0])
-            if stream is None:
-                raise RuntimeError("cq archive executable could not be read")
-            executable = stream.read()
-    destination = TOOLS / "bin" / name
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    staged = destination.with_suffix(".new")
-    staged.write_bytes(executable)
-    staged.chmod(0o755)
-    staged.replace(destination)
 
 
 def npm_package() -> dict[str, Any]:
-    specs = manifest()["tools"]
     return {
         "name": "llms-agent-tools",
         "version": "0.0.0",
         "private": True,
-        "dependencies": {
-            specs[name]["package"]: specs[name]["version"] for name in ("ast-grep", "gitnexus")
-        },
+        "dependencies": {spec["package"]: spec["version"] for spec in tools_with("npm").values()},
     }
 
 
@@ -356,61 +487,149 @@ def lock_npm_tools() -> dict[str, Any]:
     return {"lockfile": str(destination), "action": action}
 
 
-SERENA_CONSTRAINTS = ROOT / "agent-tools/serena-constraints.txt"
+class NpmInstaller(Installer):
+    """A package in the shared npm folder, installed all at once from the committed lock."""
+
+    shared_install = True
+
+    def command(self, name: str, spec: ToolSpec) -> list[str]:
+        package_root = TOOLS / "npm/node_modules" / spec["package"]
+        metadata_path = package_root / "package.json"
+        if metadata_path.is_file():
+            bins = json.loads(metadata_path.read_text(encoding="utf-8"))["bin"]
+            entry = bins if isinstance(bins, str) else bins[spec["bin"]]
+        else:
+            # The manifest's entry point lets a fresh-machine preview describe absent tools.
+            entry = spec["entry"] if spec["runs_with"] == "node" else spec["bin"]
+        path = package_root / entry
+        if spec["runs_with"] == "native":
+            return [str(path.with_suffix(".exe") if os.name == "nt" else path)]
+        return [node_command(), str(path)]
+
+    def is_stale(self, name: str, spec: ToolSpec) -> bool:
+        return not npm_lock_current()
+
+    def install(self, name: str, spec: ToolSpec) -> None:
+        install_npm_tools()
+
+    def latest_version(self, name: str, spec: ToolSpec) -> str:
+        return json.loads(download(f"https://registry.npmjs.org/{spec['package']}/latest"))[
+            "version"
+        ]
 
 
-def serena_overrides_file(spec: dict[str, Any]) -> Path:
-    path = TOOLS / "serena-overrides.txt"
-    update_file(
-        path,
-        "".join(
-            f"{package}=={version}\n"
-            for package, version in spec.get("dependency_overrides", {}).items()
-        ),
-    )
-    return path
+RELEASE_SYSTEMS = {"Windows": "Windows", "Linux": "Linux", "Darwin": "Darwin"}
+RELEASE_MACHINES = {
+    "amd64": "x86_64",
+    "x86_64": "x86_64",
+    "arm64": "arm64",
+    "aarch64": "arm64",
+}
 
 
-def lock_serena() -> dict[str, Any]:
-    """Resolve Serena's whole dependency tree once, for every platform."""
-    spec = manifest()["tools"]["serena"]
-    uv = shutil.which("uv")
-    if not uv:
-        raise RuntimeError("uv is missing. Run ./bootstrap.sh deps:install first.")
-    with tempfile.TemporaryDirectory(prefix="llms-serena-lock-") as workspace:
-        output = Path(workspace) / "constraints.txt"
-        run(
-            [
-                uv,
-                "pip",
-                "compile",
-                "-",
-                "--universal",
-                "--python-version",
-                spec["python"],
-                "--overrides",
-                str(serena_overrides_file(spec)),
-                "--no-header",
-                "--no-annotate",
-                "--output-file",
-                str(output),
-            ],
-            input_text=f"{spec['package']}=={spec['version']}\n",
+def release_executable(payload: bytes, system: str, binary: str, name: str) -> bytes:
+    """Return the one executable inside a release archive (.zip on Windows, .tar.gz elsewhere)."""
+    if system == "Windows":
+        with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+            files = [member for member in archive.namelist() if Path(member).name == binary]
+            if len(files) != 1:
+                raise RuntimeError(f"{name} archive must contain exactly one executable")
+            return archive.read(files[0])
+    with tarfile.open(fileobj=io.BytesIO(payload)) as tar:
+        members = [
+            member
+            for member in tar.getmembers()
+            if member.isfile() and Path(member.name).name == binary
+        ]
+        if len(members) != 1:
+            raise RuntimeError(f"{name} archive must contain exactly one executable")
+        stream = tar.extractfile(members[0])
+        if stream is None:
+            raise RuntimeError(f"{name} archive executable could not be read")
+        return stream.read()
+
+
+class GithubReleaseInstaller(Installer):
+    """A release archive downloaded from GitHub and checked against the manifest's SHA-256."""
+
+    def command(self, name: str, spec: ToolSpec) -> list[str]:
+        return [str(bin_path(spec["bin"]))]
+
+    def install(self, name: str, spec: ToolSpec) -> None:
+        system = RELEASE_SYSTEMS[platform.system()]
+        machine = RELEASE_MACHINES[platform.machine().lower()]
+        asset = f"{spec['bin']}_{system}_{machine}.{'zip' if system == 'Windows' else 'tar.gz'}"
+        payload = download(f"{spec['release']}/{asset}")
+        if hashlib.sha256(payload).hexdigest() != spec["checksums"][asset]:
+            raise RuntimeError(f"{name} release checksum mismatch: {asset}")
+        binary = spec["bin"] + (".exe" if system == "Windows" else "")
+        executable = release_executable(payload, system, binary, name)
+        destination = TOOLS / "bin" / binary
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        staged = destination.with_suffix(".new")
+        staged.write_bytes(executable)
+        staged.chmod(0o755)
+        staged.replace(destination)
+
+    def latest_version(self, name: str, spec: ToolSpec) -> str:
+        """Find the newest stable release, whose tag is the pinned tag with its version swapped."""
+        source: str = spec["source"]
+        repository = urllib.parse.urlparse(source).path.strip("/")
+        tag = spec["release"].split("/download/", 1)[1]
+        prefix = tag.removesuffix(spec["version"])
+        releases = json.loads(
+            download(f"https://api.github.com/repos/{repository}/releases?per_page=30")
         )
-        action = update_file(SERENA_CONSTRAINTS, output.read_text(encoding="utf-8"))
-    return {"lockfile": str(SERENA_CONSTRAINTS), "action": action}
+        return next(
+            release["tag_name"].removeprefix(prefix)
+            for release in releases
+            if release["tag_name"].startswith(prefix) and not release["prerelease"]
+        )
 
 
-def serena_constraints_current() -> bool:
-    installed = TOOLS / "serena-constraints.txt"
-    return not SERENA_CONSTRAINTS.is_file() or (
-        installed.is_file() and installed.read_bytes() == SERENA_CONSTRAINTS.read_bytes()
+INSTALLERS: dict[str, Installer] = {
+    "uv": UvInstaller(),
+    "npm": NpmInstaller(),
+    "github-release": GithubReleaseInstaller(),
+}
+
+
+def installer_for(name: str) -> tuple[ToolSpec, Installer]:
+    spec = manifest()["tools"][name]
+    return spec, INSTALLERS[spec["installer"]]
+
+
+def tool_command(name: str) -> list[str]:
+    spec, installer = installer_for(name)
+    return installer.command(name, spec)
+
+
+def installed_version(name: str) -> str | None:
+    try:
+        spec, installer = installer_for(name)
+        return installer.installed_version(name, spec)
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, KeyError):
+        return None
+
+
+def latest_version(name: str) -> str:
+    spec, installer = installer_for(name)
+    return installer.latest_version(name, spec)
+
+
+def download(url: str) -> bytes:
+    if urllib.parse.urlparse(url).scheme != "https":
+        raise ValueError(f"refusing to download a non-https URL: {url}")
+    request = urllib.request.Request(  # noqa: S310 - https is checked above
+        url, headers={"User-Agent": "llms-bootstrap"}
     )
+    with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310 - https is checked above
+        return response.read()
 
 
-def install() -> dict[str, Any]:
-    node = shutil.which("node")
-    if not node:
+def record_runtime() -> None:
+    """Write the runtime receipt: where Node, uv and the real Task are."""
+    if not shutil.which("node"):
         raise RuntimeError("Node is missing. Run ./bootstrap.sh deps:install first.")
     TOOLS.mkdir(parents=True, exist_ok=True)
     runtime = {name: shutil.which(name) for name in ("node", "uv", "task")}
@@ -420,69 +639,37 @@ def install() -> dict[str, Any]:
         mise = wrappers / ("mise.exe" if os.name == "nt" else "mise")
         runtime["task"] = run([str(mise), "which", "task"], timeout=30)
     update_file(TOOLS / "runtime.json", json.dumps(runtime, indent=2) + "\n")
-    results = []
-    npm_reinstalled = False
-    for name, spec in manifest()["tools"].items():
-        expected = spec["version"]
-        before = installed_version(name)
-        needs_install = (
-            before != expected
-            or (
-                name == "serena"
-                and (
-                    serena_dependency_versions() != spec.get("dependency_overrides", {})
-                    or not serena_constraints_current()
-                )
-            )
-            or (name in {"ast-grep", "gitnexus"} and not npm_lock_current())
-        )
-        if needs_install:
-            if name == "serena":
-                uv = shutil.which("uv")
-                if not uv:
-                    raise RuntimeError("uv is missing. Run ./bootstrap.sh deps:install first.")
-                command = [
-                    uv,
-                    "tool",
-                    "install",
-                    "--python",
-                    spec["python"],
-                    "--force",
-                    f"{spec['package']}=={expected}",
-                    "--overrides",
-                    str(serena_overrides_file(spec)),
-                ]
-                if SERENA_CONSTRAINTS.is_file():
-                    command.extend(["--constraints", str(SERENA_CONSTRAINTS)])
-                run(command)
-                if SERENA_CONSTRAINTS.is_file():
-                    update_file(
-                        TOOLS / "serena-constraints.txt",
-                        SERENA_CONSTRAINTS.read_text(encoding="utf-8"),
-                    )
-            elif name == "cq":
-                install_cq(spec)
-            else:
-                install_npm_tools()
-                npm_reinstalled = True
-        actual = installed_version(name)
-        if actual != expected:
-            raise RuntimeError(f"{name}: expected {expected}, installed version is {actual!r}")
-        if name == "serena" and serena_dependency_versions() != spec.get(
-            "dependency_overrides", {}
-        ):
-            raise RuntimeError("Serena's reviewed security dependency overrides were not installed")
-        results.append(
-            {
-                "tool": name,
-                "version": actual,
-                "action": "installed"
-                if needs_install or (name in {"ast-grep", "gitnexus"} and npm_reinstalled)
-                else "unchanged",
-                "command": tool_command(name),
-            }
-        )
-    return {"tools": results}
+
+
+def install_tool(name: str, spec: ToolSpec, installed_types: set[str]) -> dict[str, Any]:
+    """Install one tool if its version or its dependencies are not the pinned ones."""
+    installer = INSTALLERS[spec["installer"]]
+    expected = spec["version"]
+    needs_install = installed_version(name) != expected or installer.is_stale(name, spec)
+    if needs_install:
+        installer.install(name, spec)
+        installed_types.add(spec["installer"])
+    actual = installed_version(name)
+    if actual != expected:
+        raise RuntimeError(f"{name}: expected {expected}, installed version is {actual!r}")
+    installer.check_installed(name, spec)
+    covered = installer.shared_install and spec["installer"] in installed_types
+    return {
+        "tool": name,
+        "version": actual,
+        "action": "installed" if needs_install or covered else "unchanged",
+        "command": tool_command(name),
+    }
+
+
+def install() -> dict[str, Any]:
+    record_runtime()
+    installed_types: set[str] = set()
+    return {
+        "tools": [
+            install_tool(name, spec, installed_types) for name, spec in manifest()["tools"].items()
+        ]
+    }
 
 
 def private_permissions(path: Path, *, copy_from: Path | None = None) -> None:
@@ -587,8 +774,9 @@ def serena_home() -> Path:
 
 
 def serena_configuration(*, apply: bool = False, dry_run: bool = False) -> dict[str, Any]:
-    settings = manifest()["tools"]["serena"]["config"]
-    python = TOOLS / "uv/serena-agent" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    serena = manifest()["tools"]["serena"]
+    settings = serena["config"]
+    python = uv_python(serena)
     if not python.is_file():
         return {
             "action": "requires tools:install",
@@ -808,13 +996,16 @@ def gitnexus_hook_launch(adapter: HostAdapter) -> dict[str, Any]:
 
 def gitnexus_owned_hooks(data: dict[str, Any], adapter: HostAdapter) -> list[dict[str, Any]]:
     _, hook = hook_files(adapter)
-    owned = []
+    owned: list[dict[str, Any]] = []
 
-    def collect(value: Any) -> None:
-        if isinstance(value, dict):
+    def collect(item: object) -> None:
+        if isinstance(item, dict):
+            value = cast("dict[str, Any]", item)
             command = value.get("command", "")
             arguments = value.get("args", [])
-            references = [command, *arguments] if isinstance(arguments, list) else [command]
+            references: list[Any] = (
+                [command, *arguments] if isinstance(arguments, list) else [command]
+            )
             if any(
                 isinstance(part, str)
                 and any(
@@ -826,8 +1017,8 @@ def gitnexus_owned_hooks(data: dict[str, Any], adapter: HostAdapter) -> list[dic
                 owned.append(value)
             for child in value.values():
                 collect(child)
-        elif isinstance(value, list):
-            for child in value:
+        elif isinstance(item, list):
+            for child in cast("list[object]", item):
                 collect(child)
 
     collect(data.get("hooks", {}))
@@ -851,7 +1042,7 @@ def configure_gitnexus_hooks(adapter: HostAdapter) -> None:
     for event, groups in data.get("hooks", {}).items():
         seen: set[str] = set()
         for group in groups:
-            retained = []
+            retained: list[dict[str, Any]] = []
             for hook in group.get("hooks", []):
                 matcher = group.get("matcher", "")
                 if id(hook) in owned:
@@ -867,8 +1058,14 @@ def configure_gitnexus_hooks(adapter: HostAdapter) -> None:
     update_file(path, json.dumps(data, indent=2) + "\n")
 
 
+def serena_hooks_binary() -> str:
+    """Return the hook executable Serena installs: the first of its `extra_bins`."""
+    extra = manifest()["tools"].get("serena", {}).get("extra_bins", [])
+    return extra[0] if extra else "serena-hooks"
+
+
 def serena_hook(adapter: HostAdapter, action: str) -> dict[str, Any]:
-    binary = str(TOOLS / "bin" / ("serena-hooks" + (".exe" if os.name == "nt" else "")))
+    binary = str(bin_path(serena_hooks_binary()))
     arguments = [action, "--client=" + adapter.serena_client]
     hook: dict[str, Any] = {"type": "command", "timeout": 3 if action == "cleanup" else 5}
     if adapter.hook_exec_form:
@@ -884,7 +1081,9 @@ def configure_serena_hooks(adapter: HostAdapter, *, dry_run: bool = False) -> st
     if not adapter.serena_hooks:
         return "not applicable"
     path, _ = hook_files(adapter)
-    data = json.loads(path.read_text(encoding="utf-8-sig")) if path.is_file() else {}
+    data: dict[str, Any] = (
+        json.loads(path.read_text(encoding="utf-8-sig")) if path.is_file() else {}
+    )
     hooks = data.setdefault("hooks", {})
     for event in list(hooks):
         for group in hooks[event]:
@@ -904,6 +1103,67 @@ def configure_serena_hooks(adapter: HostAdapter, *, dry_run: bool = False) -> st
     return update_file(path, json.dumps(data, indent=2) + "\n", dry_run=dry_run)
 
 
+def server_command_problems(
+    adapter: HostAdapter, path: Path, name: str, wanted: dict[str, Any], actual: dict[str, Any]
+) -> list[str]:
+    """Report how a server entry's connection, command or on/off state differs from the plan."""
+    reasons: list[str] = []
+    if any(key in actual for key in REMOTE_SERVER_FIELDS):
+        reasons.append(f"{name} server in {path} has remote connection fields")
+    if (adapter.command_is_list and actual.get("type") != "local") or (
+        not adapter.command_is_list and actual.get("type") not in {None, "stdio"}
+    ):
+        reasons.append(f"{name} server in {path} is not a local command")
+    wanted_command = (
+        [wanted["command"], *wanted["args"]] if adapter.command_is_list else wanted["command"]
+    )
+    if actual.get("command") != wanted_command or (
+        not adapter.command_is_list and actual.get("args") != wanted["args"]
+    ):
+        reasons.append(f"{name} server in {path} runs a different command")
+    if actual.get("enabled") is False or actual.get("disabled") is True:
+        reasons.append(f"{name} server in {path} is turned off")
+    return reasons
+
+
+def server_environment_problems(
+    adapter: HostAdapter, path: Path, name: str, wanted: dict[str, Any], actual: dict[str, Any]
+) -> list[str]:
+    """Report how a server entry's environment values or PATH differ from the plan."""
+    reasons: list[str] = []
+    environment = actual.get(adapter.env_key, {})
+    if any(
+        environment.get(key) != value
+        for key, value in wanted.get("env", {}).items()
+        if key != "PATH"
+    ):
+        reasons.append(f"{name} server in {path} has different environment values")
+    actual_paths = {
+        os.path.normcase(os.path.normpath(value))
+        for value in environment.get("PATH", "").split(os.pathsep)
+        if value
+    }
+    if not required_tool_paths().issubset(actual_paths):
+        reasons.append(f"{name} server PATH in {path} lacks the pinned tool folders")
+    return reasons
+
+
+def gitnexus_hook_problems(adapter: HostAdapter) -> list[str]:
+    hooks_path, hook_script = hook_files(adapter)
+    hook_data: dict[str, Any] = (
+        json.loads(hooks_path.read_text(encoding="utf-8-sig")) if hooks_path.is_file() else {}
+    )
+    owned = gitnexus_owned_hooks(hook_data, adapter)
+    launch = gitnexus_hook_launch(adapter)
+    if (
+        not hook_script.is_file()
+        or not owned
+        or any(any(hook.get(k) != v for k, v in launch.items()) for hook in owned)
+    ):
+        return [f"GitNexus hooks in {hooks_path} are missing or stale"]
+    return []
+
+
 def server_problems(adapter: HostAdapter, path: Path) -> list[str]:
     reasons: list[str] = []
     container = adapter.read_servers(adapter, path)
@@ -913,50 +1173,12 @@ def server_problems(adapter: HostAdapter, path: Path) -> list[str]:
         if actual is None:
             reasons.append(f"{name} server missing from {path}")
             continue
-        if any(key in actual for key in REMOTE_SERVER_FIELDS):
-            reasons.append(f"{name} server in {path} has remote connection fields")
-        if (adapter.command_is_list and actual.get("type") != "local") or (
-            not adapter.command_is_list and actual.get("type") not in {None, "stdio"}
-        ):
-            reasons.append(f"{name} server in {path} is not a local command")
-        wanted_command = (
-            [wanted["command"], *wanted["args"]] if adapter.command_is_list else wanted["command"]
-        )
-        if actual.get("command") != wanted_command or (
-            not adapter.command_is_list and actual.get("args") != wanted["args"]
-        ):
-            reasons.append(f"{name} server in {path} runs a different command")
-        if actual.get("enabled") is False or actual.get("disabled") is True:
-            reasons.append(f"{name} server in {path} is turned off")
-        environment = actual.get(adapter.env_key, {})
-        if any(
-            environment.get(key) != value
-            for key, value in wanted.get("env", {}).items()
-            if key != "PATH"
-        ):
-            reasons.append(f"{name} server in {path} has different environment values")
-        actual_paths = {
-            os.path.normcase(os.path.normpath(value))
-            for value in environment.get("PATH", "").split(os.pathsep)
-            if value
-        }
-        if not required_tool_paths().issubset(actual_paths):
-            reasons.append(f"{name} server PATH in {path} lacks the pinned tool folders")
+        reasons.extend(server_command_problems(adapter, path, name, wanted, actual))
+        reasons.extend(server_environment_problems(adapter, path, name, wanted, actual))
     if adapter.serena_hooks and configure_serena_hooks(adapter, dry_run=True) != "unchanged":
         reasons.append(f"Serena hooks in {hook_files(adapter)[0]} are missing or stale")
     if "gitnexus" in expected and adapter.hooks_file is not None:
-        hooks_path, hook_script = hook_files(adapter)
-        hook_data = (
-            json.loads(hooks_path.read_text(encoding="utf-8-sig")) if hooks_path.is_file() else {}
-        )
-        owned = gitnexus_owned_hooks(hook_data, adapter)
-        launch = gitnexus_hook_launch(adapter)
-        if (
-            not hook_script.is_file()
-            or not owned
-            or any(any(hook.get(k) != v for k, v in launch.items()) for hook in owned)
-        ):
-            reasons.append(f"GitNexus hooks in {hooks_path} are missing or stale")
+        reasons.extend(gitnexus_hook_problems(adapter))
     return reasons
 
 
@@ -1051,7 +1273,7 @@ def claude_settings_path() -> Path:
 
 def claude_plugin_enabled() -> bool:
     path = claude_settings_path()
-    settings = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    settings: dict[str, Any] = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     return any(
         value is True and name.split("@", 1)[0] == "cq"
         for name, value in settings.get("enabledPlugins", {}).items()
@@ -1060,7 +1282,7 @@ def claude_plugin_enabled() -> bool:
 
 def configure_claude_environment(*, dry_run: bool = False) -> str:
     path = claude_settings_path()
-    settings = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    settings: dict[str, Any] = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     environment = settings.setdefault("env", {})
     # Rebuild rather than extend the previous value, so stale entries drop out.
     environment.update(PATH=tool_env()["PATH"], CQ_ADDR="")
@@ -1184,7 +1406,7 @@ def pi_config_path() -> Path:
 
 def configure_pi(*, dry_run: bool = False) -> str:
     settings_path = pi_settings_path()
-    settings = (
+    settings: dict[str, Any] = (
         json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
     )
     prefix = settings.get("shellCommandPrefix", "").rstrip()
@@ -1208,7 +1430,7 @@ def pi_problems(adapter: HostAdapter, path: Path) -> list[str]:
     reasons: list[str] = []
     text = path.read_text(encoding="utf-8")
     settings_path = pi_settings_path()
-    settings = (
+    settings: dict[str, Any] = (
         json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
     )
     cq_block = re.search(r"<!-- cq:start -->(.*?)<!-- cq:end -->", text, re.S)
@@ -1275,7 +1497,7 @@ def merge_opencode_servers(
     # OpenCode 2 uses mcp.servers; keep v1 when an installed host requires it.
     binary = shutil.which(adapter.name)
     version = run([binary, "--version"], timeout=15) if binary else "2"
-    mcp = data.setdefault(adapter.servers_key, {})
+    mcp: dict[str, Any] = data.setdefault(adapter.servers_key, {})
     if version.startswith("1."):
         container = mcp
     else:
@@ -1284,7 +1506,7 @@ def merge_opencode_servers(
             if (
                 name != "servers"
                 and isinstance(entry, dict)
-                and entry.get("type") in {"local", "remote"}
+                and cast("dict[str, Any]", entry).get("type") in {"local", "remote"}
             ):
                 if name not in container:
                     container[name] = entry
@@ -1399,6 +1621,9 @@ def restore_servers(snapshot: dict[Path, str | None], adapter: HostAdapter) -> N
             continue
         digest = hashlib.sha256(current.encode("utf-8")).hexdigest()
         key = adapter.servers_key
+        document: Any
+        previous: Any
+        remaining: set[str]
         if path.suffix == ".toml":
             document = tomlkit.parse(current)
             previous = tomlkit.parse(original or "")
@@ -1430,7 +1655,9 @@ def restore_servers(snapshot: dict[Path, str | None], adapter: HostAdapter) -> N
 
 def required_tool_paths() -> set[str]:
     receipt = TOOLS / "runtime.json"
-    runtime = json.loads(receipt.read_text(encoding="utf-8")) if receipt.is_file() else {}
+    runtime: dict[str, Any] = (
+        json.loads(receipt.read_text(encoding="utf-8")) if receipt.is_file() else {}
+    )
     paths = [
         TOOLS / "bin",
         *(Path(value).parent for value in runtime.values() if value),
@@ -1440,7 +1667,7 @@ def required_tool_paths() -> set[str]:
 
 def preview(target: str) -> dict[str, Any]:
     require_standard_profiles(target)
-    planned = []
+    planned: list[dict[str, Any]] = []
     for host in selected_hosts(target):
         adapter = adapter_for(host)
         path = adapter.config_path()
@@ -1494,7 +1721,7 @@ def skill_health(target: str) -> dict[str, Any]:
         if host not in known
     ]
     problems = list(validation["errors"])
-    hosts = []
+    hosts: list[dict[str, Any]] = []
     for host, path in targets.items():
         missing = [
             name
@@ -1714,14 +1941,13 @@ def doctor(target: str) -> dict[str, Any]:
         for t in tools
         if t["installed"] != t["expected"]
     ]
-    if serena_dependency_versions() != manifest()["tools"].get("serena", {}).get(
-        "dependency_overrides", {}
-    ):
-        problems.append(
-            "Serena's pinned security patches (dependency_overrides in "
-            "agent-dependencies.json) are not installed; run ./bootstrap.sh tools:install"
-        )
-    hosts = []
+    problems.extend(
+        f"{name.capitalize()}'s pinned security patches (dependency_overrides in "
+        "agent-dependencies.json) are not installed; run ./bootstrap.sh tools:install"
+        for name, spec in manifest()["tools"].items()
+        if spec.get("installer") == "uv" and not overrides_installed(spec)
+    )
+    hosts: list[dict[str, Any]] = []
     for host in selected_hosts(target):
         reasons = host_problems(host)
         problems.extend(
@@ -1762,23 +1988,7 @@ def doctor(target: str) -> dict[str, Any]:
     }
 
 
-def emit(result: dict[str, Any], output: str) -> None:
-    if output == "json":
-        print(json.dumps(result, indent=2))
-        return
-    if result.get("error"):
-        print(f"{result['command']}: {result['error']}")
-        return
-    for lock in result.get("locks", []):
-        print(f"lock: {lock['action']}; {lock['lockfile']}")
-    if result.get("serena"):
-        serena = result["serena"]
-        print("Serena preferences: " + serena.get("action", f"configured={serena['configured']}"))
-    for tool in result.get("tools", []):
-        selected = tool.get("version", tool.get("pinned", tool.get("expected")))
-        observed = tool.get("installed", tool.get("version"))
-        update = f"; available {tool['latest']}" if "latest" in tool else ""
-        print(f"{tool['tool']}: selected {selected}; installed {observed}{update}")
+def print_hosts(result: dict[str, Any]) -> None:
     for host in result.get("hosts", []):
         if isinstance(host, str):
             print(f"host: {host}")
@@ -1790,6 +2000,30 @@ def emit(result: dict[str, Any], output: str) -> None:
     for host in result.get("skills", {}).get("hosts", []):
         state = "all up to date" if host["digest_verified"] else "some missing or changed"
         print(f"{host['host']} skills: {host['expected_count']} expected, {state}")
+
+
+def print_tools(result: dict[str, Any]) -> None:
+    if result.get("serena"):
+        serena = result["serena"]
+        print("Serena preferences: " + serena.get("action", f"configured={serena['configured']}"))
+    for tool in result.get("tools", []):
+        selected = tool.get("version", tool.get("pinned", tool.get("expected")))
+        observed = tool.get("installed", tool.get("version"))
+        update = f"; available {tool['latest']}" if "latest" in tool else ""
+        print(f"{tool['tool']}: selected {selected}; installed {observed}{update}")
+
+
+def emit(result: dict[str, Any], output: str) -> None:
+    if output == "json":
+        print(json.dumps(result, indent=2))
+        return
+    if result.get("error"):
+        print(f"{result['command']}: {result['error']}")
+        return
+    for lock in result.get("locks", []):
+        print(f"lock: {lock['action']}; {lock['lockfile']}")
+    print_tools(result)
+    print_hosts(result)
     for problem in result.get("problems", []):
         print(f"problem: {problem}")
     if result.get("disabled_integrations"):
@@ -1798,111 +2032,137 @@ def emit(result: dict[str, Any], output: str) -> None:
         print(result["note"])
 
 
-def main(argv: list[str] | None = None) -> int:
+COMMANDS = ("install", "configure", "doctor", "preview", "versions", "check", "run", "lock")
+
+# The task that runs each command, for errors that name the task the user ran.
+TASK_NAMES = {
+    "install": "tools:install",
+    "configure": "agents:configure",
+    "doctor": "doctor",
+    "preview": "install:dry-run",
+    "versions": "deps:versions",
+    "check": "deps:check",
+    "run": "tools:run",
+    "lock": "tools:lock",
+}
+
+
+class UnknownToolError(ValueError):
+    """`--tool` names a tool that is not in agent-dependencies.json."""
+
+
+def require_known_tool(name: str) -> None:
+    tools = manifest()["tools"]
+    if name not in tools:
+        raise UnknownToolError(f"unknown tool '{name}'; choose one of {', '.join(tools)}")
+
+
+def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--command",
-        choices=(
-            "install",
-            "configure",
-            "doctor",
-            "preview",
-            "versions",
-            "check",
-            "run",
-            "lock",
-        ),
-        required=True,
-    )
+    parser.add_argument("--command", choices=COMMANDS, required=True)
     parser.add_argument("--target", choices=("all", *ADAPTERS), default="all")
     parser.add_argument("--output", choices=("json", "text"), default="text")
-    parser.add_argument("--tool", choices=("serena", "ast-grep", "gitnexus", "cq"))
+    # The valid names come from agent-dependencies.json, so main() checks them.
+    parser.add_argument("--tool")
     parser.add_argument("arguments", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
-    try:
-        if args.command == "run":
-            if not args.tool:
-                parser.error("--command run requires --tool")
-            spec = manifest()["tools"][args.tool]
-            if spec.get("integration_enabled") is False:
-                raise RuntimeError(  # noqa: TRY301 - the except below prints it as the command's error
-                    f"{args.tool} is turned off "
-                    "(integration_enabled: false in agent-dependencies.json); "
-                    f"its license is at {spec.get('license_url')}"
-                )
-            if installed_version(args.tool) != spec["version"]:
-                raise RuntimeError(  # noqa: TRY301 - the except below prints it as the command's error
-                    f"The pinned {args.tool} is not installed. "
-                    "Run ./bootstrap.sh tools:install first."
-                )
-            arguments = args.arguments[1:] if args.arguments[:1] == ["--"] else args.arguments
-            cwd = Path(os.environ.get("LLMS_CALLER_CWD", str(Path.cwd())))
-            return subprocess.run(  # noqa: S603 - runs the pinned tool the user asked for
-                [*tool_command(args.tool), *arguments], check=False, cwd=cwd, env=tool_env()
-            ).returncode
-        result: dict[str, Any]
-        if args.command == "install":
-            result = install()
-        elif args.command == "lock":
-            result = {"locks": [lock_npm_tools(), lock_serena()]}
-        elif args.command == "configure":
-            result = configure(args.target)
-        elif args.command == "doctor":
-            result = doctor(args.target)
-        elif args.command == "preview":
-            result = preview(args.target)
-            result["tools"] = [
-                {
-                    "tool": name,
-                    "pinned": spec["version"],
-                    "installed": installed_version(name),
-                    "integration_enabled": spec.get("integration_enabled", True),
-                }
-                for name, spec in manifest()["tools"].items()
-            ]
-        else:
-            result = {
-                "tools": [
-                    {
-                        "tool": name,
-                        "pinned": spec["version"],
-                        "installed": installed_version(name),
-                        "source": spec["source"],
-                    }
-                    for name, spec in manifest()["tools"].items()
-                ],
-                "hosts": list(selected_hosts(args.target)),
-                "writes": False,
+    if args.command == "run" and not args.tool:
+        parser.error("--command run requires --tool")
+    return args
+
+
+def run_tool(name: str, extra_arguments: list[str]) -> int:
+    """Run one pinned tool in the caller's directory and return its exit status."""
+    spec = manifest()["tools"][name]
+    if spec.get("integration_enabled") is False:
+        raise RuntimeError(
+            f"{name} is turned off "
+            "(integration_enabled: false in agent-dependencies.json); "
+            f"its license is at {spec.get('license_url')}"
+        )
+    if installed_version(name) != spec["version"]:
+        raise RuntimeError(
+            f"The pinned {name} is not installed. Run ./bootstrap.sh tools:install first."
+        )
+    arguments = extra_arguments[1:] if extra_arguments[:1] == ["--"] else extra_arguments
+    cwd = Path(os.environ.get("LLMS_CALLER_CWD", str(Path.cwd())))
+    return subprocess.run(  # noqa: S603 - runs the pinned tool the user asked for
+        [*tool_command(name), *arguments], check=False, cwd=cwd, env=tool_env()
+    ).returncode
+
+
+def preview_result(target: str) -> dict[str, Any]:
+    result = preview(target)
+    result["tools"] = [
+        {
+            "tool": name,
+            "pinned": spec["version"],
+            "installed": installed_version(name),
+            "integration_enabled": spec.get("integration_enabled", True),
+        }
+        for name, spec in manifest()["tools"].items()
+    ]
+    return result
+
+
+def versions_result(target: str, *, latest: bool) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "tools": [
+            {
+                "tool": name,
+                "pinned": spec["version"],
+                "installed": installed_version(name),
+                "source": spec["source"],
             }
-            if args.command == "check":
-                for entry in result["tools"]:
-                    name = entry["tool"]
-                    if name == "serena":
-                        entry["latest"] = json.loads(
-                            download("https://pypi.org/pypi/serena-agent/json")
-                        )["info"]["version"]
-                    elif name in {"ast-grep", "gitnexus"}:
-                        entry["latest"] = json.loads(
-                            download(
-                                "https://registry.npmjs.org/"
-                                + manifest()["tools"][name]["package"]
-                                + "/latest"
-                            )
-                        )["version"]
-                    else:
-                        releases = json.loads(
-                            download(
-                                "https://api.github.com/repos/mozilla-ai/cq/releases?per_page=30"
-                            )
-                        )
-                        entry["latest"] = next(
-                            release["tag_name"].removeprefix("cli/v")
-                            for release in releases
-                            if release["tag_name"].startswith("cli/v") and not release["prerelease"]
-                        )
+            for name, spec in manifest()["tools"].items()
+        ],
+        "hosts": list(selected_hosts(target)),
+        "writes": False,
+    }
+    if latest:
+        for entry in result["tools"]:
+            entry["latest"] = latest_version(entry["tool"])
+    return result
+
+
+def lock_result() -> dict[str, Any]:
+    locks: list[dict[str, Any]] = []
+    if tools_with("npm"):
+        locks.append(lock_npm_tools())
+    locks.extend(lock_uv_tool(name, spec) for name, spec in tools_with("uv").items())
+    return {"locks": locks}
+
+
+def command_result(args: argparse.Namespace) -> dict[str, Any]:
+    """Run every command except `run` and return its result."""
+    results: dict[str, Callable[[], dict[str, Any]]] = {
+        "install": install,
+        "lock": lock_result,
+        "configure": lambda: configure(args.target),
+        "doctor": lambda: doctor(args.target),
+        "preview": lambda: preview_result(args.target),
+        "versions": lambda: versions_result(args.target, latest=False),
+        "check": lambda: versions_result(args.target, latest=True),
+    }
+    return results[args.command]()
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_arguments(argv)
+    try:
+        # Check the manifest first, so a bad entry stops the command before any download.
+        manifest()
+        if args.tool:
+            require_known_tool(args.tool)
+        if args.command == "run":
+            return run_tool(args.tool, args.arguments)
+        result = command_result(args)
         result["command"] = args.command
         emit(result, args.output)
         return 1 if result.get("problems") else 0
+    except (ManifestError, UnknownToolError) as error:
+        emit({"command": TASK_NAMES[args.command], "error": str(error)}, args.output)
+        return 1
     except (
         OSError,
         ValueError,

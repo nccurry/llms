@@ -9,8 +9,8 @@ per-file-target-version = { "skills/clean-stale-worktrees/scripts/worktree_repor
 extend-exclude = ["piw", "tests/skill-evals/**/fixture"]
 
 [lint]
-# Same families as piw. C901 is added when the setup script is restructured.
-select = ["B", "D", "E", "F", "I", "PERF", "PL", "RUF", "S", "SIM", "TRY", "UP"]
+# Same families as piw, plus C901 for the setup script only (see per-file-ignores).
+select = ["B", "C901", "D", "E", "F", "I", "PERF", "PL", "RUF", "S", "SIM", "TRY", "UP"]
 ignore = [
   "D202",
   "D203",
@@ -24,7 +24,12 @@ ignore = [
   "D1",
 ]
 
+[lint.mccabe]
+max-complexity = 10
+
 [lint.per-file-ignores]
+# C901 (complexity over 10) applies to the setup script only; every other file is exempt.
+"!scripts/manage_agent_tools.py" = ["C901"]
 # Tests and the skill-eval harness (tests/skill-evals), in tests/ or any tests/ folder.
 # PLR2004, S101: tests assert and compare against fixed numbers, as in piw.
 # S603, S607: fixtures run git and glab with fixed arguments on purpose.

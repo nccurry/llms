@@ -48,12 +48,12 @@ Add `OUTPUT=json` to get reports in JSON format.
 | `deps:install`, alias `setup` | Installs pinned Task, uv, and Node, and prepares piw's development environment |
 | `deps:dev-tools` | Not part of `deps:install`. Installs the development-only tools: the hash-pinned Ruff and Pyright from `lint/requirements.txt` into `.tools/lint/`, shellcheck and PowerShell 7 pinned in `lint/mise.toml` (locked in `lint/mise.lock`), and the PowerShell modules Pester and PSScriptAnalyzer into `.tools/powershell-modules/`. Each module download is checked against the SHA-256 in `lint/powershell-modules.json` before it is unpacked. `lint:python`, `lint:shell`, `lint:powershell` and `test:powershell` need it |
 | `deps:dev-tools:lock` | Regenerates `lint/requirements.txt` and `lint/mise.lock` after you edit `lint/requirements.in` or `lint/mise.toml` |
-| `lint:python` | Runs Ruff lint, Ruff format check, and Pyright on the Python outside `piw/` |
+| `lint:python` | Runs Ruff lint, Ruff format check, and Pyright on the Python outside `piw/`; `scripts/manage_agent_tools.py` also gets Ruff's complexity limit (C901, 10) and Pyright strict mode |
 | `lint:shell` | Runs shellcheck on `bootstrap.sh` |
 | `lint:powershell` | Runs PSScriptAnalyzer on every tracked `.ps1` file, including its Windows PowerShell 5.1 syntax and command checks |
 | `test:powershell` | Runs the Pester tests for `bootstrap.ps1` in `tests/powershell/` |
 | `tools:install` | Installs the pinned Serena, ast-grep, GitNexus, and local cq |
-| `tools:run TOOL=... -- ...` | Runs a local tool with its arguments in the caller's project or worktree |
+| `tools:run TOOL=... -- ...` | Runs a local tool with its arguments in the caller's project or worktree; `TOOL` is any tool in `agent-dependencies.json`, and an unknown name fails with the list of valid names |
 | `skills:install TARGET=...` | Installs the managed skills and the external skills they need |
 | `agents:configure TARGET=...` | Adds the tools to each agent's configuration and keeps existing settings |
 | `doctor TARGET=...` | Reports tool versions and agent configuration (not live connections) |

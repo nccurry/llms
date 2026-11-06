@@ -5,6 +5,11 @@
       "package": "serena-agent",
       "version": "1.7.0",
       "python": "3.13",
+      "installer": "uv",
+      "bin": "serena",
+      "extra_bins": [
+        "serena-hooks"
+      ],
       "source": "https://github.com/oraios/serena",
       "config": {
         "gui_log_window": false,
@@ -22,11 +27,18 @@
     "ast-grep": {
       "package": "@ast-grep/cli",
       "version": "0.50.0",
+      "installer": "npm",
+      "bin": "ast-grep",
+      "runs_with": "native",
       "source": "https://github.com/ast-grep/ast-grep"
     },
     "gitnexus": {
       "package": "gitnexus",
       "version": "1.6.12",
+      "installer": "npm",
+      "bin": "gitnexus",
+      "runs_with": "node",
+      "entry": "dist/cli/index.js",
       "source": "https://github.com/abhigyanpatwari/GitNexus",
       "license": "PolyForm-Noncommercial-1.0.0",
       "license_url": "https://github.com/abhigyanpatwari/GitNexus/blob/v1.6.12/LICENSE",
@@ -34,6 +46,8 @@
     },
     "cq": {
       "version": "0.18.0",
+      "installer": "github-release",
+      "bin": "cq",
       "release": "https://github.com/mozilla-ai/cq/releases/download/cli/v0.18.0",
       "checksums": {
         "cq_Darwin_arm64.tar.gz": "865dc6d33a71328b27cd25c165d09b07edab5959bdc01f82b8e151bcfae97a66",

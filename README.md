@@ -145,7 +145,8 @@ skill maintenance, and recovery steps.
 
 The setup above installs and configures these tools.
 
-Run a tool directly with `task tools:run TOOL=ast-grep -- --version`.
+Run a tool directly with `task tools:run TOOL=ast-grep -- --version`; `TOOL` is any tool listed in
+`agent-dependencies.json`.
 GitNexus is enabled for a personal noncommercial trial; resolve licensing before commercial use.
 
 See the [agent tools guide](docs/agent-tools.md) for configuration, Serena sessions and

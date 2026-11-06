@@ -3,6 +3,7 @@
   "venvPath": "../.tools",
   "venv": "lint",
   "typeCheckingMode": "basic",
+  "strict": ["../scripts/manage_agent_tools.py"],
   "include": [
     "../scripts",
     "../tests",
