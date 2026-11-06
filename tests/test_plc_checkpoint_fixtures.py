@@ -9,8 +9,8 @@ from pathlib import Path
 EVALS = Path(__file__).resolve().parent / "skill-evals"
 CASES = EVALS / "plc-checkpoint"
 sys.path.insert(0, str(EVALS))
-import fixture_lib  # noqa: E402
-from fixture_lib import (  # noqa: E402
+import fixture_lib  # noqa: E402 - sys.path is set above
+from fixture_lib import (  # noqa: E402 - sys.path is set above
     GIT_ENV,
     OWNER,
     eval_only_problems,

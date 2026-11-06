@@ -8,7 +8,7 @@ from pathlib import Path
 EVALS = Path(__file__).resolve().parent / "skill-evals"
 CASES = EVALS / "plc-planning"
 sys.path.insert(0, str(EVALS))
-from fixture_lib import (  # noqa: E402
+from fixture_lib import (  # noqa: E402 - sys.path is set above
     GIT_ENV,
     OWNER,
     eval_only_problems,

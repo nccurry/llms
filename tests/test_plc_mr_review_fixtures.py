@@ -12,8 +12,8 @@ from pathlib import Path
 EVALS = Path(__file__).resolve().parent / "skill-evals"
 CASES = EVALS / "plc-mr-review"
 sys.path.insert(0, str(EVALS))
-from fixture_lib import GIT_ENV, configure, git  # noqa: E402
-from host_fixture import BRANCH, host_state  # noqa: E402
+from fixture_lib import GIT_ENV, configure, git  # noqa: E402 - sys.path is set above
+from host_fixture import BRANCH, host_state  # noqa: E402 - sys.path is set above
 
 
 class PlcMrReviewFixtureTest(unittest.TestCase):

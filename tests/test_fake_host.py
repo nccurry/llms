@@ -12,7 +12,7 @@ from pathlib import Path
 
 EVALS = Path(__file__).resolve().parent / "skill-evals"
 sys.path.insert(0, str(EVALS))
-from fixture_lib import GIT_ENV  # noqa: E402
+from fixture_lib import GIT_ENV  # noqa: E402 - sys.path is set above
 
 
 class FakeHostTest(unittest.TestCase):
