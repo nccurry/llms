@@ -163,7 +163,31 @@ Hosted Windows CI is not selected (the owner chose not now).
 - Exit criterion: REQ-014 and REQ-015 pass on `main` with no change to
   setup behavior.
 - Rollback or fallback: revert; tests only.
-- Evidence:
+- Evidence (code commit 9ceb757, base 1164802):
+  - Test: `tests/test_configure_end_to_end.py`, fixtures in `tests/fixtures/configure/` (`seed/`
+    FIX-001 to FIX-004, `golden/` FIX-006, `fake_upstream_tools.py` FIX-005). It copies `scripts/`
+    and `agent-dependencies.json` into a temporary repository and runs
+    `manage_agent_tools.py --command configure --target all` twice, then `--command doctor
+    --output json`, as subprocesses. No function of the script is imported or patched.
+  - Faked: serena, serena-hooks, cq, ast-grep, GitNexus and Serena's environment Python (including
+    the Serena config renderer, answered by a small line-based stand-in over an invented template),
+    plus `claude`, `codex` and `opencode` on PATH (`opencode --version` prints 1.18.20). Real: the
+    script, and the pinned Node with the pinned `jsonc-parser` (from `.tools/agent-tools`) for
+    `opencode.jsonc`. Without them the test is skipped, or fails when
+    `LLMS_REQUIRE_PINNED_TOOLS` is set (both paths checked).
+  - REQ-014, REQ-015: `./bootstrap.sh test:tooling` → 37 tests OK (11 new). Checks: golden match
+    for the ten FIX-006 files, second run same bytes and mode for every file under the home, user
+    keys and hooks kept, `opencode.json` removed, `.codex/hooks.json` mode 0644, doctor reports
+    problems for every host before configure and none after.
+  - Break test: `data.pop("userID", None)` added to `merge_json` → the golden test for
+    `.claude.json` and the user-content test fail; making `configure_pi` always append the prefix
+    → `test_second_run_changes_no_file` fails on `.pi/agent/settings.json`. Both restored.
+  - `./bootstrap.sh test` and `./bootstrap.sh lint:python` exit 0; `git diff 1164802 -- scripts/
+    piw/` is empty; the owner's real `~/.claude.json`, `~/.claude/settings.json`,
+    `~/.codex/config.toml` and `~/.codex/hooks.json` kept the same mtime and size.
+  - Not covered: the Claude cq-plugin migration of an old manual cq entry, and OpenCode 2's
+    `mcp.servers` layout (the fake `opencode` reports 1.x). Comments inside a migrated legacy
+    `mcp` block would be lost, so the seed has none there.
 
 ### P4: Host adapters and a split configure
 
