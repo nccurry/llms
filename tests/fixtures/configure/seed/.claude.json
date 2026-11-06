@@ -1,0 +1,36 @@
+{
+  "numStartups": 12,
+  "userID": "example-user-0001",
+  "oauthAccount": {
+    "emailAddress": "user@example.invalid",
+    "displayName": "Example User",
+    "organizationName": "Example Org"
+  },
+  "projects": {
+    "/work/example-project": {
+      "allowedTools": [],
+      "history": [
+        {
+          "display": "example prompt"
+        }
+      ],
+      "mcpServers": {}
+    }
+  },
+  "mcpServers": {
+    "example-notes": {
+      "type": "stdio",
+      "command": "/opt/example/notes-server",
+      "args": [
+        "--stdio"
+      ],
+      "env": {
+        "EXAMPLE_NOTES_DIR": "/work/notes"
+      }
+    },
+    "example-remote": {
+      "type": "http",
+      "url": "https://example.invalid/mcp"
+    }
+  }
+}

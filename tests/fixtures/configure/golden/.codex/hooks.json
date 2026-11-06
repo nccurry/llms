@@ -1,0 +1,62 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 10,
+            "statusMessage": "Checking GitNexus index freshness...",
+            "command": "{NODE_DIR}/node {REPO}/scripts/run_gitnexus_hook.mjs {TOOLS}/gitnexus-indexes {HOME}/.codex/hooks/gitnexus/gitnexus-hook.cjs {TOOLS}/npm/node_modules/gitnexus/dist/cli/index.js",
+            "commandWindows": "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand [decoded: & '{NODE_DIR}/node' '{REPO}/scripts/run_gitnexus_hook.mjs' '{TOOLS}/gitnexus-indexes' '{HOME}/.codex/hooks/gitnexus/gitnexus-hook.cjs' '{TOOLS}/npm/node_modules/gitnexus/dist/cli/index.js']"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/example/codex-start.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 5,
+            "command": "{TOOLS}/bin/serena-hooks activate --client=codex"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 5,
+            "command": "{TOOLS}/bin/serena-hooks remind --client=codex"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 3,
+            "command": "{TOOLS}/bin/serena-hooks cleanup --client=codex"
+          }
+        ]
+      }
+    ]
+  }
+}

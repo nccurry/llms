@@ -1,0 +1,9 @@
+# Example Codex settings. Setup must keep these comments.
+model = "example-model"
+
+[profiles.review]
+model = "example-review-model" # a profile table
+
+[mcp_servers.example-docs]
+command = "/opt/example/docs-server"
+args = ["--stdio"]

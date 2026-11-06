@@ -1,0 +1,17 @@
+// Example OpenCode settings. Setup must keep these comments.
+{
+  "$schema": "https://opencode.ai/config.json",
+  "autoupdate": false, // a user setting
+  "mcp": {
+    // User servers, one per name under mcp.
+    "example-search": {
+      "type": "local",
+      "command": ["/opt/example/search-server", "--stdio"],
+      "environment": { "EXAMPLE_INDEX": "/work/index" }
+    },
+    "example-remote": {
+      "type": "remote",
+      "url": "https://example.invalid/mcp"
+    }
+  }
+}

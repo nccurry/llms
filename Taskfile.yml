@@ -150,7 +150,7 @@ tasks:
     desc: Run the setup-script tests (agent config, skill installer, fake host); no network.
     env:
       PYTHONDONTWRITEBYTECODE: '1'
-    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host'
+    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_configure_end_to_end'
 
   test:agent-launchers:
     desc: Check pinned GitNexus launchers and emitted refresh commands.

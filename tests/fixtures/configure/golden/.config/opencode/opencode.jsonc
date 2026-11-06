@@ -1,0 +1,63 @@
+// Example OpenCode settings. Setup must keep these comments.
+{
+  "$schema": "https://opencode.ai/config.json",
+  "autoupdate": false, // a user setting
+  "mcp": {
+    // User servers, one per name under mcp.
+    "example-search": {
+      "type": "local",
+      "command": ["/opt/example/search-server", "--stdio"],
+      "environment": { "EXAMPLE_INDEX": "/work/index" }
+    },
+    "example-remote": {
+      "type": "remote",
+      "url": "https://example.invalid/mcp"
+    },
+    "serena": {
+      "type": "local",
+      "command": [
+        "{TOOLS}/bin/serena",
+        "start-mcp-server",
+        "--project-from-cwd",
+        "--context",
+        "ide",
+        "--open-web-dashboard",
+        "false"
+      ],
+      "environment": {
+        "PATH": "{TOOLS}/bin:{NODE_DIR}:{UV_DIR}:{TASK_DIR}:{CLIENT_DIR}",
+        "UV_PYTHON_INSTALL_DIR": "{REPO}/.tools/python",
+        "UV_CACHE_DIR": "{REPO}/.tools/uv-cache",
+        "SERENA_HOME": "{HOME}/.serena"
+      }
+    },
+    "gitnexus": {
+      "type": "local",
+      "command": [
+        "{NODE_DIR}/node",
+        "{REPO}/scripts/run_gitnexus.mjs",
+        "{TOOLS}/npm/node_modules/gitnexus/dist/cli/index.js",
+        "mcp"
+      ],
+      "environment": {
+        "PATH": "{TOOLS}/bin:{NODE_DIR}:{UV_DIR}:{TASK_DIR}:{CLIENT_DIR}",
+        "UV_PYTHON_INSTALL_DIR": "{REPO}/.tools/python",
+        "UV_CACHE_DIR": "{REPO}/.tools/uv-cache",
+        "GITNEXUS_STORAGE_ROOT": "{TOOLS}/gitnexus-indexes"
+      }
+    },
+    "cq": {
+      "type": "local",
+      "command": [
+        "{TOOLS}/bin/cq",
+        "mcp"
+      ],
+      "environment": {
+        "PATH": "{TOOLS}/bin:{NODE_DIR}:{UV_DIR}:{TASK_DIR}:{CLIENT_DIR}",
+        "UV_PYTHON_INSTALL_DIR": "{REPO}/.tools/python",
+        "UV_CACHE_DIR": "{REPO}/.tools/uv-cache",
+        "CQ_ADDR": ""
+      }
+    }
+  }
+}

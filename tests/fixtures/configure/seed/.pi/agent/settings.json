@@ -1,0 +1,4 @@
+{
+  "theme": "example-dark",
+  "shellCommandPrefix": "export EXAMPLE_VAR=1"
+}
