@@ -372,6 +372,34 @@ Hosted Windows CI is not selected (the owner chose not now).
 - Rollback or fallback: revert the phase; the manifest fields are ignored by
   the P4 code.
 - Evidence:
+  - In the P5 worktree at `bde06f1` (code), before the plan-evidence commit:
+    `./bootstrap.sh test:tooling REQUIRE_PINNED_TOOLS=1` → 117 OK (83 before,
+    plus 34 in `tests/test_tool_installers.py`); `./bootstrap.sh test` → piw
+    185 passed, setup-script tests 117 OK, launcher tests 6 pass;
+    `./bootstrap.sh lint:python` → ruff and format clean, pyright 0 errors with
+    C901 at 10 and strict on `scripts/manage_agent_tools.py`;
+    `./bootstrap.sh check` → exit 0.
+  - REQ-016: `git diff bbdbdf3 -- tests/test_configure_end_to_end.py
+    tests/fixtures/configure/` → empty; the old-vs-new harness reports all 15
+    cases SAME.
+  - REQ-019: `tests/test_tool_installers.py` adds a fifth npm tool to a
+    temporary manifest (npm package lists it, command resolves from its
+    fields, `--tool` accepts it), checks an unknown `installer` message, and
+    covers each handler's install, version probe and latest lookup with a
+    mocked `run` and `download`. `./bootstrap.sh tools:run TOOL=nope --
+    --version` → `tools:run: unknown tool 'nope'; choose one of serena,
+    ast-grep, gitnexus, cq`, non-zero; `TOOL=ast-grep -- --version` → `ast-grep
+    0.50.0`.
+  - REQ-020: from this worktree, old and new scripts give byte-identical
+    `--command versions --output json`, `preview --target all --output json`,
+    `doctor --target all --output json` and `check --output json`.
+  - REQ-018, REQ-022: C901 at 10 applies to `scripts/manage_agent_tools.py`
+    only (`ruff.toml`); `lint/pyrightconfig.json` lists it under `strict`; an
+    unannotated parameter appended to the script fails `lint:python` with
+    `reportMissingParameterType`.
+  - Not yet done in this worktree: step 6 (rerun `tools:install`,
+    `agents:configure`, `doctor` on this machine) and the preview comparison
+    from the main checkout after merge.
 
 ## Review And Recheck Rules
 
