@@ -6,6 +6,7 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "worktree_report.py"
 spec = importlib.util.spec_from_file_location("worktree_report", SCRIPT)
+assert spec is not None and spec.loader is not None
 worktree_report = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(worktree_report)
 

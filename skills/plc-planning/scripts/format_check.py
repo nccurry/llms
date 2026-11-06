@@ -499,7 +499,7 @@ def check_current_work(readme, lines, parts, people, *, strict, lifecycle):
         message = "Current Work: Last updated does not start with a YYYY-MM-DD date"
         found.append(finding(readme, updated.line, message))
 
-    if strict and status_word:
+    if strict and status is not None and status_word:
         allowed = FOLDER_STATUS.get(lifecycle)
         if allowed and status_word not in allowed:
             needs = " or ".join(allowed)
@@ -673,7 +673,9 @@ def check_other_file(path, lines):
     ]
     for i, line in enumerate(lines):
         key = KEY.match(line)
-        word_lists = OUTSIDE_STATUS_KEYS.get(key[1].lower()) if key else None
+        if key is None:
+            continue
+        word_lists = OUTSIDE_STATUS_KEYS.get(key[1].lower())
         if not word_lists or not any(lookup_word(words, key[2] or "") for words in word_lists):
             continue
         if key[1].lower() == "lifecycle":
@@ -883,8 +885,9 @@ def parse_args(argv):
 
 def main(argv=None):
     for stream in (sys.stdout, sys.stderr):
-        if hasattr(stream, "reconfigure"):
-            stream.reconfigure(encoding="utf-8")
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure:
+            reconfigure(encoding="utf-8")
     try:
         args = parse_args(argv)
     except SystemExit as error:  # argparse exits on --help (0) and on bad arguments (2)

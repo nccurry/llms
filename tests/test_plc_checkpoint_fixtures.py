@@ -178,6 +178,7 @@ ONE_FILE_PLAN = "docs/plans/in-progress/plc-tide-cache.md"
 def load_check_state():
     """Import check_state.py by path without writing a bytecode cache."""
     spec = importlib.util.spec_from_file_location("check_state", CASES / "check_state.py")
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     saved = sys.dont_write_bytecode
     sys.dont_write_bytecode = True

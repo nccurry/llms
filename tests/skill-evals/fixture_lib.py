@@ -355,6 +355,7 @@ def format_check() -> ModuleType:
     writes no bytecode into the skills folder.
     """
     spec = importlib.util.spec_from_file_location("format_check", FORMAT_CHECK)
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     saved = sys.dont_write_bytecode
     sys.dont_write_bytecode = True

@@ -14,6 +14,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 
 def git(cwd: str | Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -166,7 +167,7 @@ def build_report(start: str, remote: str, target: str | None, fetch: bool, revie
     worktrees = []
     for index, entry in enumerate(entries):
         path = entry["path"]
-        fact = dict(
+        fact: dict[str, Any] = dict(
             entry,
             primary=index == 0,
             exists=Path(path).is_dir(),

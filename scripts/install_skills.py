@@ -255,7 +255,7 @@ def parse_openai_interface(openai_yaml: Path) -> tuple[dict[str, str], list[str]
             fields[key] = value
             continue
 
-        if POLICY_FIELD_RE.fullmatch(line):
+        if policy_match := POLICY_FIELD_RE.fullmatch(line):
             if implicit_invocation_seen:
                 errors.append("agents/openai.yaml contains duplicate allow_implicit_invocation")
             elif section != "policy":
@@ -264,7 +264,7 @@ def parse_openai_interface(openai_yaml: Path) -> tuple[dict[str, str], list[str]
                 )
             else:
                 implicit_invocation_seen = True
-                fields["allow_implicit_invocation"] = POLICY_FIELD_RE.fullmatch(line).group("value")
+                fields["allow_implicit_invocation"] = policy_match.group("value")
             continue
 
         errors.append(f"unsupported agents/openai.yaml line: {line!r}")

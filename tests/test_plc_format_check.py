@@ -22,6 +22,7 @@ PEOPLE = ["--people", "Alex Kim=alex", "sam=sam"]
 def load_format_check():
     """Import the script by path without writing a bytecode cache beside it."""
     spec = importlib.util.spec_from_file_location("format_check", SCRIPT)
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     saved = sys.dont_write_bytecode
     sys.dont_write_bytecode = True

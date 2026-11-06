@@ -12,6 +12,7 @@ from unittest.mock import patch
 spec = importlib.util.spec_from_file_location(
     "install_skills", Path(__file__).resolve().parents[1] / "scripts/install_skills.py"
 )
+assert spec is not None and spec.loader is not None
 installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
 

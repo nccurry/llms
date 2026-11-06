@@ -1538,6 +1538,7 @@ def main(argv: list[str] | None = None) -> int:
             return subprocess.run(  # noqa: S603 - runs the pinned tool the user asked for
                 [*tool_command(args.tool), *arguments], check=False, cwd=cwd, env=tool_env()
             ).returncode
+        result: dict[str, Any]
         if args.command == "install":
             result = install()
         elif args.command == "lock":
