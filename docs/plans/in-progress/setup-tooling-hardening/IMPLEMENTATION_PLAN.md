@@ -136,7 +136,8 @@ Hosted Windows CI is not selected (the owner chose not now).
 - Rollback or fallback: revert; generated `task.cmd` files are rewritten on
   the next bootstrap.
 - Evidence (first pass: 8de5d17, 9dcb7d9, fac3ed2; repairs after the strict audit: 1f845f7, 97afede,
-  5aab033, 5cf427a, 7bb3e24; the final checks below ran on 7bb3e24):
+  5aab033, 5cf427a, 7bb3e24; second audit: 11b85ab, 5bcd48a, 6cb44f8, f253379; the final checks below
+  ran on f253379):
   - Separate mise configuration: `lint/mise.toml` pins shellcheck 0.11.0 and PowerShell 7.6.7;
     `lint/mise.lock` has all six `mise.lock` platforms (windows-arm64 shellcheck uses the x64 zip).
     Task runs mise with `lint/` as the working directory (`mise -C lint ...`); mise then reads
@@ -178,15 +179,28 @@ Hosted Windows CI is not selected (the owner chose not now).
       `tests/test_powershell_runners.py` puts a decoy `99.0.0` of each module in
       `~/.local/share/powershell/Modules` of a scratch HOME (first checking that the decoy
       shadows a plain import), and both runners still load the pinned copy.
-    - Shared shims (1f845f7): shellcheck and PowerShell use `.tools/lint-mise/data` and read only
-      `lint/mise.toml`; `scripts/reshim_shared_data.sh` runs after the installs in `bootstrap.sh`
-      and `deps:tools`. Experiment with two copies of mise sharing one data directory (copy A owns
-      it, copy B links `.tools/mise/data` to it): after B's `bootstrap.sh`, `deps:tools` and
-      `deps:dev-tools`, A's `node` and `task` shims still pointed at A's `.tools/bin/mise`; a plain
-      `mise install` from B (control) repointed them at B's. `tests/test_reshim_shared_data.py`
-      covers the script with stand-in mise programs.
-    - `task.cmd` (5aab033): rewritten whenever its text differs, line endings included; the Pester
-      test shows an LF file converted once, then left alone.
+    - Shared shims (1f845f7, replaced by 11b85ab after the second audit): shellcheck and
+      PowerShell use `.tools/lint-mise/data` and read only `lint/mise.toml`. A checkout whose mise
+      data directory resolves physically outside the checkout (a link at `.tools`, `.tools/mise`
+      or `.tools/mise/data`, relative links, chains) never runs `mise install`:
+      `scripts/ensure_mise_tools.sh`, used by `bootstrap.sh` and `deps:tools`, passes when
+      `mise ls --missing` (read only) lists nothing and otherwise exits 1 naming the owner and
+      `./bootstrap.sh deps:tools`; an owning checkout installs, then reshims with its own mise.
+      Reproduced with two copies of the pinned mise sharing one data directory (copy A owns it;
+      B1 data link, B2 `.tools/mise` link, B2b `.tools` link, B3 relative link, B4 chain): after
+      each B's `./bootstrap.sh deps:tools` exited 0, A's `node` shim still pointed at A's
+      `.tools/bin/mise`; with `uv` removed from A's installs, B's run exited non-zero with
+      "shares its mise data directory with .../A ... Run ./bootstrap.sh deps:tools in .../A" and
+      A's shims were unchanged; a copy owning a hard-linked data directory kept shims pointing
+      at itself. `tests/test_ensure_mise_tools.py` covers the same cases with stand-in mise
+      programs (no install or reshim call when shared).
+    - `task.cmd` (5aab033, then 5bcd48a): a new file is CRLF; an existing file that differs only
+      in line endings is not rewritten (rewriting a running batch file breaks `cmd`); a UTF-8 BOM
+      or other text difference is rewritten (bytes compared, not `ReadAllText`). Pester: 23 pass.
+    - Module re-check (6cb44f8): after `Invoke-Pester` and `Invoke-ScriptAnalyzer` the runners
+      check every loaded copy again. Checked by hand: a test that imports a decoy Pester 5.0.0
+      from a scratch HOME fails the run ("Loaded Pester from .../5.0.0 instead of ..."), and a
+      failing assertion still gives a non-zero exit.
     - `lint/install_powershell_modules.py` tests (97afede, `tests/test_install_powershell_modules.py`):
       an in-memory package, no network; a mismatch raises and leaves nothing unpacked.
     - Windows quoting tests (5cf427a): all five quote characters round-trip through PowerShell's
@@ -194,9 +208,9 @@ Hosted Windows CI is not selected (the owner chose not now).
     - Windows procedure in `docs/setup.md` (7bb3e24): ACL check on the config backups, a junction
       sub-step, `-ExecutionPolicy Bypass` or `task` throughout, hook values read with
       `ConvertFrom-Json`, and `task deps:dev-tools:lock` for the lint pins.
-  - Final checks on 7bb3e24, all exit 0: `deps:dev-tools`, `lint:shell`, `lint:powershell`,
-    `test:powershell` (22 passed), `lint:python`, `test:tooling` (47 OK), `test:agent-launchers`
-    (6 pass, 0 skipped), `./bootstrap.sh test`, `./bootstrap.sh check` (308 skills-and-tests OK).
+  - Final checks on f253379, all exit 0: `deps:dev-tools`, `lint:shell`, `lint:powershell`,
+    `test:powershell` (23 passed), `lint:python`, `test:tooling` (48 OK), `test:agent-launchers`
+    (6 pass, 0 skipped), `./bootstrap.sh test`, `./bootstrap.sh check` (309 skills-and-tests OK).
 
 ### P3: End-to-end configure test
 
