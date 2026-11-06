@@ -232,7 +232,30 @@ Hosted Windows CI is not selected (the owner chose not now).
 - Exit criterion: P4's requirements pass on `main`.
 - Rollback or fallback: revert the phase; the golden test proves the old code
   is still correct.
-- Evidence:
+- Evidence (code commit 12421df, base ae975e8):
+  - Design: `HostAdapter` and `StandardProfile` (typed named tuples; frozen dataclasses fail when a
+    test loads the script without registering it in `sys.modules`) in
+    `scripts/manage_agent_tools.py`. One adapter each for codex, claude, pi and opencode, listed in
+    `ADAPTERS` (the host list; `--target` choices and `selected_hosts` derive from it).
+    `configure`, `preview`, `host_problems`, `require_standard_profiles`, `existing_server`,
+    `host_servers`, the hook helpers and `skill_health` read host details from the adapter.
+  - `configure()` is 14 lines (was 159): `require_standard_profiles`, `require_pinned_tools`,
+    `serena_configuration`, then `configure_host` per host, which runs `back_up_host_files`,
+    the adapter's environment step, `register_serena`, `back_up_server_files`, `set_up_gitnexus`,
+    `run_cq_install` (both through `run_with_server_restore`), `configure_serena_hooks` and
+    `write_managed_config`. Order of writes and upstream calls is unchanged. File length 1619 → 1859.
+  - REQ-016: `git diff ae975e8 -- tests/test_configure_end_to_end.py tests/fixtures/configure/` →
+    empty; `./bootstrap.sh test:tooling REQUIRE_PINNED_TOOLS=1` → 54 tests OK (48 + 6 new).
+  - REQ-017: `tests/test_host_adapters.py` registers a fake adapter (own file, own section and
+    env key) in `ADAPTERS` and runs `preview`, `configure`, `host_problems`, `existing_server` and
+    `require_standard_profiles` on it with no other code change. It imports the script, because the
+    black-box test cannot add a host. `git grep -n -E '"(claude|codex|opencode|pi)"' -- scripts/`
+    → hits only in the four adapter definitions in `manage_agent_tools.py` and in
+    `scripts/install_skills.py` (out of scope for P4).
+  - REQ-020: preview and doctor output (text and JSON) from this checkout are byte-identical
+    between the old script (`ae975e8`) and the new one. Against the saved baseline the only
+    difference is `serena_hooks` for codex and claude, because the hook command holds the
+    checkout's own `.tools` path and the user's hook files name the main checkout's.
 
 ### P5: Tools described by the manifest
 
