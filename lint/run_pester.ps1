@@ -7,6 +7,9 @@ $ErrorActionPreference = 'Stop'
 Import-PinnedModule -Name 'Pester'
 $configuration = New-PesterConfiguration
 $configuration.Run.Path = Join-Path (Split-Path -Parent $PSScriptRoot) 'tests/powershell'
-$configuration.Run.Exit = $true
+$configuration.Run.PassThru = $true
 $configuration.Output.Verbosity = 'Detailed'
-Invoke-Pester -Configuration $configuration
+$result = Invoke-Pester -Configuration $configuration
+# A test may have imported another copy of Pester; the run does not count if it did.
+Assert-PinnedModule -Name 'Pester'
+if ($result.Result -ne 'Passed') { exit 1 }

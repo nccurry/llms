@@ -21,5 +21,6 @@ foreach ($file in $files) {
         $findings += $finding
     }
 }
+Assert-PinnedModule -Name 'PSScriptAnalyzer'
 if ($findings.Count -gt 0) { exit 1 }
 Write-Output 'No findings.'
