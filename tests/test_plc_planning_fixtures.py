@@ -96,6 +96,7 @@ def check(dest: Path) -> dict:
         text=True,
         encoding="utf-8",
         env=GIT_ENV,
+        check=False,
     )
     return json.loads(result.stdout)
 
@@ -129,6 +130,7 @@ class SmallChangeFixtureTest(unittest.TestCase):
             text=True,
             encoding="utf-8",
             env=env,
+            check=False,
         )
 
     def test_fixture_has_the_bug_and_no_plan(self):

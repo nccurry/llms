@@ -65,6 +65,7 @@ def tests_pass(cwd: Path) -> bool:
         text=True,
         encoding="utf-8",
         env=env_writing_bytecode(),
+        check=False,
     )
     return result.returncode == 0
 
@@ -76,6 +77,7 @@ def check(dest: Path) -> dict:
         text=True,
         encoding="utf-8",
         env=GIT_ENV,
+        check=False,
     )
     return json.loads(result.stdout)
 
@@ -974,6 +976,7 @@ class MrForReviewFixtureTest(unittest.TestCase):
             text=True,
             encoding="utf-8",
             env=env,
+            check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         return result.stdout
@@ -985,6 +988,7 @@ class MrForReviewFixtureTest(unittest.TestCase):
             text=True,
             encoding="utf-8",
             env=GIT_ENV,
+            check=False,
         )
         return json.loads(result.stdout)
 

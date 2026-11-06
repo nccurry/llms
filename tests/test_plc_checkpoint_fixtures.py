@@ -207,6 +207,7 @@ def check(dest: Path, *args: str) -> dict:
         text=True,
         encoding="utf-8",
         env=GIT_ENV,
+        check=False,
     )
     return json.loads(result.stdout)
 
@@ -529,7 +530,11 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertTrue(is_ancestor(app, "main", "origin/main"))
         # P1's evidence is true: the fixture's tests pass.
         tests = subprocess.run(
-            [sys.executable, "-B", "-m", "unittest"], cwd=app, capture_output=True, text=True
+            [sys.executable, "-B", "-m", "unittest"],
+            cwd=app,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         self.assertEqual(tests.returncode, 0, tests.stderr)
         self.assertIn("Ran 2 tests", tests.stderr)
@@ -613,7 +618,8 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
 
                 def drop_check(text: str) -> str:
                     return text.replace(
-                        "| `python -m unittest tests.test_cli` → passes |", check_cell
+                        "| `python -m unittest tests.test_cli` → passes |",
+                        check_cell,  # noqa: B023 - called within this loop pass
                     )
 
                 self.assert_grow_plan_violation(

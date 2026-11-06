@@ -167,6 +167,7 @@ def run(*args, cwd=DATA, env=None):
         env=env,
         capture_output=True,
         encoding="utf-8",
+        check=False,
     )
     return result.returncode, result.stdout.splitlines(), result.stderr
 
@@ -1175,7 +1176,8 @@ class TemplateTest(unittest.TestCase):
         self.assertEqual(len(sections), 6)
         self.assertEqual(len(keys), 8)
 
-        for path, texts in fields.items():
+        for path, path_texts in fields.items():
+            texts = path_texts
             lines = fc.unfenced(path.read_text(encoding="utf-8").splitlines())
             if path.name in ("README.md", "compact-plan.md"):
                 texts = [*texts, *sections]

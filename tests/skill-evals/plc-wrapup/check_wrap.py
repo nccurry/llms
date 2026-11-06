@@ -278,6 +278,7 @@ class Checker:
             ["git", "--git-dir", str(self.remote), "archive", "--format=tar", "main", path],
             capture_output=True,
             env=GIT_ENV,
+            check=False,
         )
         if archive.returncode:
             self.missing.append(f"{path}/README.md")

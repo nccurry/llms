@@ -70,6 +70,7 @@ def plan_on_branch(dest: Path, branch: str, path: str) -> str | None:
         ],
         capture_output=True,
         env=GIT_ENV,
+        check=False,
     )
     return archive.stdout if archive.returncode == 0 else None
 

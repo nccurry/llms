@@ -44,6 +44,7 @@ class ManageTicketsFixtureTest(unittest.TestCase):
             text=True,
             encoding="utf-8",
             env=env,
+            check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         return result.stdout
@@ -55,6 +56,7 @@ class ManageTicketsFixtureTest(unittest.TestCase):
             text=True,
             encoding="utf-8",
             env=GIT_ENV,
+            check=False,
         )
         return json.loads(result.stdout)
 

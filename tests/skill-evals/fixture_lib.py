@@ -58,6 +58,7 @@ def run_git(cwd: Path, *args: str) -> subprocess.CompletedProcess:
         text=True,
         encoding="utf-8",
         env=GIT_ENV,
+        check=False,
     )
 
 
@@ -377,7 +378,7 @@ def _sections(text: str) -> list[tuple[str, list[str], list[str]]]:
     heads = [i for i, line in enumerate(lines) if line.startswith("## ")]
     return [
         (lines[a][3:].strip(), lines[a + 1 : b], raw[a + 1 : b])
-        for a, b in zip(heads, heads[1:] + [len(lines)])
+        for a, b in zip(heads, [*heads[1:], len(lines)], strict=True)
     ]
 
 
@@ -576,9 +577,11 @@ def eval_only_problems(packet: Path, owner: str | None = None) -> list[str]:
             problems.append(f"eval: empty section ## {name}")
     current_work = section_lines(readme, "Current Work")
     if "Current Work" in names:
-        for key in MORE_TEMPLATE_KEYS:
-            if _key_value(current_work, key) is None:
-                problems.append(f"eval: Current Work has no {key} line")
+        problems.extend(
+            f"eval: Current Work has no {key} line"
+            for key in MORE_TEMPLATE_KEYS
+            if _key_value(current_work, key) is None
+        )
         table_start = next(
             (i for i, line in enumerate(current_work) if line.startswith("Where the work lives")),
             None,
@@ -586,9 +589,11 @@ def eval_only_problems(packet: Path, owner: str | None = None) -> list[str]:
         rows = [] if table_start is None else current_work[table_start + 1 :]
         if not any(line.lstrip().startswith("|") for line in rows):
             problems.append('eval: Current Work has no "Where the work lives" table')
-    for line in section_lines(readme, "Log"):
-        if line.startswith("- ") and not LOG_DATE.match(line):
-            problems.append(f"eval: Log line has no date: {line}")
+    problems.extend(
+        f"eval: Log line has no date: {line}"
+        for line in section_lines(readme, "Log")
+        if line.startswith("- ") and not LOG_DATE.match(line)
+    )
     outside_code = re.sub(r"`[^`\n]*`", "", "\n".join(format_check().unfenced(readme.splitlines())))
     if PLACEHOLDER.search(outside_code):
         problems.append("eval: placeholder text (N/A, TBD or <...>) left in the README")
@@ -596,9 +601,11 @@ def eval_only_problems(packet: Path, owner: str | None = None) -> list[str]:
         plan_lines = format_check().unfenced(plan.splitlines())
         anchors = {heading_anchor(line[4:]) for line in plan_lines if line.startswith("### ")}
         for row in _phase_rows(readme)[2:]:
-            for anchor in re.findall(r"\(IMPLEMENTATION_PLAN\.md#([^)]+)\)", " ".join(row)):
-                if anchor not in anchors:
-                    problems.append(f"eval: phase row links to a missing plan heading: #{anchor}")
+            problems.extend(
+                f"eval: phase row links to a missing plan heading: #{anchor}"
+                for anchor in re.findall(r"\(IMPLEMENTATION_PLAN\.md#([^)]+)\)", " ".join(row))
+                if anchor not in anchors
+            )
     if owner is not None and not names_handle(owner_value(readme), owner):
         problems.append(f"eval: Owner does not name {owner}")
     return problems

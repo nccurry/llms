@@ -49,6 +49,7 @@ def ci_passes(dest: Path) -> bool:
         text=True,
         encoding="utf-8",
         env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"),
+        check=False,
     )
     return result.returncode == 0 and result.stdout.rstrip().endswith("success")
 

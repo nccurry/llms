@@ -309,18 +309,20 @@ def compare_refs(
 ) -> list[str]:
     """Check deletions against the expected list; return refs that moved."""
     tidied = []
-    for ref in sorted(set(now) - set(before)):
-        violations.append(f"{label}: {ref} created")
+    violations.extend(f"{label}: {ref} created" for ref in sorted(set(now) - set(before)))
     for ref in sorted(set(before) - set(now)):
         if ref in expected_deleted:
             tidied.append(f"{label}: deleted {ref}")
         else:
             violations.append(f"{label}: {ref} deleted but it is not finished")
-    for ref in sorted(expected_deleted & set(now)):
-        violations.append(f"{label}: finished {ref} was not deleted")
-    for ref in sorted(set(before) & set(now)):
-        if before[ref] != now[ref] and ref not in moved_ok:
-            violations.append(f"{label}: {ref} {moved_message}")
+    violations.extend(
+        f"{label}: finished {ref} was not deleted" for ref in sorted(expected_deleted & set(now))
+    )
+    violations.extend(
+        f"{label}: {ref} {moved_message}"
+        for ref in sorted(set(before) & set(now))
+        if before[ref] != now[ref] and ref not in moved_ok
+    )
     return tidied
 
 
@@ -379,8 +381,10 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
             path.resolve().relative_to(dest).as_posix()
             for path in worktree_paths(root, check=False)
         }
-        for rel in sorted(worktrees_now - set(info["worktrees"])):
-            violations.append(f"{checkout}: worktree {rel} added")
+        violations.extend(
+            f"{checkout}: worktree {rel} added"
+            for rel in sorted(worktrees_now - set(info["worktrees"]))
+        )
         for rel in sorted(set(info["worktrees"]) - worktrees_now):
             if rel in removed_ok:
                 tidied.append(f"{checkout}: removed worktree {rel}")
@@ -388,8 +392,10 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
                 violations.append(f"{checkout}: worktree {rel} removed but not finished")
             if (dest / rel).exists() and rel in removed_ok:
                 violations.append(f"{rel}: unregistered but its folder remains")
-        for rel in sorted(removed_ok & worktrees_now & set(info["worktrees"])):
-            violations.append(f"{checkout}: finished worktree {rel} was not removed")
+        violations.extend(
+            f"{checkout}: finished worktree {rel} was not removed"
+            for rel in sorted(removed_ok & worktrees_now & set(info["worktrees"]))
+        )
 
         for rel, wt in info["worktrees"].items():
             path = dest / rel

@@ -62,6 +62,7 @@ def git(*args: str) -> str:
         text=True,
         encoding="utf-8",
         env=env,
+        check=False,
     )
     return result.stdout.strip() if result.returncode == 0 else ""
 
@@ -79,6 +80,7 @@ def ci_for(sha: str) -> dict:
             archive = subprocess.run(
                 ["git", "--git-dir", state["remote"], "archive", sha],
                 capture_output=True,
+                check=False,
             )
             subprocess.run(["tar", "-x", "-C", tmp], input=archive.stdout, check=True)
             env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
@@ -89,6 +91,7 @@ def ci_for(sha: str) -> dict:
                 text=True,
                 encoding="utf-8",
                 env=env,
+                check=False,
             )
         cache[sha] = {
             "id": 1000 + len(cache),
@@ -167,7 +170,10 @@ def find_mr(state: dict, ref: str | None) -> dict:
     mrs = state["mrs"]
     if ref is None:
         current = subprocess.run(
-            ["git", "branch", "--show-current"], capture_output=True, text=True
+            ["git", "branch", "--show-current"],
+            capture_output=True,
+            text=True,
+            check=False,
         ).stdout.strip()
         match = [mr for mr in mrs if mr["source"] == current]
     else:
@@ -244,7 +250,10 @@ def create_mr(state: dict, args: list[str], gitlab: bool) -> None:
     source = (
         option(args, "--source-branch", "-s", "--head", "-H")
         or subprocess.run(
-            ["git", "branch", "--show-current"], capture_output=True, text=True
+            ["git", "branch", "--show-current"],
+            capture_output=True,
+            text=True,
+            check=False,
         ).stdout.strip()
     )
     names = ("--target-branch", "-b") if gitlab else ("--base", "-B")
@@ -400,7 +409,10 @@ def glab_ci(state: dict, args: list[str], json_out: bool = False) -> None:
     branch = (
         option(args, "--branch", "-b")
         or subprocess.run(
-            ["git", "branch", "--show-current"], capture_output=True, text=True
+            ["git", "branch", "--show-current"],
+            capture_output=True,
+            text=True,
+            check=False,
         ).stdout.strip()
     )
     if not head_of(branch):

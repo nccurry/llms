@@ -42,6 +42,7 @@ class FakeHostTest(unittest.TestCase):
             text=True,
             encoding="utf-8",
             env=env,
+            check=False,
         )
 
     def notes(self) -> int:

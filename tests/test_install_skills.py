@@ -66,9 +66,9 @@ class ExternalRefreshTests(unittest.TestCase):
                 return_value=SimpleNamespace(stdout="b" * 40 + "\tHEAD\n"),
             ),
             patch.object(installer.urllib.request, "urlopen", side_effect=OSError("offline")),
+            self.assertRaisesRegex(OSError, "offline"),
         ):
-            with self.assertRaisesRegex(OSError, "offline"):
-                installer.refresh_external_specs(original)
+            installer.refresh_external_specs(original)
         self.assertEqual(original, self.manifest())
 
     def test_invalid_revision_stops_before_downloading(self):
@@ -203,9 +203,11 @@ class RetiredSkillTests(unittest.TestCase):
 
     def test_failed_install_retires_nothing(self):
         self.record("kept", "dropped")
-        with patch.object(installer, "install_skill", side_effect=RuntimeError("boom")):
-            with self.assertRaisesRegex(RuntimeError, "boom"):
-                self.install()
+        with (
+            patch.object(installer, "install_skill", side_effect=RuntimeError("boom")),
+            self.assertRaisesRegex(RuntimeError, "boom"),
+        ):
+            self.install()
 
         self.assertEqual(self.installed(), ["dropped", "someone-elses", "start-this-up"])
         self.assertEqual(installer.recorded_skills(self.target), ["kept", "dropped"])
