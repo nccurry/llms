@@ -7,10 +7,8 @@ module that says "nt" and passes every other attribute to the real one.
 
 import base64
 import importlib.util
-import json
 import os
-import shutil
-import subprocess
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -23,24 +21,17 @@ assert spec is not None and spec.loader is not None
 setup = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(setup)
 
+sys.path.insert(0, str(Path(__file__).parent))
+import pinned_powershell  # noqa: E402 - needs the path line above
+
 # The quoting examples from the plan (FIX-007): spaces, a typographic apostrophe (U+2019) and
 # ASCII single quotes.
 NODE = "C:/Program Files/Tools/node.exe"
 REPOSITORY = "C:/Users/O\u2019Brien/My 'Repos'/llms"
 HOME = "C:/Users/O\u2019Brien"
-SYSTEM_ROOT = "C:/Windows"
+# Not "C:/Windows", which the code falls back to, so the tests show it reads SystemRoot.
+SYSTEM_ROOT = "D:/WinNT"
 POWERSHELL_5 = f"{SYSTEM_ROOT}/System32/WindowsPowerShell/v1.0/powershell.exe"
-
-# Parses a script without running it and prints the value of each word on its command line.
-PARSE_SCRIPT = """
-$errors = $null
-$tree = [System.Management.Automation.Language.Parser]::ParseInput(
-    $env:LLMS_TEST_SCRIPT, [ref] $null, [ref] $errors)
-if ($errors.Count -gt 0) { [Console]::Error.WriteLine($errors[0].Message); exit 1 }
-$isCommand = { param($node) $node -is [System.Management.Automation.Language.CommandAst] }
-$command = $tree.Find($isCommand, $true)
-ConvertTo-Json -Compress @($command.CommandElements | ForEach-Object { $_.Value })
-"""
 
 
 class WindowsOs:
@@ -50,30 +41,6 @@ class WindowsOs:
 
     def __getattr__(self, attribute):
         return getattr(os, attribute)
-
-
-def find_pwsh():
-    """Return the pinned PowerShell from `deps:dev-tools`, or any pwsh on PATH, or None."""
-    installed = sorted((ROOT / ".tools/mise/data/installs/powershell").glob("*/pwsh*"))
-    candidates = [str(path) for path in installed if path.name in {"pwsh", "pwsh.exe"}]
-    on_path = shutil.which("pwsh")
-    return (candidates or [on_path])[0] if candidates or on_path else None
-
-
-def parse_words(pwsh, script):
-    """Return the words of the command in `script`, as PowerShell parses them."""
-    encoded = base64.b64encode(PARSE_SCRIPT.encode("utf-16-le")).decode("ascii")
-    result = subprocess.run(
-        [pwsh, "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
-        check=False,
-        capture_output=True,
-        encoding="utf-8",
-        env={**os.environ, "LLMS_TEST_SCRIPT": script},
-        timeout=60,
-    )
-    if result.returncode:
-        raise AssertionError(f"PowerShell could not parse {script!r}: {result.stderr}")
-    return json.loads(result.stdout)
 
 
 class WindowsBranchTests(unittest.TestCase):
@@ -99,6 +66,16 @@ class WindowsBranchTests(unittest.TestCase):
         )
         self.assertEqual(hook["type"], "command")
         self.assertNotIn("args", hook)
+
+    def test_codex_serena_hook_keeps_quotes_in_a_path_with_spaces_inside_one_pair_of_quotes(self):
+        # cmd.exe gives ' and the typographic apostrophe no meaning; only the space needs quoting.
+        with patch.object(setup, "TOOLS", Path(REPOSITORY) / ".tools/agent-tools"):
+            hook = setup.serena_hook("codex", "remind")
+        self.assertEqual(
+            hook["command"],
+            "\"C:/Users/O\u2019Brien/My 'Repos'/llms/.tools/agent-tools/bin/serena-hooks.exe\""
+            " remind --client=codex",
+        )
 
     def test_claude_serena_hook_keeps_the_command_and_arguments_apart(self):
         with patch.object(setup, "TOOLS", Path("C:/Program Files/Tools")):
@@ -142,14 +119,20 @@ class WindowsBranchTests(unittest.TestCase):
         self.assertIn("O\u2019\u2019Brien/My ''Repos''/llms", script)
 
     def test_gitnexus_command_windows_parses_back_to_the_exact_paths(self):
-        pwsh = find_pwsh()
-        if pwsh is None:
-            if os.environ.get("LLMS_REQUIRE_PINNED_TOOLS"):
-                self.fail("PowerShell is missing; run `task deps:dev-tools`.")
-            self.skipTest("PowerShell is not installed; run `task deps:dev-tools` to check this.")
+        pwsh = pinned_powershell.require_pwsh(self)
         launch, entry = self.gitnexus_codex_launch()
-        words = parse_words(pwsh, self.encoded_script(launch))
+        words = pinned_powershell.parse_command_words(pwsh, self.encoded_script(launch))
         self.assertEqual(words, self.expected_words(entry))
+
+    def test_powershell_reads_back_every_single_quote_character(self):
+        pwsh = pinned_powershell.require_pwsh(self)
+        for quote in ("'", "\u2018", "\u2019", "\u201a", "\u201b"):
+            with self.subTest(quote=quote):
+                value = f"a{quote}b {quote}{quote} c{quote}"
+                words = pinned_powershell.parse_command_words(
+                    pwsh, "& " + setup.powershell_quote(value)
+                )
+                self.assertEqual(words, [value])
 
     def test_every_powershell_single_quote_character_is_doubled(self):
         for quote in ("'", "\u2018", "\u2019", "\u201a", "\u201b"):

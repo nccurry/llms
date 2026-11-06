@@ -1014,6 +1014,7 @@ def gitnexus_hook_paths(host: str) -> tuple[Path, Path]:
 
 
 # PowerShell treats all of these as a single quote inside a '...' string.
+# Keep in step with quotePowerShell in quote_powershell.mjs.
 POWERSHELL_SINGLE_QUOTES = re.compile("['\u2018\u2019\u201a\u201b]")
 
 
