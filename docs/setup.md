@@ -46,8 +46,11 @@ Add `OUTPUT=json` to get reports in JSON format.
 | `install TARGET=...` | Runs `deps:install`, `tools:install`, `skills:install`, `agents:configure`, and `doctor` in order |
 | `install:dry-run TARGET=...` | Shows the tool, skill, and configuration changes without making them |
 | `deps:install`, alias `setup` | Installs pinned Task, uv, and Node, and prepares piw's development environment |
-| `deps:dev-tools` | Not part of `deps:install`. Installs the hash-pinned Ruff and Pyright from `lint/requirements.txt` into `.tools/lint/`; `lint:python` needs it |
+| `deps:dev-tools` | Not part of `deps:install`. Installs the development-only tools: the hash-pinned Ruff and Pyright from `lint/requirements.txt` into `.tools/lint/`, shellcheck and PowerShell 7 pinned in `lint/mise.toml` (locked in `lint/mise.lock`), and the PowerShell modules Pester and PSScriptAnalyzer into `.tools/powershell-modules/`. Each module download is checked against the SHA-256 in `lint/powershell-modules.json` before it is unpacked. `lint:python`, `lint:shell`, `lint:powershell` and `test:powershell` need it |
 | `lint:python` | Runs Ruff lint, Ruff format check, and Pyright on the Python outside `piw/` |
+| `lint:shell` | Runs shellcheck on `bootstrap.sh` |
+| `lint:powershell` | Runs PSScriptAnalyzer on every tracked `.ps1` file, including its Windows PowerShell 5.1 syntax and command checks |
+| `test:powershell` | Runs the Pester tests for `bootstrap.ps1` in `tests/powershell/` |
 | `tools:install` | Installs the pinned Serena, ast-grep, GitNexus, and local cq |
 | `tools:run TOOL=... -- ...` | Runs a local tool with its arguments in the caller's project or worktree |
 | `skills:install TARGET=...` | Installs the managed skills and the external skills they need |
@@ -131,6 +134,69 @@ MISE_DATA_DIR=.tools/mise/data .tools/bin/mise exec -- uv pip compile --generate
 ```
 
 Review the diff, then rerun `task deps:dev-tools` and `task lint:python`.
+
+shellcheck and PowerShell are pinned in `lint/mise.toml`, apart from `mise.toml`, so the
+installed tools (`install`, `deps:install`) never download them. Task runs mise with `lint/` as the
+working directory, and mise then reads `lint/mise.toml` along with the root `mise.toml`. To
+change a version, edit `lint/mise.toml` and refresh the lock with this checkout's mise binary:
+
+```sh
+cd lint && MISE_DATA_DIR=../.tools/mise/data ../.tools/bin/mise lock -p linux-x64,linux-arm64,macos-x64,macos-arm64,windows-x64,windows-arm64
+```
+
+Pester and PSScriptAnalyzer are pinned in `lint/powershell-modules.json`. To change one, set the
+new version and the SHA-256 of its `.nupkg` file from
+`https://www.powershellgallery.com/api/v2/package/<name>/<version>`, then rerun
+`task deps:dev-tools`.
+
+## Windows setup: what Linux checks cannot prove
+
+On Linux, `lint:shell`, `lint:powershell`, `test:powershell`, `test:tooling` and
+`test:agent-launchers` check the Windows path as far as a Linux host can: shell and PowerShell
+syntax (including Windows PowerShell 5.1 compatibility), the logic of the functions in
+`bootstrap.ps1`, and the exact commands the Python and Node code build for Windows. Nothing runs
+Windows itself. These behaviors need a Windows host:
+
+- `cmd.exe` parsing of `.tools/bin/task.cmd` (its quoting, `%~dp0`, `%SystemRoot%` and `%*`).
+- Windows PowerShell 5.1 at runtime. The Linux checks run PowerShell 7 and only read the 5.1
+  command list; they cannot catch a difference in behavior.
+- The ACLs that `scripts/set_private_permissions.ps1` writes.
+- Task's `[ -L ... ]` test on `.tools/mise/data` in `deps:tools`, when that folder is a junction
+  or symbolic link on Windows.
+- Codex running the Windows hook commands through `cmd`: the Serena hook command line and the
+  GitNexus `commandWindows` value that starts Windows PowerShell with `-EncodedCommand`.
+
+### Check these on a Windows host
+
+Use a Windows 10 or 11 machine with Windows PowerShell 5.1 and a user account that is not an
+administrator. Use a checkout path with a space and an apostrophe, such as
+`C:\Users\Test User\My 'Repos'\llms`. To check the typographic apostrophe case too, use
+`O’Brien` (with U+2019) in the user folder name.
+
+1. In a normal (non-elevated) Windows PowerShell 5.1 window, run
+   `powershell -NoProfile -ExecutionPolicy Bypass -File .\bootstrap.ps1 deps:install`. It should end
+   without an error and create `.tools\bin\mise.exe`, `.tools\bin\mise-shim.exe` and
+   `.tools\bin\task.cmd`.
+2. Check the line endings of `task.cmd`:
+   `$b = [IO.File]::ReadAllBytes('.tools\bin\task.cmd'); ($b | Where-Object { $_ -eq 10 }).Count -eq ($b | Where-Object { $_ -eq 13 }).Count`
+   should print `True`. Run step 1 again and check that the file's last write time did not change.
+3. From a `cmd.exe` window in a different folder, put `.tools\bin` on `PATH` and run
+   `task --version`, then `task` with no arguments. Both should run through the bootstrap and
+   print Task output, not a parse error from `cmd`.
+4. Run `.\bootstrap.ps1 deps:tools` twice. The second run should finish without an error, which
+   covers Task's `[ -L ]` test.
+5. Run `.\bootstrap.ps1 tools:install`, `.\bootstrap.ps1 agents:configure TARGET=codex` and
+   `.\bootstrap.ps1 doctor TARGET=codex`. `doctor` should report no problems.
+6. Open `%USERPROFILE%\.codex\hooks.json`. Copy a Serena hook `command` and the GitNexus
+   `commandWindows` value into a `cmd.exe` window one at a time. Each should start without a
+   quoting error (the Serena command prints a usage or JSON message and exits).
+7. Check the ACLs on a file the setup protects, for example
+   `icacls $env:USERPROFILE\.codex\config.toml`. Only your account and `SYSTEM` should appear,
+   and inheritance should be off.
+8. Start Codex, open a project, and confirm that the session-start hook runs without an error in
+   its log.
+
+Record anything that differs in the PR or issue that asked for the check.
 
 See the [agent tools guide](agent-tools.md#versions-and-dependency-updates) for npm
 lockfiles and Serena overrides.
