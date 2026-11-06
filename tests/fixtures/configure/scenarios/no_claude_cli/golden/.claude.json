@@ -1,0 +1,69 @@
+{
+  "numStartups": 12,
+  "userID": "example-user-0001",
+  "oauthAccount": {
+    "emailAddress": "user@example.invalid",
+    "displayName": "Example User",
+    "organizationName": "Example Org"
+  },
+  "projects": {
+    "/work/example-project": {
+      "allowedTools": [],
+      "history": [
+        {
+          "display": "example prompt"
+        }
+      ],
+      "mcpServers": {}
+    }
+  },
+  "mcpServers": {
+    "example-notes": {
+      "type": "stdio",
+      "command": "/opt/example/notes-server",
+      "args": [
+        "--stdio"
+      ],
+      "env": {
+        "EXAMPLE_NOTES_DIR": "/work/notes"
+      }
+    },
+    "example-remote": {
+      "type": "http",
+      "url": "https://example.invalid/mcp"
+    },
+    "serena": {
+      "command": "{TOOLS}/bin/serena",
+      "args": [
+        "start-mcp-server",
+        "--project-from-cwd",
+        "--context",
+        "claude-code",
+        "--open-web-dashboard",
+        "false"
+      ],
+      "env": {
+        "PATH": "{TOOLS}/bin:{NODE_DIR}:{UV_DIR}:{TASK_DIR}:{CLIENT_DIR}",
+        "UV_PYTHON_INSTALL_DIR": "{REPO}/.tools/python",
+        "UV_CACHE_DIR": "{REPO}/.tools/uv-cache",
+        "SERENA_HOME": "{HOME}/.serena"
+      },
+      "type": "stdio"
+    },
+    "gitnexus": {
+      "command": "{NODE_DIR}/node",
+      "args": [
+        "{REPO}/scripts/run_gitnexus.mjs",
+        "{TOOLS}/npm/node_modules/gitnexus/dist/cli/index.js",
+        "mcp"
+      ],
+      "env": {
+        "PATH": "{TOOLS}/bin:{NODE_DIR}:{UV_DIR}:{TASK_DIR}:{CLIENT_DIR}",
+        "UV_PYTHON_INSTALL_DIR": "{REPO}/.tools/python",
+        "UV_CACHE_DIR": "{REPO}/.tools/uv-cache",
+        "GITNEXUS_STORAGE_ROOT": "{TOOLS}/gitnexus-indexes"
+      },
+      "type": "stdio"
+    }
+  }
+}

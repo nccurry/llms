@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 10,
+            "statusMessage": "Checking GitNexus index freshness...",
+            "command": "node \"{HOME}/.codex/hooks/gitnexus/gitnexus-hook.cjs\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/example/codex-start.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

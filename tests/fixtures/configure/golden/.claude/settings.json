@@ -1,0 +1,88 @@
+{
+  "model": "example-model",
+  "env": {
+    "EXAMPLE_FLAG": "1",
+    "PATH": "{TOOLS}/bin:{NODE_DIR}:{UV_DIR}:{TASK_DIR}:{CLIENT_DIR}",
+    "CQ_ADDR": ""
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/example/sync-notes.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 10,
+            "statusMessage": "Checking GitNexus index freshness...",
+            "command": "{NODE_DIR}/node",
+            "args": [
+              "{REPO}/scripts/run_gitnexus_hook.mjs",
+              "{TOOLS}/gitnexus-indexes",
+              "{HOME}/.claude/hooks/gitnexus/gitnexus-hook.cjs",
+              "{TOOLS}/npm/node_modules/gitnexus/dist/cli/index.js"
+            ]
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 5,
+            "command": "{TOOLS}/bin/serena-hooks",
+            "args": [
+              "activate",
+              "--client=claude-code"
+            ]
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 5,
+            "command": "{TOOLS}/bin/serena-hooks",
+            "args": [
+              "remind",
+              "--client=claude-code"
+            ]
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 3,
+            "command": "{TOOLS}/bin/serena-hooks",
+            "args": [
+              "cleanup",
+              "--client=claude-code"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "example-lsp@example-market": true,
+    "cq@example-market": true
+  }
+}

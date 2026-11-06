@@ -1,0 +1,23 @@
+{
+  "model": "example-model",
+  "env": {
+    "EXAMPLE_FLAG": "1"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/example/sync-notes.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "example-lsp@example-market": true,
+    "cq@example-market": true
+  }
+}

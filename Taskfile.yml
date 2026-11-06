@@ -172,10 +172,13 @@ tasks:
     desc: Run the setup-script tests (agent config, skill installer, fake host); no network.
     env:
       PYTHONDONTWRITEBYTECODE: '1'
-    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_windows_branches tests.test_install_powershell_modules tests.test_powershell_runners tests.test_reshim_shared_data'
+      LLMS_REQUIRE_PINNED_TOOLS: '{{.REQUIRE_PINNED_TOOLS | default ""}}'
+    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_configure_end_to_end tests.test_windows_branches tests.test_install_powershell_modules tests.test_powershell_runners tests.test_reshim_shared_data'
 
   test:agent-launchers:
     desc: Check pinned GitNexus launchers and emitted refresh commands.
+    env:
+      LLMS_REQUIRE_PINNED_TOOLS: '{{.REQUIRE_PINNED_TOOLS | default ""}}'
     cmd: '{{.MISE}} exec -- node --test tests/gitnexus-launchers.test.mjs'
 
   lint:python:
@@ -239,16 +242,17 @@ tasks:
 
   check:
     desc: Run every local check without installing anything; needs deps:dev-tools once first; fetches external skills.
-    env:
-      LLMS_REQUIRE_PINNED_TOOLS: '1'
     cmds:
       - task: piw:check
       - task: lint:python
       - task: lint:shell
       - task: lint:powershell
       - task: test:powershell
+      # A task's env does not reach the tasks it calls, so the requirement travels as a variable.
       - task: skills:check
+        vars: {REQUIRE_PINNED_TOOLS: '1'}
       - task: test:agent-launchers
+        vars: {REQUIRE_PINNED_TOOLS: '1'}
 
   build:
     desc: Build all distributable repository artifacts.
@@ -264,7 +268,9 @@ tasks:
       - task: lint:powershell
       - task: test:powershell
       - task: skills:check
+        vars: {REQUIRE_PINNED_TOOLS: '1'}
       - task: test:agent-launchers
+        vars: {REQUIRE_PINNED_TOOLS: '1'}
 
   skills:list:
     desc: List managed skills, dependencies, and resolved install targets.
@@ -280,11 +286,13 @@ tasks:
       - task: skills:fetch
       - task: skills:validate
       - task: skills:test
+        vars: {REQUIRE_PINNED_TOOLS: '{{.REQUIRE_PINNED_TOOLS | default ""}}'}
 
   skills:test:
     desc: Run skill script tests and every test under tests/, including setup and skill fixtures.
     env:
       PYTHONDONTWRITEBYTECODE: '1'
+      LLMS_REQUIRE_PINNED_TOOLS: '{{.REQUIRE_PINNED_TOOLS | default ""}}'
     cmds:
       - '{{.PYTHON}} -m unittest discover -s skills/clean-stale-worktrees/tests -p "test_*.py"'
       - '{{.PYTHON}} -m unittest discover -s tests -p "test_*.py"'

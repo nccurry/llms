@@ -1,0 +1,7 @@
+# Example Serena settings template (invented).
+language_backend: LSP
+gui_log_window: true
+web_dashboard: true
+web_dashboard_open_on_launch: true
+web_dashboard_interface: terminal
+log_level: 20
