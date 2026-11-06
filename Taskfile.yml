@@ -9,6 +9,10 @@ vars:
     sh: 'cat "{{.ROOT_DIR}}/piw/.python-version"'
   LINT_BIN: '{{.ROOT_DIR}}/.tools/lint/{{if eq OS "windows"}}Scripts{{else}}bin{{end}}'
   LINT_PYTHON: '{{.LINT_BIN}}/python{{if eq OS "windows"}}.exe{{end}}'
+  # lint/mise.toml pins shellcheck and PowerShell apart from mise.toml. Running mise with lint/
+  # as its working directory makes it read that file (and, above it, the root mise.toml).
+  MISE_LINT: '{{.MISE}} -C "{{.ROOT_DIR}}/lint"'
+  PSMODULES: '{{.ROOT_DIR}}/.tools/powershell-modules'
   PYTHON: '{{.UV}} run --isolated --no-project --python "{{.PYTHON_VERSION}}" --with-requirements "{{.ROOT_DIR}}/agent-runtime.txt" python'
   TARGET: '{{default "all" .TARGET}}'
   OUTPUT: '{{default "text" .OUTPUT}}'
@@ -62,12 +66,16 @@ tasks:
       - '[ -L "{{.ROOT_DIR}}/.tools/mise/data" ] || {{.MISE}} reshim'
 
   deps:dev-tools:
-    desc: Rebuild .tools/lint from the hash-pinned lint and type-check tools; not part of deps:install.
+    desc: Install the development-only tools (Python lint tools, shellcheck, PowerShell 7, Pester, PSScriptAnalyzer); not part of deps:install.
     cmds:
       - '{{.UV}} venv --clear --python "{{.PYTHON_VERSION}}" "{{.ROOT_DIR}}/.tools/lint"'
       - >-
         {{.UV}} pip install --require-hashes --python "{{.LINT_PYTHON}}"
         -r "{{.ROOT_DIR}}/lint/requirements.txt"
+      - '{{.MISE}} trust --yes --quiet "{{.ROOT_DIR}}/lint/mise.toml"'
+      - '{{.MISE_LINT}} install --locked --yes'
+      # Each download is checked against the SHA-256 in lint/powershell-modules.json before it is unpacked.
+      - '"{{.LINT_PYTHON}}" "{{.ROOT_DIR}}/lint/install_powershell_modules.py" "{{.ROOT_DIR}}/lint/powershell-modules.json" "{{.PSMODULES}}"'
       # Written last: lint:python treats a missing or different copy as a stale or half-built install.
       - 'cat "{{.ROOT_DIR}}/lint/requirements.txt" > "{{.ROOT_DIR}}/.tools/lint/requirements.txt"'
 
@@ -150,7 +158,7 @@ tasks:
     desc: Run the setup-script tests (agent config, skill installer, fake host); no network.
     env:
       PYTHONDONTWRITEBYTECODE: '1'
-    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host'
+    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_windows_branches'
 
   test:agent-launchers:
     desc: Check pinned GitNexus launchers and emitted refresh commands.
@@ -184,6 +192,36 @@ tasks:
       - '"{{.LINT_BIN}}/ruff" format --check'
       - '"{{.LINT_BIN}}/pyright" --warnings -p lint/pyrightconfig.json'
 
+  lint:shell:
+    desc: Run shellcheck on bootstrap.sh; needs deps:dev-tools first.
+    preconditions:
+      - sh: '{{.MISE_LINT}} which shellcheck'
+        msg: Run `task deps:dev-tools` to install shellcheck.
+    cmds:
+      - '{{.MISE_LINT}} exec -- shellcheck --version'
+      - '{{.MISE_LINT}} exec -- shellcheck ../bootstrap.sh'
+
+  lint:powershell:
+    desc: Run PSScriptAnalyzer (with the Windows PowerShell 5.1 checks) on every tracked .ps1 file; needs deps:dev-tools first.
+    preconditions:
+      - sh: '{{.MISE_LINT}} which pwsh && [ -d "{{.PSMODULES}}/PSScriptAnalyzer" ]'
+        msg: Run `task deps:dev-tools` to install PowerShell and PSScriptAnalyzer.
+    dir: '{{.ROOT_DIR}}'
+    env:
+      # Only the pinned modules; PowerShell adds its own built-in modules itself.
+      PSModulePath: '{{.PSMODULES}}'
+    cmd: '{{.MISE_LINT}} exec -- pwsh -NoProfile -File "{{.ROOT_DIR}}/lint/run_psscriptanalyzer.ps1"'
+
+  test:powershell:
+    desc: Run the Pester tests for bootstrap.ps1; needs deps:dev-tools first.
+    preconditions:
+      - sh: '{{.MISE_LINT}} which pwsh && [ -d "{{.PSMODULES}}/Pester" ]'
+        msg: Run `task deps:dev-tools` to install PowerShell and Pester.
+    dir: '{{.ROOT_DIR}}'
+    env:
+      PSModulePath: '{{.PSMODULES}}'
+    cmd: '{{.MISE_LINT}} exec -- pwsh -NoProfile -File "{{.ROOT_DIR}}/lint/run_pester.ps1"'
+
   check:
     desc: Run every local check without installing anything; needs deps:dev-tools once first; fetches external skills.
     env:
@@ -191,6 +229,9 @@ tasks:
     cmds:
       - task: piw:check
       - task: lint:python
+      - task: lint:shell
+      - task: lint:powershell
+      - task: test:powershell
       - task: skills:check
       - task: test:agent-launchers
 
@@ -204,6 +245,9 @@ tasks:
     cmds:
       - task: piw:ci
       - task: lint:python
+      - task: lint:shell
+      - task: lint:powershell
+      - task: test:powershell
       - task: skills:check
       - task: test:agent-launchers
 

@@ -1,0 +1,13 @@
+{
+  "_comment": "PowerShell Gallery packages for lint:powershell and test:powershell. Each sha256 is of the .nupkg file served at https://www.powershellgallery.com/api/v2/package/<name>/<version>. To change a pin, update the version and the checksum together.",
+  "modules": {
+    "Pester": {
+      "version": "6.2.0",
+      "sha256": "e6ac7418d4f12500269aaca58ae56cf1caafbbf1afa2cec334e289d1cf50a239"
+    },
+    "PSScriptAnalyzer": {
+      "version": "1.25.0",
+      "sha256": "14e634c828eb98efb9f40b2918ba90f139ed5eccdf663a2a747736d996995d60"
+    }
+  }
+}

@@ -102,6 +102,8 @@ fi
 "$mise_bin" install task --locked --quiet
 
 # This optional PATH entry forwards ordinary Task calls through the pinned runtime.
+# The wrapper text is written out as is; its $ expressions run later, inside the wrapper.
+# shellcheck disable=SC2016
 task_command='#!/usr/bin/env sh
 set -eu
 repo_root=$(CDPATH='"''"' cd -- "$(dirname -- "$0")/../.." && pwd)
