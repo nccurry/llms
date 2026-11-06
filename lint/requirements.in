@@ -1,0 +1,6 @@
+# Source for requirements.txt. Regenerate with:
+#   uv pip compile --generate-hashes --python-version 3.14 lint/requirements.in -o lint/requirements.txt
+# Ruff and pyright match the versions in piw/uv.lock. tomlkit matches agent-runtime.txt.
+ruff==0.16.2
+pyright==1.1.411
+tomlkit==0.15.1

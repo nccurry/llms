@@ -7,6 +7,8 @@ vars:
   UV: '{{.MISE}} exec -- uv'
   PYTHON_VERSION:
     sh: 'cat "{{.ROOT_DIR}}/piw/.python-version"'
+  LINT_BIN: '{{.ROOT_DIR}}/.tools/lint/{{if eq OS "windows"}}Scripts{{else}}bin{{end}}'
+  LINT_PYTHON: '{{.LINT_BIN}}/python{{if eq OS "windows"}}.exe{{end}}'
   PYTHON: '{{.UV}} run --isolated --no-project --python "{{.PYTHON_VERSION}}" --with-requirements "{{.ROOT_DIR}}/agent-runtime.txt" python'
   TARGET: '{{default "all" .TARGET}}'
   OUTPUT: '{{default "text" .OUTPUT}}'
@@ -58,6 +60,14 @@ tasks:
       # Shims link to the checkout that wrote them; a worktree sharing this
       # data directory must not repoint them at a checkout that may be deleted.
       - '[ -L "{{.ROOT_DIR}}/.tools/mise/data" ] || {{.MISE}} reshim'
+
+  deps:dev-tools:
+    desc: Rebuild .tools/lint from the hash-pinned lint and type-check tools.
+    cmds:
+      - '{{.UV}} venv --clear --python "{{.PYTHON_VERSION}}" "{{.ROOT_DIR}}/.tools/lint"'
+      - >-
+        {{.UV}} pip install --require-hashes --python "{{.LINT_PYTHON}}"
+        -r "{{.ROOT_DIR}}/lint/requirements.txt"
 
   deps:verify:
     desc: Show resolved native development tools.
@@ -144,12 +154,28 @@ tasks:
     desc: Check pinned GitNexus launchers and emitted refresh commands.
     cmd: '{{.MISE}} exec -- node --test tests/gitnexus-launchers.test.mjs'
 
+  lint:python:
+    desc: Run ruff and pyright on the Python outside piw; needs deps:dev-tools first.
+    preconditions:
+      - sh: '"{{.LINT_PYTHON}}" --version'
+        msg: Run `task deps:dev-tools` to install the lint tools.
+    dir: '{{.ROOT_DIR}}'
+    env:
+      PYRIGHT_PYTHON_IGNORE_WARNINGS: '1'
+    cmds:
+      - '"{{.LINT_BIN}}/ruff" --version'
+      - '"{{.LINT_BIN}}/pyright" --version'
+      - '"{{.LINT_BIN}}/ruff" check'
+      - '"{{.LINT_BIN}}/ruff" format --check'
+      - '"{{.LINT_BIN}}/pyright" -p lint/pyrightconfig.json'
+
   check:
     desc: Run every local check without installing anything; fetches external skills.
     env:
       LLMS_REQUIRE_PINNED_TOOLS: '1'
     cmds:
       - task: piw:check
+      - task: lint:python
       - task: skills:check
       - task: test:agent-launchers
 
@@ -162,6 +188,7 @@ tasks:
     desc: Run check plus the piw package build and smoke test.
     cmds:
       - task: piw:ci
+      - task: lint:python
       - task: skills:check
       - task: test:agent-launchers
 

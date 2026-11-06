@@ -1,0 +1,25 @@
+{
+  "pythonVersion": "3.11",
+  "venvPath": "../.tools",
+  "venv": "lint",
+  "typeCheckingMode": "basic",
+  "include": [
+    "../scripts",
+    "../tests",
+    "../skills"
+  ],
+  "exclude": [
+    "../piw",
+    "../tests/skill-evals/**/fixture",
+    "../scripts/render_serena_config.py",
+    "**/__pycache__"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "../tests",
+      "extraPaths": [
+        "../tests/skill-evals"
+      ]
+    }
+  ]
+}

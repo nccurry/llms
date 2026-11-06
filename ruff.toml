@@ -1,0 +1,49 @@
+# Ruff settings for the Python files outside piw/. Ruff uses the nearest
+# config file, so piw/ keeps using piw/pyproject.toml.
+line-length = 100
+target-version = "py311"
+# Only Python files; ruff 0.16 would otherwise also list ruff.toml.
+include = ["*.py"]
+# These two skill scripts declare Python 3.10 support, so ruff must not suggest newer syntax.
+per-file-target-version = { "skills/clean-stale-worktrees/scripts/worktree_report.py" = "py310", "skills/plc-feature-start/scripts/start_up_preflight.py" = "py310" }
+extend-exclude = ["piw", "tests/skill-evals/**/fixture"]
+
+[lint]
+# Same families as piw. C901 is added when the setup script is restructured.
+select = ["B", "D", "E", "F", "I", "PERF", "PL", "RUF", "S", "SIM", "TRY", "UP"]
+ignore = [
+  "D202",
+  "COM812",
+  "D203",
+  "D213",
+  "EM101",
+  "EM102",
+  "PLR0911",
+  "PLR0912",
+  "PLR0913",
+  "PLR0915",
+  "TRY003",
+  # The scripts and tests are not a public API, so missing docstrings are allowed (D100-D107).
+  "D100",
+  "D101",
+  "D102",
+  "D103",
+  "D104",
+  "D105",
+  "D106",
+  "D107",
+]
+
+[lint.per-file-ignores]
+# Tests and the skill-eval harness (tests/skill-evals) under tests/ or any tests/ folder.
+# PLR2004, S101: tests assert and compare against fixed numbers, as in piw.
+# E501: expected messages and fixture file text must match exactly, so wrapping them would
+#   change what the tests check.
+# S603, S607: fixtures run git and glab with fixed arguments on purpose.
+# PLR0917: fixture builders take one positional argument per field of the file they write.
+# RUF001: test data holds typographic dashes and quotes on purpose.
+# D205, D401: docstrings here are one-sentence descriptions of what is checked, not summary lines.
+"**/tests/**" = ["D205", "D401", "E501", "PLR0917", "PLR2004", "RUF001", "S101", "S603", "S607"]
+# This skill script's docstrings start with a noun phrase that says what the function returns
+# ("The lines of a file ..."), so the imperative-mood and one-line-summary rules do not fit.
+"skills/plc-planning/scripts/format_check.py" = ["D205", "D401"]
