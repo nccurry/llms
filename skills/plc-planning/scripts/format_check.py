@@ -108,7 +108,7 @@ FOLDER_STATUS = {
 ALLOWED_IN_COMPLETED = ("Verified", "Live", "Deferred", "Dropped")
 NEEDS_EVIDENCE = ("Verified", "Live")
 NEEDS_REASON = ("Dropped", "Archived", "Superseded")
-REASON = re.compile(r"(superseded|duplicate|obsolete|won['’]?t do)\b", re.IGNORECASE)
+REASON = re.compile(r"(superseded|duplicate|obsolete|won['\u2019]?t do)\b", re.IGNORECASE)
 
 # Structure.
 OUTSIDE = "Phases: phase state outside the README ## Phases table"
@@ -357,7 +357,7 @@ def named(parts, name):
 
 
 def cells(line):
-    """The cells of a Markdown table row. An escaped pipe (\\|) stays inside its cell."""
+    r"""The cells of a Markdown table row. An escaped pipe (\|) stays inside its cell."""
     line = line.strip()
     line = line[1:] if line.startswith("|") else line
     line = line[:-1] if line.endswith("|") and not line.endswith("\\|") else line
@@ -436,7 +436,7 @@ def current_work_keys(lines, block):
     return keys
 
 
-def check_current_work(readme, lines, parts, people, strict, lifecycle):
+def check_current_work(readme, lines, parts, people, *, strict, lifecycle):
     blocks = named(parts, "current work")
     found = []
     if len(blocks) != 1:
@@ -484,8 +484,8 @@ def check_current_work(readme, lines, parts, people, strict, lifecycle):
     else:
         if not HANDLE.search(owner.value):
             found.append(finding(readme, owner.line, "Current Work: Owner names no @handle"))
-        for name, handle in people:
-            handle = handle.removeprefix("@")
+        for name, person_handle in people:
+            handle = person_handle.removeprefix("@")
             names_person = re.search(rf"(?<![@\w]){re.escape(name)}\b", owner.value)
             gives_handle = re.search(rf"(?<![\w@])@{re.escape(handle)}(?![\w-]|\.\w)", owner.value)
             if names_person and not gives_handle:
@@ -637,7 +637,10 @@ def check_merge_request_rows(readme, table, known):
             found.append(finding(readme, line, message))
         if not MR_STATE.fullmatch(unemphasized(state)):
             value = state[:60] or "(empty)"
-            message = f"Merge requests: State is not Open, Merged @ <commit> or Closed — <reason>: {value}"
+            message = (
+                "Merge requests: State is not Open, Merged @ <commit> or Closed — <reason>: "
+                f"{value}"
+            )
             found.append(finding(readme, line, message))
     return found
 
@@ -674,9 +677,15 @@ def check_other_file(path, lines):
         if not word_lists or not any(lookup_word(words, key[2] or "") for words in word_lists):
             continue
         if key[1].lower() == "lifecycle":
-            message = f"Current Work: {key[1]} line outside the README; the packet's status lives in its ## Current Work"
+            message = (
+                f"Current Work: {key[1]} line outside the README; "
+                "the packet's status lives in its ## Current Work"
+            )
         else:
-            message = f"Phases: {key[1]} line outside the README; status lives in its ## Current Work and ## Phases"
+            message = (
+                f"Phases: {key[1]} line outside the README; "
+                "status lives in its ## Current Work and ## Phases"
+            )
         found.append(finding(path, i + 1, message))
     return found
 
@@ -796,7 +805,7 @@ def check_packet(path, people=(), strict=False, lifecycle=None):
     parts = sections(lines)
 
     found += check_summary(readme, raw, lines)
-    found += check_current_work(readme, lines, parts, people, strict, lifecycle)
+    found += check_current_work(readme, lines, parts, people, strict=strict, lifecycle=lifecycle)
     if not named(parts, "log"):
         found.append(finding(readme, 1, "Log: no ## Log section"))
     found += check_phase_tables(readme, lines, parts, lifecycle, strict)

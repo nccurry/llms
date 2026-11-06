@@ -10,10 +10,10 @@ import sys
 
 
 def run_git(path, args, check=False):
-    result = subprocess.run(
-        ["git", "-C", path, *args],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+    result = subprocess.run(  # noqa: S603 - fixed git command with arguments from this script
+        ["git", "-C", path, *args],  # noqa: S607 - git is a prerequisite found on PATH
+        check=False,
+        capture_output=True,
         text=True,
     )
 
@@ -213,7 +213,8 @@ def build_report(path, requested_main, target_branch, target_path):
         problems.append(f"Target path already exists: {target['targetPath']}.")
     if target["targetPathInsideExistingWorktree"]:
         problems.append(
-            f"Target path is inside an existing worktree: {target['targetPathInsideExistingWorktree']}."
+            "Target path is inside an existing worktree: "
+            f"{target['targetPathInsideExistingWorktree']}."
         )
 
     if current_worktree and current_worktree["isDirty"]:

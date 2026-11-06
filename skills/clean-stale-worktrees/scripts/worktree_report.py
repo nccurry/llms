@@ -17,8 +17,9 @@ from pathlib import Path
 
 
 def git(cwd: str | Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", "-C", str(cwd), *args],
+    return subprocess.run(  # noqa: S603 - fixed git command with arguments from this script
+        ["git", "-C", str(cwd), *args],  # noqa: S607 - git is a prerequisite found on PATH
+        check=False,
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -38,7 +39,7 @@ def iso(epoch: int | None) -> str | None:
 
 def parse_worktrees(porcelain: str) -> list[dict]:
     entries, current = [], {}
-    for line in porcelain.splitlines() + [""]:
+    for line in [*porcelain.splitlines(), ""]:
         if not line:
             if current:
                 entries.append(current)
@@ -117,8 +118,14 @@ def review(root: str, branch: str, remote_url: str) -> dict:
         tool = ["glab", "mr", "list", "--source-branch", branch, "--all", "-F", "json"]
     if not shutil.which(tool[0]):
         return {"error": f"{tool[0]} not found"}
-    result = subprocess.run(
-        tool, cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace"
+    result = subprocess.run(  # noqa: S603 - fixed gh or glab command; the branch is one argument
+        tool,
+        check=False,
+        cwd=root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     if result.returncode != 0:
         return {"error": result.stderr.strip()[:200]}
@@ -226,7 +233,8 @@ def table(report: dict) -> str:
         )
     widths = [max(len(str(row[i])) for row in rows) for i in range(len(rows[0]))]
     return "\n".join(
-        "  ".join(str(c).ljust(w) for c, w in zip(row, widths)).rstrip() for row in rows
+        "  ".join(str(c).ljust(w) for c, w in zip(row, widths, strict=False)).rstrip()
+        for row in rows
     )
 
 
