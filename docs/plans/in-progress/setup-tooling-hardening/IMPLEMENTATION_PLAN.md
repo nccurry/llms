@@ -232,30 +232,41 @@ Hosted Windows CI is not selected (the owner chose not now).
 - Exit criterion: P4's requirements pass on `main`.
 - Rollback or fallback: revert the phase; the golden test proves the old code
   is still correct.
-- Evidence (code commit 12421df, base ae975e8):
+- Evidence (code commits 12421df and the repair commit after it, base ae975e8):
   - Design: `HostAdapter` and `StandardProfile` (typed named tuples; frozen dataclasses fail when a
     test loads the script without registering it in `sys.modules`) in
     `scripts/manage_agent_tools.py`. One adapter each for codex, claude, pi and opencode, listed in
-    `ADAPTERS` (the host list; `--target` choices and `selected_hosts` derive from it).
-    `configure`, `preview`, `host_problems`, `require_standard_profiles`, `existing_server`,
-    `host_servers`, the hook helpers and `skill_health` read host details from the adapter.
+    `ADAPTERS` (the host list; `--target` choices and `selected_hosts` derive from it). Each
+    host's functions sit in one block beside its adapter. Functions held in an adapter field take
+    the adapter first, and the JSON and TOML readers and writers take the section key and
+    environment key from it. `configure`, `preview`, `host_problems`,
+    `require_standard_profiles`, `existing_server`, `host_servers`, the hook helpers,
+    `restore_servers` and `skill_health` read host details from the adapter.
   - `configure()` is 14 lines (was 159): `require_standard_profiles`, `require_pinned_tools`,
     `serena_configuration`, then `configure_host` per host, which runs `back_up_host_files`,
     the adapter's environment step, `register_serena`, `back_up_server_files`, `set_up_gitnexus`,
     `run_cq_install` (both through `run_with_server_restore`), `configure_serena_hooks` and
-    `write_managed_config`. Order of writes and upstream calls is unchanged. File length 1619 → 1859.
+    `write_managed_config`. Order of writes and upstream calls is unchanged.
   - REQ-016: `git diff ae975e8 -- tests/test_configure_end_to_end.py tests/fixtures/configure/` →
-    empty; `./bootstrap.sh test:tooling REQUIRE_PINNED_TOOLS=1` → 54 tests OK (48 + 6 new).
-  - REQ-017: `tests/test_host_adapters.py` registers a fake adapter (own file, own section and
-    env key) in `ADAPTERS` and runs `preview`, `configure`, `host_problems`, `existing_server` and
-    `require_standard_profiles` on it with no other code change. It imports the script, because the
-    black-box test cannot add a host. `git grep -n -E '"(claude|codex|opencode|pi)"' -- scripts/`
-    → hits only in the four adapter definitions in `manage_agent_tools.py` and in
-    `scripts/install_skills.py` (out of scope for P4).
-  - REQ-020: preview and doctor output (text and JSON) from this checkout are byte-identical
-    between the old script (`ae975e8`) and the new one. Against the saved baseline the only
-    difference is `serena_hooks` for codex and claude, because the hook command holds the
-    checkout's own `.tools` path and the user's hook files name the main checkout's.
+    empty; `./bootstrap.sh test:tooling REQUIRE_PINNED_TOOLS=1` → 61 tests OK (48 + 13 new).
+  - REQ-017: `tests/test_host_adapters.py` registers two fake adapters in `ADAPTERS`: a bare one
+    and one that sets every optional field (hooks file in a folder its name does not give, exec-form
+    Serena hooks, `serena setup` and GitNexus setup with their own client names, an environment step,
+    a second server file, its own section and environment keys). It runs `preview`, `configure`,
+    `host_problems`, `existing_server`, `require_standard_profiles` and `skill_health` on them with
+    no other code change, and checks that the mocked installer's server edits are undone in both
+    server files. A scratch copy where the hooks folder is derived from the host name fails four of
+    those tests. The test imports the script, because the black-box test cannot add a host.
+    `git grep -n -E '"(claude|codex|opencode|pi)"' -- scripts/manage_agent_tools.py` → only the
+    four adapter definitions (`name=`, `serena_client=`, `gitnexus_client=`, `serena_context=`).
+    `scripts/install_skills.py` keeps its own host list (out of scope for P4); `doctor` skips the
+    skills check for a host it does not know and reports that in `skills.skipped`.
+  - REQ-020: an old-versus-new harness (the end-to-end sandbox, 15 cases: configure, doctor and
+    preview for every target, with the files, modes and backups compared) is identical between
+    `ae975e8` and the new script. Run from the p4-hosts checkout, `preview` differs from the saved
+    baseline only in `serena_hooks` for codex and claude ("would update" for "unchanged"), because
+    the hook command holds the checkout's own `.tools` path while the user's hook files name the
+    main checkout's; the old script run from the same checkout gives the same two differences.
 
 ### P5: Tools described by the manifest
 

@@ -15,6 +15,8 @@ assert spec is not None and spec.loader is not None
 setup = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(setup)
 
+CLAUDE_WITHOUT_ENVIRONMENT_STEP = setup.ADAPTERS["claude"]._replace(environment_step=None)
+
 
 class AgentSetupTests(unittest.TestCase):
     def configure(self, home, error, failing_tool=None):
@@ -43,7 +45,8 @@ class AgentSetupTests(unittest.TestCase):
             patch.object(setup, "installed_version", return_value="1"),
             patch.object(setup, "selected_hosts", return_value=("claude", "pi", "opencode")),
             patch.object(setup, "serena_configuration", return_value={}),
-            patch.object(setup, "configure_claude_environment"),
+            # Claude's settings step is not under test: swap it out on the adapter.
+            patch.dict(setup.ADAPTERS, {"claude": CLAUDE_WITHOUT_ENVIRONMENT_STEP}),
             patch.object(setup.shutil, "which", return_value="/managed/claude"),
             patch.object(setup, "tool_command", side_effect=lambda name: [f"/managed/{name}"]),
             patch.object(setup, "host_servers", return_value=servers),
@@ -154,7 +157,7 @@ class ConfigWriteTests(unittest.TestCase):
             json.dumps({"mcpServers": {"gitnexus": {"command": "npx"}}, "projects": {"p": 1}})
         )
 
-        setup.restore_servers(snapshot)
+        setup.restore_servers(snapshot, setup.ADAPTERS["claude"])
 
         self.assertEqual(
             json.loads(path.read_text()),
@@ -167,7 +170,7 @@ class ConfigWriteTests(unittest.TestCase):
         snapshot = setup.snapshot_configs({path})
         path.write_text('# mine\nmodel = "y"\n\n[mcp_servers.cq]\ncommand = "cq"\n')
 
-        setup.restore_servers(snapshot)
+        setup.restore_servers(snapshot, setup.ADAPTERS["codex"])
 
         text = path.read_text()
         self.assertIn("# mine", text)
@@ -182,7 +185,7 @@ class ConfigWriteTests(unittest.TestCase):
         created.write_text(json.dumps({"$schema": "s", "mcp": {"cq": {}}}))
         kept.write_text(json.dumps({"theme": "dark", "mcp": {"cq": {}}}))
 
-        setup.restore_servers(snapshot)
+        setup.restore_servers(snapshot, setup.ADAPTERS["opencode"])
 
         self.assertFalse(created.exists())
         self.assertEqual(json.loads(kept.read_text()), {"theme": "dark"})
@@ -242,8 +245,8 @@ class HookTests(unittest.TestCase):
             json.dumps({"hooks": {"PreToolUse": [{"matcher": "Edit", "hooks": [owner]}]}})
         )
 
-        self.assertEqual(setup.configure_serena_hooks("claude"), "updated")
-        self.assertEqual(setup.configure_serena_hooks("claude"), "unchanged")
+        self.assertEqual(setup.configure_serena_hooks(setup.ADAPTERS["claude"]), "updated")
+        self.assertEqual(setup.configure_serena_hooks(setup.ADAPTERS["claude"]), "unchanged")
 
         self.assertEqual(
             self.events(),
@@ -269,7 +272,7 @@ class HookTests(unittest.TestCase):
             )
         )
 
-        setup.configure_gitnexus_hooks("claude")
+        setup.configure_gitnexus_hooks(setup.ADAPTERS["claude"])
 
         hooks = json.loads(self.settings.read_text())["hooks"]
         self.assertEqual(hooks["PreToolUse"], [])
