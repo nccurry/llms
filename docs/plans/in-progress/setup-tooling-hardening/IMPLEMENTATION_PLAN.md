@@ -246,7 +246,7 @@ Hosted Windows CI is not selected (the owner chose not now).
     `serena_configuration`, then `configure_host` per host, which runs `back_up_host_files`,
     the adapter's environment step, `register_serena`, `back_up_server_files`, `set_up_gitnexus`,
     `run_cq_install` (both through `run_with_server_restore`), `configure_serena_hooks` and
-    `write_managed_config`. Order of writes and upstream calls is unchanged.
+    `write_managed_config`. Order of writes and upstream calls is unchanged. File length 1619 → 1908.
   - REQ-016: `git diff ae975e8 -- tests/test_configure_end_to_end.py tests/fixtures/configure/` →
     empty; `./bootstrap.sh test:tooling REQUIRE_PINNED_TOOLS=1` → 61 tests OK (48 + 13 new).
   - REQ-017: `tests/test_host_adapters.py` registers two fake adapters in `ADAPTERS`: a bare one
