@@ -1013,6 +1013,15 @@ def gitnexus_hook_paths(host: str) -> tuple[Path, Path]:
     ), directory / "hooks/gitnexus/gitnexus-hook.cjs"
 
 
+# PowerShell treats all of these as a single quote inside a '...' string.
+POWERSHELL_SINGLE_QUOTES = re.compile("['\u2018\u2019\u201a\u201b]")
+
+
+def powershell_quote(value: str) -> str:
+    """Return value as one PowerShell single-quoted string, doubling every quote character."""
+    return "'" + POWERSHELL_SINGLE_QUOTES.sub(lambda match: match.group() * 2, value) + "'"
+
+
 def gitnexus_hook_launch(host: str) -> dict[str, Any]:
     _, hook = gitnexus_hook_paths(host)
     arguments = [
@@ -1024,7 +1033,7 @@ def gitnexus_hook_launch(host: str) -> dict[str, Any]:
     ]
     if host == "claude":
         return {"command": arguments[0], "args": arguments[1:]}
-    script = "& " + " ".join("'" + arg.replace("'", "''") + "'" for arg in arguments)
+    script = "& " + " ".join(powershell_quote(arg) for arg in arguments)
     encoded = base64.b64encode(script.encode("utf-16-le")).decode("ascii")
     powershell = (
         Path(os.environ.get("SystemRoot", "C:/Windows"))  # noqa: SIM112 - Windows spells this variable SystemRoot
