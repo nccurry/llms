@@ -156,7 +156,7 @@ dashboards, GitNexus indexing and licensing, and dependency updates.
 | Command | Checks |
 |---|---|
 | `task test` | piw application tests, setup-script tests, and agent launchers; no network or live Docker Sandboxes |
-| `task lint:python` | Ruff lint, Ruff format check, and Pyright (basic mode) on the Python outside `piw/`: `scripts/`, `skills/` and `tests/`, except the eval fixture projects under `tests/skill-evals/*/fixture/`. Pyright also skips `scripts/render_serena_config.py`, which runs in Serena's own environment. Run `task deps:dev-tools` first; it installs the hash-pinned tools from `lint/requirements.txt` into `.tools/lint/`. |
+| `task lint:python` | Ruff lint, Ruff format check, and Pyright (basic mode, Python 3.11) on the Python outside `piw/`: `scripts/`, `skills/` and `tests/`, except the eval fixture projects under `tests/skill-evals/*/fixture/`. Pyright also skips `scripts/render_serena_config.py`, which runs in Serena's own environment. Only `task deps:dev-tools` installs the lint tools (`task install` does not); run it first. It installs the hash-pinned tools from `lint/requirements.txt` into `.tools/lint/`. |
 | `task check` | piw formatting, lint, types, and coverage; `lint:python`; skill validation and tests; launcher checks. Fetches external skills. |
 | `task ci` | `check`, plus a piw build and a smoke test of the installed package |
 

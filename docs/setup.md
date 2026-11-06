@@ -24,7 +24,7 @@ Downloaded tools and setup files stay in the ignored `.tools/` folder. Bootstrap
 leaves your shell profile, PATH, and global mise setup unchanged. uv manages Python; the version comes from
 [`piw/.python-version`](../piw/.python-version).
 
-With no arguments, bootstrap runs `deps:install`. That prepares the pinned tools, the lint tools in `.tools/lint/`, and the piw
+With no arguments, bootstrap runs `deps:install`. That prepares the pinned tools and the piw
 development environment only. It does not install skills or configure agents.
 
 After the first bootstrap, you can call Task in three ways:
@@ -45,8 +45,8 @@ Add `OUTPUT=json` to get reports in JSON format.
 |---|---|
 | `install TARGET=...` | Runs `deps:install`, `tools:install`, `skills:install`, `agents:configure`, and `doctor` in order |
 | `install:dry-run TARGET=...` | Shows the tool, skill, and configuration changes without making them |
-| `deps:install`, alias `setup` | Installs pinned Task, uv, and Node, the lint tools, and piw's development environment |
-| `deps:dev-tools` | Installs the hash-pinned Ruff and Pyright from `lint/requirements.txt` into `.tools/lint/`; `lint:python` needs it |
+| `deps:install`, alias `setup` | Installs pinned Task, uv, and Node, and prepares piw's development environment |
+| `deps:dev-tools` | Not part of `deps:install`. Installs the hash-pinned Ruff and Pyright from `lint/requirements.txt` into `.tools/lint/`; `lint:python` needs it |
 | `lint:python` | Runs Ruff lint, Ruff format check, and Pyright on the Python outside `piw/` |
 | `tools:install` | Installs the pinned Serena, ast-grep, GitNexus, and local cq |
 | `tools:run TOOL=... -- ...` | Runs a local tool with its arguments in the caller's project or worktree |
