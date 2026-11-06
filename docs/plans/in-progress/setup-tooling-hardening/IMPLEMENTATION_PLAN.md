@@ -135,13 +135,16 @@ Hosted Windows CI is not selected (the owner chose not now).
 - Exit criterion: every P2 requirement's check passes on `main`.
 - Rollback or fallback: revert; generated `task.cmd` files are rewritten on
   the next bootstrap.
-- Evidence (code commits 8de5d17, 9dcb7d9 and fac3ed2; the checks ran on fac3ed2):
+- Evidence (first pass: 8de5d17, 9dcb7d9, fac3ed2; repairs after the strict audit: 1f845f7, 97afede,
+  5aab033, 5cf427a, 7bb3e24; the final checks below ran on 7bb3e24):
   - Separate mise configuration: `lint/mise.toml` pins shellcheck 0.11.0 and PowerShell 7.6.7;
     `lint/mise.lock` has all six `mise.lock` platforms (windows-arm64 shellcheck uses the x64 zip).
     Task runs mise with `lint/` as the working directory (`mise -C lint ...`); mise then reads
     `lint/mise.toml` and, above it, the root `mise.toml`, and `mise lock` there wrote only
     `lint/mise.lock`. `git diff 1164802 -- mise.toml mise.lock piw/` is empty.
-  - Known failures, run in a scratch worktree of the commit: a `.ps1` using `??` → `lint:powershell`
+  - Known failures, run in a scratch worktree of the commit. `lint:powershell` lints tracked files
+    only, so a sample must be `git add`-ed first (an untracked sample gave "No findings."; run on
+    7bb3e24): a `.ps1` using `??` → `lint:powershell`
     exit 201, "Error PSUseCompatibleSyntax: The null-coalescing operator syntax '$x ?? $y' is not
     available by default in PowerShell versions 3,4,5,6"; a `.ps1` with `Get-Content -AsByteStream`
     → "Warning PSUseCompatibleCommands: The parameter 'AsByteStream' is not available for command
@@ -169,6 +172,31 @@ Hosted Windows CI is not selected (the owner chose not now).
     paths, including U+2019.
   - Also exit 0: `lint:python`, `./bootstrap.sh test`, `./bootstrap.sh check`, `./bootstrap.sh ci`.
   - REQ-013: `docs/setup.md` "Windows setup: what Linux checks cannot prove".
+  - Repairs (strict audit), each with the check that covers it:
+    - Pinned modules by exact path (97afede): `lint/import_pinned_module.ps1`; the runners assert
+      the loaded `ModuleBase`; the task preconditions test `<modules>/<name>/<version>`.
+      `tests/test_powershell_runners.py` puts a decoy `99.0.0` of each module in
+      `~/.local/share/powershell/Modules` of a scratch HOME (first checking that the decoy
+      shadows a plain import), and both runners still load the pinned copy.
+    - Shared shims (1f845f7): shellcheck and PowerShell use `.tools/lint-mise/data` and read only
+      `lint/mise.toml`; `scripts/reshim_shared_data.sh` runs after the installs in `bootstrap.sh`
+      and `deps:tools`. Experiment with two copies of mise sharing one data directory (copy A owns
+      it, copy B links `.tools/mise/data` to it): after B's `bootstrap.sh`, `deps:tools` and
+      `deps:dev-tools`, A's `node` and `task` shims still pointed at A's `.tools/bin/mise`; a plain
+      `mise install` from B (control) repointed them at B's. `tests/test_reshim_shared_data.py`
+      covers the script with stand-in mise programs.
+    - `task.cmd` (5aab033): rewritten whenever its text differs, line endings included; the Pester
+      test shows an LF file converted once, then left alone.
+    - `lint/install_powershell_modules.py` tests (97afede, `tests/test_install_powershell_modules.py`):
+      an in-memory package, no network; a mismatch raises and leaves nothing unpacked.
+    - Windows quoting tests (5cf427a): all five quote characters round-trip through PowerShell's
+      parser in the Python and Node tests; the Node expectation is written by hand.
+    - Windows procedure in `docs/setup.md` (7bb3e24): ACL check on the config backups, a junction
+      sub-step, `-ExecutionPolicy Bypass` or `task` throughout, hook values read with
+      `ConvertFrom-Json`, and `task deps:dev-tools:lock` for the lint pins.
+  - Final checks on 7bb3e24, all exit 0: `deps:dev-tools`, `lint:shell`, `lint:powershell`,
+    `test:powershell` (22 passed), `lint:python`, `test:tooling` (47 OK), `test:agent-launchers`
+    (6 pass, 0 skipped), `./bootstrap.sh test`, `./bootstrap.sh check` (308 skills-and-tests OK).
 
 ### P3: End-to-end configure test
 
