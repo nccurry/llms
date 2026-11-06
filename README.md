@@ -3,7 +3,7 @@
 Reusable agent skills, tools, and personal setup. Keep project-specific facts,
 design notes, build commands, and rules in the project they describe.
 
-- [`skills`](skills/) contains managed Agent Skills and their installer.
+- [`skills`](skills/) contains managed Agent Skills; [`scripts`](scripts/) holds their installer and the setup scripts.
 - [`templates`](templates/README.md) has starting `AGENTS.md`, `CLAUDE.md`, and `llms.txt` files for new repositories.
 - [`piw`](piw/README.md) runs persistent or disposable Pi sessions in Docker Sandboxes.
 - [`agent-dependencies.json`](agent-dependencies.json) pins external skills and agent tools.
@@ -106,8 +106,9 @@ On Windows, run `git pull`, then the same `bootstrap.ps1 install TARGET=all` com
 
 Use `skills:install TARGET=all` instead of `install` to update only the skills. Installs are
 safe to repeat: unchanged skills are skipped, and changed ones are backed up first.
-Skill installs also refresh external skills from upstream and record the resolved
-commits and checksums. Use the installer's `--locked` option to reuse recorded versions.
+Installs use the external skill commits recorded in `agent-dependencies.json`. Run
+`skills:update TARGET=all` to move them to upstream's latest commit; it rewrites that
+tracked file, so commit or discard the change before your next `git pull`.
 
 ### Troubleshooting
 
@@ -115,14 +116,16 @@ commits and checksums. Use the installer's `--locked` option to reuse recorded v
 |---|---|
 | `mise ERROR No version is set for shim: pwsh` | A global mise owns `pwsh` without a version. Run `mise uninstall powershell --all`, then install PowerShell 7 with winget. |
 | Agent tools point to an old folder | Run `agents:configure TARGET=all` through bootstrap from the current checkout. |
+| `mise ERROR mise version ... is required` | A global mise is running this checkout's shims. Run commands through `./bootstrap.sh` or `.tools/bin/task` instead of a global `task`. |
 | A skill install failed | Rerun with `OUTPUT=json`. The report lists backup paths and the failed check. |
 
 ## How setup works
 
 Bootstrap downloads the pinned setup tools into `.tools/` and runs commands from
 `Taskfile.yml`. It leaves your shell profile, PATH, and global mise setup unchanged.
-Run commands through bootstrap, such as `./bootstrap.sh doctor`, or use `task` if
-it is already available.
+Run commands through bootstrap, such as `./bootstrap.sh doctor`, or through
+`.tools/bin/task`, which bootstrap writes. A `task` from a global mise may not match
+this checkout's pins.
 
 With no arguments, bootstrap prepares the tools and piw development environment.
 Use `install TARGET=all` to install skills and configure agents.
@@ -152,9 +155,11 @@ dashboards, GitNexus indexing and licensing, and dependency updates.
 
 | Command | Checks |
 |---|---|
-| `task test` | piw application tests and agent launchers; no live Docker Sandboxes needed |
-| `task check` | Formatting, lint, types, coverage, skill validation, and launcher checks |
-| `task ci` | All checks above, plus a piw build and a smoke test of the installed package |
+| `task test` | piw application tests, setup-script tests, and agent launchers; no network or live Docker Sandboxes |
+| `task check` | piw formatting, lint, types, and coverage; skill validation and tests; launcher checks. Fetches external skills. |
+| `task ci` | `check`, plus a piw build and a smoke test of the installed package |
+
+`scripts/` is unit-tested but not linted or type-checked.
 
 Run `task test:agent-launchers` to check only the launchers. If the pinned GitNexus
 is installed, these checks also run its real hook. Project commands are available

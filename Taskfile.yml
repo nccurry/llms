@@ -128,17 +128,26 @@ tasks:
       - '{{.PYTHON}} scripts/install_skills.py --target {{.TARGET}} --dry-run --locked --output {{.OUTPUT}}'
 
   test:
-    desc: Run application and agent launcher tests without live Docker Sandboxes.
+    desc: Run piw, setup-script, and agent launcher tests without live Docker Sandboxes.
     cmds:
       - task: piw:test
+      - task: test:tooling
       - task: test:agent-launchers
+
+  test:tooling:
+    desc: Run the setup-script tests (agent config, skill installer, fake host); no network.
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host'
 
   test:agent-launchers:
     desc: Check pinned GitNexus launchers and emitted refresh commands.
     cmd: '{{.MISE}} exec -- node --test tests/gitnexus-launchers.test.mjs'
 
   check:
-    desc: Run the full nonmutating local quality gate.
+    desc: Run every local check without installing anything; fetches external skills.
+    env:
+      LLMS_REQUIRE_PINNED_TOOLS: '1'
     cmds:
       - task: piw:check
       - task: skills:check
@@ -150,7 +159,7 @@ tasks:
       - task: piw:build
 
   ci:
-    desc: Reproduce the complete CI gate locally.
+    desc: Run check plus the piw package build and smoke test.
     cmds:
       - task: piw:ci
       - task: skills:check
@@ -172,7 +181,7 @@ tasks:
       - task: skills:test
 
   skills:test:
-    desc: Run tests bundled with managed skill scripts and the skill installer.
+    desc: Run skill script tests and every test under tests/, including setup and skill fixtures.
     env:
       PYTHONDONTWRITEBYTECODE: '1'
     cmds:

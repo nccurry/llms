@@ -33,10 +33,18 @@ changes; skills-only installation still supports custom destinations.
 Setup uses local connections for managed MCP servers, backs up their previous
 settings, and keeps unrelated servers and preferences.
 
-GitNexus's installer manages its bundled skills and hooks. Local launchers use the
-pinned Node version and separate storage for each project or worktree. Stale-index
-reminders run the pinned CLI. `doctor` checks launchers; test hooks and client trust
-in the agent app.
+GitNexus's installer manages its bundled skills and hooks. Setup keeps its post-commit
+stale-index reminder and removes its search hook, which reopened the graph database on
+every Grep, Glob, and Bash call (about 0.9 s each); query the GitNexus MCP server instead.
+Local launchers use the pinned Node version and separate storage for each project or
+worktree, and give `analyze` a 4 GiB database buffer. Exclude large generated folders
+from an index with the repository's `.git/info/exclude`.
+
+Setup also adds Serena's hooks (`serena-hooks activate`, `remind`, and `cleanup`) to
+Claude and Codex, so agents load Serena's tools and are reminded to use them during long
+grep or file-read runs. Codex asks you to approve new hooks once with `/hooks`.
+
+`doctor` checks launchers and hook entries; test hooks and client trust in the agent app.
 
 OpenCode setup keeps existing `opencode.jsonc` or legacy `config.json` files and
 preserves JSONC comments with the locked upstream parser. Before tool installation,

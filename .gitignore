@@ -11,3 +11,6 @@ dist/
 .tools/
 .task/
 .serena/
+
+# Per-machine Claude preview servers
+.claude/launch.json

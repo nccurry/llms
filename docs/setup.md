@@ -31,7 +31,8 @@ After the first bootstrap, you can call Task in three ways:
 
 - Keep using bootstrap with Task arguments, for example `./bootstrap.sh doctor`.
 - Add `.tools/bin` to your PATH and run `task doctor`.
-- Use a Task you already have installed. It reads this Taskfile and uses this checkout's tools.
+- Use a Task you already have installed, as long as it is not run through a global mise older
+  than this checkout's: that mise refuses this checkout's shims.
 
 Bootstrap records the folder you called it from in `LLMS_CALLER_CWD`, so `tools:run` works on
 that project when you call this checkout's bootstrap from somewhere else.
@@ -92,15 +93,15 @@ You can also use target-specific commands such as `skills:install:codex` and
 skills. `skills:validate` works offline and reports missing or invalid sources.
 `skills:check` fetches dependencies, validates skills, and runs their script tests.
 Installation prepares external dependencies before changing installed skills.
-Dry runs check current upstream versions without changing the manifest or live
-skills. For a repeatable installation of the recorded commits, pass `--locked`
-to `scripts/install_skills.py`. Fetch and validation commands continue to use
-the recorded commits, so checks do not advance dependency versions.
+`skills:install` and the dry runs use the commits recorded in `agent-dependencies.json`.
+`skills:update` moves external skills to upstream's latest commit and records it, which
+changes that tracked file. Fetch and validation commands also use the recorded commits,
+so checks do not advance dependency versions.
 
 File validation checks packaging rules, not agent behavior. Maintain skill
 instructions from actual use and observed failures. Setup scripts are checked
-by running them. Worktree cleanup uses the agent's
-assessment and standard Git commands; it has no custom preflight script.
+by `task test:tooling`. Worktree cleanup uses the agent's assessment, standard Git
+commands, and the read-only `worktree_report.py` fact report in that skill.
 
 The direct installer remains available through `scripts/install_skills.py`; run it with the
 uv-managed Python version. `scripts/run_install_skills.ps1` is a compatibility wrapper for an

@@ -72,7 +72,9 @@ test('stale reminder executes the pinned CLI with quoted paths and required flag
 });
 
 test('installed upstream hook emits an executable reminder only for a stale successful mutation', {
-  skip: !existsSync(upstreamHook) && 'Install the pinned GitNexus to check its real hook.',
+  // check sets LLMS_REQUIRE_PINNED_TOOLS so a missing install fails instead of skipping.
+  skip: !existsSync(upstreamHook) && !process.env.LLMS_REQUIRE_PINNED_TOOLS
+    && 'Install the pinned GitNexus to check its real hook.',
 }, async (t) => {
   const { directory, cli, env } = fixture(t);
   const repo = path.join(directory, 'repo');
