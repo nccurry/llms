@@ -170,9 +170,9 @@ Rewrite the plan's Current Work block in place with the keys of `plc-planning`'s
 [shared template](../plc-planning/SKILL.md#shared-template), in its order:
 Status, Owner, "Last updated" (today, the branch, and its commit), then the
 other keys and where the work lives (after tidying). Keep Owner, Depends on,
-and any `Replaces:` or `Superseded by:` line unless the evidence or the user
-changes them. Replace the old content; history goes to the Log. When Status
-changes between Planned and In progress, follow `plc-planning`'s
+Priority, and any `Replaces:` or `Superseded by:` line unless the evidence or
+the user changes them. Replace the old content; history goes to the Log. When
+Status changes between Planned and In progress, follow `plc-planning`'s
 [lifecycle folders](../plc-planning/SKILL.md#lifecycle-folders) rule. Never
 set Status to Complete or move the packet to `completed/`; finishing is
 `plc-wrapup`'s job. When the work looks finished, say so and offer it.

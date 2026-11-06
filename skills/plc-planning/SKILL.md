@@ -239,6 +239,8 @@ refer to this section instead of repeating it.
     into an integration branch is still Implemented;
   - Verified: its acceptance checks passed on the merged code;
   - Live: released or deployed.
+- **Priority words:** High, Medium, Low. A packet with no Priority line
+  is Medium.
 - **Side states:** Blocked, Deferred, Dropped. Deferred and Dropped need the
   user's approval, in the plan or the conversation.
 - **Parts.** A phase's parts are the tasks in its plan section and each of
@@ -467,9 +469,11 @@ call for another review.
 - Owner names every person by `@handle`; a team name may stay beside the
   handles.
 - Last updated starts with the date, as `YYYY-MM-DD`.
-- Optional keys: `Selected work`, and, when packets replace one another,
-  `Replaces: <path>` on the new packet and `Superseded by: <path>` on the old
-  one.
+- Priority, when present, starts with a priority word; a note may follow
+  ` — `. Leave it out for the default, Medium. Boards sort by it.
+- Optional keys: `Priority`, `Selected work`, and, when packets replace one
+  another, `Replaces: <path>` on the new packet and `Superseded by: <path>` on
+  the old one.
 - At most 12 keys, each kept to one or two lines. History goes to the Log.
 - "Where the work lives" has one row per checkout: its path, its branch, the
   person or agent working there, and its State: in progress, waiting,
@@ -622,9 +626,10 @@ python3 <skill-dir>/scripts/format_check.py <plans folder> --people "Alex Kim=al
   `in-progress/` folders, and skips flat design files such as
   `plc-012-retry-srd.md`.
 - Default mode checks the structure: the summary, one Current Work with its
-  first keys, known words and an Owner `@handle`, a Log, and status only in
-  the README. In IMPLEMENTATION_PLAN.md, SRD.md or SADD.md, a phase table
-  with state is a finding, and so is a `- Status:` or `- State:` line that
+  first keys, known words, an Owner `@handle`, a Priority that starts with
+  a priority word when present, a Log, and status only in the README. In
+  IMPLEMENTATION_PLAN.md, SRD.md or SADD.md, a phase table with state is a
+  finding, and so is a `- Status:` or `- State:` line that
   starts with a packet status word or a phase state word, or a
   `- Lifecycle:` line that starts with a packet status word. A line such as
   `- Status: Approved; …` is not status. When SRD.md exists, these are
