@@ -156,10 +156,14 @@ dashboards, GitNexus indexing and licensing, and dependency updates.
 | Command | Checks |
 |---|---|
 | `task test` | piw application tests, setup-script tests, and agent launchers; no network or live Docker Sandboxes |
-| `task check` | piw formatting, lint, types, and coverage; skill validation and tests; launcher checks. Fetches external skills. |
+| `task lint:python` | Ruff lint, Ruff format check, and Pyright (basic mode) on the Python outside `piw/`: `scripts/`, `skills/` and `tests/`, except the eval fixture projects under `tests/skill-evals/*/fixture/`. Pyright also skips `scripts/render_serena_config.py`, which runs in Serena's own environment. Run `task deps:dev-tools` first; it installs the hash-pinned tools from `lint/requirements.txt` into `.tools/lint/`. |
+| `task check` | piw formatting, lint, types, and coverage; `lint:python`; skill validation and tests; launcher checks. Fetches external skills. |
 | `task ci` | `check`, plus a piw build and a smoke test of the installed package |
 
-`scripts/` is unit-tested but not linted or type-checked.
+`piw/` keeps its own Ruff and strict Pyright settings in `piw/pyproject.toml`. The settings for the
+rest are `ruff.toml` and `lint/pyrightconfig.json`. `.git-blame-ignore-revs` lists the
+formatting-only commit; run `git config blame.ignoreRevsFile .git-blame-ignore-revs` to skip it in
+`git blame`.
 
 Run `task test:agent-launchers` to check only the launchers. If the pinned GitNexus
 is installed, these checks also run its real hook. Project commands are available
