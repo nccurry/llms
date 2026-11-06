@@ -123,5 +123,14 @@ For native tool updates, edit `mise.toml`, then refresh `mise.lock` with this
 checkout's mise binary. `vars.mise_version` selects the bootstrap release. Keep exact
 version pins and review lockfile changes. `deps:check` reports updates without applying them.
 
+The lint tools are pinned in `lint/requirements.in` and are not reported by `deps:check`. To
+update them, edit that file, then regenerate the hashed list:
+
+```sh
+MISE_DATA_DIR=.tools/mise/data .tools/bin/mise exec -- uv pip compile --generate-hashes --python-version 3.14 lint/requirements.in -o lint/requirements.txt
+```
+
+Review the diff, then rerun `task deps:dev-tools` and `task lint:python`.
+
 See the [agent tools guide](agent-tools.md#versions-and-dependency-updates) for npm
 lockfiles and Serena overrides.

@@ -20,6 +20,7 @@ import tarfile
 import tempfile
 import time
 import tomllib
+import urllib.parse
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -232,10 +233,12 @@ def serena_dependency_versions() -> dict[str, str]:
 
 
 def download(url: str) -> bytes:
-    request = urllib.request.Request(  # noqa: S310 - callers pass https URLs pinned in agent-dependencies.json
+    if urllib.parse.urlparse(url).scheme != "https":
+        raise ValueError(f"refusing to download a non-https URL: {url}")
+    request = urllib.request.Request(  # noqa: S310 - https is checked above
         url, headers={"User-Agent": "llms-bootstrap"}
     )
-    with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310 - callers pass https URLs pinned in agent-dependencies.json
+    with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310 - https is checked above
         return response.read()
 
 

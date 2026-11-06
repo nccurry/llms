@@ -191,7 +191,8 @@ def srd_violations(
             if old is not None and lost_requirements(old, new) == []:
                 return []
         return [
-            f"{label}: requirement file {rel_file} removed, with no copy that keeps its requirements"
+            f"{label}: requirement file {rel_file} removed, with no copy that keeps its "
+            f"requirements"
         ]
     lost = lost_requirements(old, path.read_text(encoding="utf-8")) if old is not None else None
     if lost == []:

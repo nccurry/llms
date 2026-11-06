@@ -82,7 +82,8 @@ RETIRED_SKILLS = [
 ]
 
 MAX_DESCRIPTION_LENGTH = 1024
-SHORT_DESCRIPTION_LENGTHS = range(25, 65)
+MIN_SHORT_DESCRIPTION_LENGTH = 25
+MAX_SHORT_DESCRIPTION_LENGTH = 64
 MAX_EXTERNAL_DOWNLOAD_BYTES = 2_000_000
 
 NAME_RE = re.compile(r"^[a-z0-9-]{1,64}$")
@@ -326,7 +327,9 @@ def validate_skill(source: Path, name: str, *, external: bool = False) -> dict[s
         interface, interface_errors = parse_openai_interface(openai_yaml)
         errors.extend(interface_errors)
         short_description = interface.get("short_description", "")
-        if short_description and len(short_description) not in SHORT_DESCRIPTION_LENGTHS:
+        if short_description and not (
+            MIN_SHORT_DESCRIPTION_LENGTH <= len(short_description) <= MAX_SHORT_DESCRIPTION_LENGTH
+        ):
             errors.append("short_description must contain 25 to 64 characters")
         default_prompt = interface.get("default_prompt", "")
         skill_token = re.compile(rf"\${re.escape(name)}(?![a-z0-9-])")

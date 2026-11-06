@@ -89,7 +89,8 @@ class ExternalRefreshTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             file = Path(temp) / "SKILL.md"
             file.write_text(
-                '---\nname: example\ndescription: >\n  First line\n  second line\nargument-hint: "[full|off]"\nlicense: MIT\n---\nBody\n'
+                "---\nname: example\ndescription: >\n  First line\n  second line\n"
+                'argument-hint: "[full|off]"\nlicense: MIT\n---\nBody\n'
             )
             fields, errors = installer.parse_frontmatter(file)
         self.assertEqual(errors, [])

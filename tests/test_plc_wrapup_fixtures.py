@@ -1138,7 +1138,8 @@ class MrForReviewFixtureTest(unittest.TestCase):
         self.update_plan([("## Log", MR_ROW)])
         self.glab("mr", "merge", "3")
         self.assertIn(
-            "merge request !3 was merged or set to merge, but the user asked to leave it for review",
+            "merge request !3 was merged or set to merge, but the user asked to leave it for "
+            "review",
             self.check()["failures"],
         )
 

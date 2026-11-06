@@ -48,8 +48,14 @@ NO_DONE_WHEN = (
     "Done when: no ## Done when section; with SRD.md it holds only the line pointing there"
 )
 ITEMS = "Done when: {} items; with SRD.md it holds only the line pointing there"
-IN_SRD = "Done when: {} is in SRD.md's requirements table; delete it here, since SRD.md holds the requirements"
-LIFECYCLE_OUTSIDE = "Current Work: Lifecycle line outside the README; the packet's status lives in its ## Current Work"
+IN_SRD = (
+    "Done when: {} is in SRD.md's requirements table; delete it here, since SRD.md holds the "
+    "requirements"
+)
+LIFECYCLE_OUTSIDE = (
+    "Current Work: Lifecycle line outside the README; the packet's status lives in its ## Current "
+    "Work"
+)
 POINTER = "The requirements and their checks are in [SRD.md](SRD.md)."
 
 DEFAULT_FINDINGS = [
@@ -84,9 +90,11 @@ STRICT_FINDINGS = [
     f"{GAPS}:17: Phases: row has 2 cells, but the header has 3",
     "packets/planned/plc-harbor-alerts-plan.md:1: Log: no ## Log section",
     "packets/planned/plc-harbor-cache.md:1: Log: no ## Log section",
-    "packets/planned/superseded/README.md:7: strict: Status Superseded does not match the planned/ folder,"
+    "packets/planned/superseded/README.md:7: strict: Status Superseded does not match the "
+    "planned/ folder,"
     " which needs Planned or Blocked",
-    "packets/planned/superseded/README.md:7: strict: Superseded note does not start with a reason word",
+    "packets/planned/superseded/README.md:7: strict: Superseded note does not start with a reason "
+    "word",
     f"packets/planned/two-phase-tables/IMPLEMENTATION_PLAN.md:3: {OUTSIDE}",
     f"{TWO_HOMES}/README.md:17: {ITEMS.format(2)}",
     f"{TWO_HOMES}/README.md:20: {IN_SRD.format('REQ-002')}",
@@ -96,7 +104,8 @@ STRICT_FINDINGS = [
     f"{BAD}:3: Current Work: 13 keys; at most 12 are allowed",
     f"{BAD}:6: Current Work: Owner names no @handle",
     f"{BAD}:6: Current Work: Owner names Alex Kim without @alex",
-    f"{BAD}:5: strict: Status Planned does not match the in-progress/ folder, which needs In progress or Blocked",
+    f"{BAD}:5: strict: Status Planned does not match the in-progress/ folder, which needs In "
+    f"progress or Blocked",
     f"{BAD}:1: Log: no ## Log section",
     f"{BAD}:23: {NO_EVIDENCE}",
     f"{BAD}:24: strict: Dropped note does not start with a reason word",
@@ -149,6 +158,13 @@ def search(pattern, text, flags=0):
     """Return the match of `pattern` in `text`, failing the test when there is none."""
     found = re.search(pattern, text, flags)
     assert found is not None, f"{pattern!r} not found"
+    return found
+
+
+def fullmatch(pattern, text):
+    """Return the whole-string match of `pattern`, failing the test when there is none."""
+    found = re.fullmatch(pattern, text)
+    assert found is not None, f"{pattern!r} does not match {text!r}"
     return found
 
 
@@ -233,7 +249,10 @@ class PacketRulesTest(unittest.TestCase):
         self.assertEqual(self.check(second), [f"{R}:1: {message.format(2)}"])
 
     def test_status_lines_under_old_headings(self):
-        old = "## Status\n\nStatus: In progress\n- **Owner:** Sam\nUpdated: 2026-10-01\nNote: kept\n\n"
+        old = (
+            "## Status\n\nStatus: In progress\n- **Owner:** Sam\nUpdated: 2026-10-01\nNote: kept\n"
+            "\n"
+        )
         old += "## Lifecycle\n\n- State: Active\n\n## Log"
         self.assertEqual(
             self.check(edit("## Log", old)),
@@ -374,7 +393,10 @@ class PacketRulesTest(unittest.TestCase):
         self.assertEqual(
             self.check(plan=old_shape), [f"planned/sample/IMPLEMENTATION_PLAN.md:3: {OUTSIDE}"]
         )
-        details = "# Plan\n\n| Phase | Goal |\n| --- | --- |\n| P1 | Cap retries |\n\n### P1: Cap retries\n"
+        details = (
+            "# Plan\n\n| Phase | Goal |\n| --- | --- |\n| P1 | Cap retries |\n\n### P1: Cap "
+            "retries\n"
+        )
         self.assertEqual(self.check(plan=details, name="details"), [])
 
     def test_tables_without_edge_pipes(self):
@@ -392,8 +414,14 @@ class PacketRulesTest(unittest.TestCase):
     def test_status_lines_in_other_files(self):
         files = {
             "IMPLEMENTATION_PLAN.md": "# Plan\n\n### P1: Cap\n\n- **Status:** Verified\n",
-            "SRD.md": "# Requirements\n\n- Status: 404 when the file is missing\n- State: Proposed\n- Status: Draft\n",
-            "SADD.md": "# Design\n\n| Phase | State |\n| --- | --- |\n| P1 | Merged |\n\n```\n- Status: Merged\n```\n",
+            "SRD.md": (
+                "# Requirements\n\n- Status: 404 when the file is missing\n- State: Proposed\n- "
+                "Status: Draft\n"
+            ),
+            "SADD.md": (
+                "# Design\n\n| Phase | State |\n| --- | --- |\n| P1 | Merged |\n\n```\n- Status: "
+                "Merged\n```\n"
+            ),
         }
         message = "line outside the README; status lives in its ## Current Work and ## Phases"
         self.assertEqual(
@@ -410,9 +438,13 @@ class PacketRulesTest(unittest.TestCase):
         # Only a packet status word makes a Lifecycle line status: Accepted is
         # an older phase word. A line inside an HTML comment does not count.
         files = {
-            "SRD.md": "# Requirements\n\n- Lifecycle: Draft\n- Status: Approved; @sam signed off on 2026-11-02.\n",
+            "SRD.md": (
+                "# Requirements\n\n- Lifecycle: Draft\n- Status: Approved; @sam signed off on "
+                "2026-11-02.\n"
+            ),
             "SADD.md": (
-                "# Design\n\n- **Lifecycle:** In progress\n- Status: Design record for the retry cap.\n"
+                "# Design\n\n- **Lifecycle:** In progress\n- Status: Design record for the retry "
+                "cap.\n"
                 "- Lifecycle: Accepted by @sam\n<!--\n- Lifecycle: Draft\n-->\n"
             ),
             "IMPLEMENTATION_PLAN.md": "# Plan\n\n- Lifecycle: see the README\n\n### P1: Cap\n",
@@ -502,7 +534,10 @@ class PacketRulesTest(unittest.TestCase):
                 self.assertEqual(
                     self.check(in_srd, name=name, files={"SRD.md": f"# Requirements\n\n{text}"}), []
                 )
-        notes = "| ID | Requirement |\n| --- | --- |\n| REQ-001 | Stop. |\n| — | REQ-003 was merged into REQ-001. |\n"
+        notes = (
+            "| ID | Requirement |\n| --- | --- |\n| REQ-001 | Stop. |\n| — | REQ-003 was merged "
+            "into REQ-001. |\n"
+        )
         notes += "| – | An en dash note. |\n| Note | A row with no ID. |\n"
         dashes = with_done_when("Note: the requirements — all of them – are in [SRD.md](SRD.md).")
         self.assertEqual(
@@ -615,7 +650,8 @@ class PacketRulesTest(unittest.TestCase):
     def test_merge_requests_table(self):
         """Several rows per phase pass; each cell has its own finding."""
         valid = (
-            "## Merge requests\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n"
+            "## Merge requests\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | "
+            "--- |\n"
             "| P1 | !12 | Closed — replaced by !14 | first try |\n"
             "| P1 | !14 | Merged @ abc1234 | |\n"
             "| P1 | #34 | Open | follow-up |\n"
@@ -624,7 +660,8 @@ class PacketRulesTest(unittest.TestCase):
         )
         self.assertEqual(self.check(edit("## Log", valid)), [])
         bad = (
-            "## Merge requests\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n"
+            "## Merge requests\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | "
+            "--- |\n"
             "| P2 | !12 | Open | |\n"
             "| P1 | 12 | Merged | |\n"
             "| P1 | !13 | Closed | |\n"
@@ -651,7 +688,10 @@ class PacketRulesTest(unittest.TestCase):
         )
         no_table = edit("## Log", "## Merge requests\n\nNone yet.\n\n## Log")
         self.assertEqual(self.check(no_table), [f"{R}:18: {message}"])
-        wrong = "## Merge requests\n\n| Phase | MR | State |\n| --- | --- | --- |\n| P1 | !12 | Open |\n\n## Log"
+        wrong = (
+            "## Merge requests\n\n| Phase | MR | State |\n| --- | --- | --- |\n| P1 | !12 | Open "
+            "|\n\n## Log"
+        )
         self.assertEqual(self.check(edit("## Log", wrong)), [f"{R}:20: {message}"])
 
     def test_merge_requests_forms_the_neighbouring_rules_accept(self):
@@ -663,8 +703,10 @@ class PacketRulesTest(unittest.TestCase):
             "| [P1](IMPLEMENTATION_PLAN.md#p1-cap) | Cap | | Planned |",
         )
         table = (
-            "## Merge requests\n\n| phase | Merge Request | STATE | note |\n| --- | --- | --- | --- |\n"
-            "| [P1](IMPLEMENTATION_PLAN.md#p1-cap) | [!12](https://git.example.com/a_(b)/-/merge_requests/12) | **Open** | |\n"
+            "## Merge requests\n\n| phase | Merge Request | STATE | note |\n| --- | --- | --- | "
+            "--- |\n"
+            "| [P1](IMPLEMENTATION_PLAN.md#p1-cap) | "
+            "[!12](https://git.example.com/a_(b)/-/merge_requests/12) | **Open** | |\n"
             "| **P1** | <https://git.example.com/app/pull/13> | *Merged @ abc1234* | |\n"
             "| `P1` | #14 | **Closed** — replaced by #13 | |\n\n## Log"
         )
@@ -673,8 +715,10 @@ class PacketRulesTest(unittest.TestCase):
 
     def test_merge_requests_second_table_is_a_finding(self):
         two = (
-            "## Merge requests\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n"
-            "| P1 | !12 | Open | |\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n"
+            "## Merge requests\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | "
+            "--- |\n"
+            "| P1 | !12 | Open | |\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- "
+            "| --- |\n"
             "| P9 | x | y | |\n\n## Log"
         )
         message = "Merge requests: a second table; the section holds one table"
@@ -686,7 +730,8 @@ class PacketRulesTest(unittest.TestCase):
         )
         fenced = (
             f"## Merge requests\n\n```\n{hidden}\n```\n\n"
-            "| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n| P1 | !12 | Open | |\n\n## Log"
+            "| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n| P1 | !12 | "
+            "Open | |\n\n## Log"
         )
         self.assertEqual(self.check(edit("## Log", fenced)), [])
         commented = f"## Merge requests\n\n<!--\n{hidden}\n-->\n\n## Log"
@@ -700,7 +745,8 @@ class PacketRulesTest(unittest.TestCase):
     def test_merge_requests_without_phases(self):
         no_phases = edit("## Phases\n\n" + TABLE + "\n\n", "")
         table = (
-            "## Merge requests\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | --- |\n"
+            "## Merge requests\n\n| Phase | Merge request | State | Note |\n| --- | --- | --- | "
+            "--- |\n"
             "| P1 | !12 | Open | |\n\n## Log"
         )
         found = self.check(edit("## Log", table, no_phases))
@@ -741,7 +787,10 @@ class PacketRulesTest(unittest.TestCase):
                 self.assertEqual(found, expected)
 
     def test_packet_folder_named_like_a_lifecycle_folder(self):
-        message = "packet folder is named like the completed/ lifecycle folder; put it in a folder of its own"
+        message = (
+            "packet folder is named like the completed/ lifecycle folder; put it in a folder of "
+            "its own"
+        )
         self.assertEqual(self.check(folder=".", name="completed"), [f"completed: {message}"])
 
     def test_folder_must_match_status(self):
@@ -797,7 +846,10 @@ class PacketRulesTest(unittest.TestCase):
         finished = edit("| Planned |", "| Merged — !12 @ abc1234 |", finished)
         moved = self.check(finished, folder="in-progress", lifecycle="completed")
         self.assertEqual(moved, [f"in-progress/sample/README.md:16: strict: Merged {NOT_FINISHED}"])
-        message = "strict: Status Complete does not match the in-progress/ folder, which needs In progress or Blocked"
+        message = (
+            "strict: Status Complete does not match the in-progress/ folder, which needs In "
+            "progress or Blocked"
+        )
         self.assertEqual(
             self.check(finished, folder="in-progress"),
             [f"in-progress/sample/README.md:7: {message}"],
@@ -1014,7 +1066,10 @@ class CommandLineTest(unittest.TestCase):
         self.assertTrue(err.startswith("planned/broken/README.md: cannot read:"), err)
 
     def test_folder_rules_hold_for_relative_and_readme_paths(self):
-        finding = "strict: Status Superseded does not match the planned/ folder, which needs Planned or Blocked"
+        finding = (
+            "strict: Status Superseded does not match the planned/ folder, which needs Planned or "
+            "Blocked"
+        )
         _, out, _ = run("--packet", "superseded", "--strict", cwd=DATA / "packets" / "planned")
         self.assertIn(f"superseded/README.md:7: {finding}", out)
         _, out, _ = run("--packet", "packets/planned/superseded/README.md", "--strict")
@@ -1185,14 +1240,14 @@ class TemplateTest(unittest.TestCase):
         self.assertEqual(len(keys), 8)
 
         for path, path_texts in fields.items():
-            texts = path_texts
+            expected = list(path_texts)
             lines = fc.unfenced(path.read_text(encoding="utf-8").splitlines())
             if path.name in ("README.md", "compact-plan.md"):
-                texts = [*texts, *sections]
+                expected += sections
                 for key in keys:
                     with self.subTest(template=path.name, key=key):
                         self.assertTrue(any(line.startswith(f"- {key}: ") for line in lines))
-            for field in texts:
+            for field in expected:
                 pattern = re.escape(field).replace("<n>", r"\d+[a-z]?").replace("<name>", ".+")
                 with self.subTest(template=path.name, field=field):
                     self.assertTrue(any(re.fullmatch(pattern, line) for line in lines))
@@ -1227,7 +1282,7 @@ class TemplateTest(unittest.TestCase):
         for kind, table in (("packets", fc.PACKET_WORDS), ("phases", fc.PHASE_WORDS)):
             older = {}
             for group in search(rf"For {kind}: (.+?)\. - ", words)[1].split("; "):
-                spellings, canonical = search(r"^(.+) \((.+)\)$", group).groups()
+                spellings, canonical = fullmatch(r"(.+) \((.+)\)", group).groups()
                 older[canonical] = re.split(r", | and ", spellings)
             self.assertEqual(
                 older, {canonical: spellings for canonical, spellings in table.items() if spellings}

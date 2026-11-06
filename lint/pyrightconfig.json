@@ -20,6 +20,14 @@
       "extraPaths": [
         "../tests/skill-evals"
       ]
+    },
+    {
+      "root": "../skills/clean-stale-worktrees/scripts",
+      "pythonVersion": "3.10"
+    },
+    {
+      "root": "../skills/plc-feature-start/scripts",
+      "pythonVersion": "3.10"
     }
   ]
 }

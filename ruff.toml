@@ -13,37 +13,30 @@ extend-exclude = ["piw", "tests/skill-evals/**/fixture"]
 select = ["B", "D", "E", "F", "I", "PERF", "PL", "RUF", "S", "SIM", "TRY", "UP"]
 ignore = [
   "D202",
-  "COM812",
   "D203",
   "D213",
-  "EM101",
-  "EM102",
   "PLR0911",
   "PLR0912",
   "PLR0913",
   "PLR0915",
   "TRY003",
   # The scripts and tests are not a public API, so missing docstrings are allowed (D100-D107).
-  "D100",
-  "D101",
-  "D102",
-  "D103",
-  "D104",
-  "D105",
-  "D106",
-  "D107",
+  "D1",
 ]
 
 [lint.per-file-ignores]
-# Tests and the skill-eval harness (tests/skill-evals) under tests/ or any tests/ folder.
+# Tests and the skill-eval harness (tests/skill-evals), in tests/ or any tests/ folder.
 # PLR2004, S101: tests assert and compare against fixed numbers, as in piw.
-# E501: expected messages and fixture file text must match exactly, so wrapping them would
-#   change what the tests check.
 # S603, S607: fixtures run git and glab with fixed arguments on purpose.
-# PLR0917: fixture builders take one positional argument per field of the file they write.
+# PLR0917: fixture and check helpers take one positional argument per field they write or compare.
 # RUF001: test data holds typographic dashes and quotes on purpose.
-# D205, D401: docstrings here are one-sentence descriptions of what is checked, not summary lines.
-"**/tests/**" = ["D205", "D401", "E501", "PLR0917", "PLR2004", "RUF001", "S101", "S603", "S607"]
+# D205, D401: docstrings here describe what a test, fixture or check does or returns, often in a
+#   sentence that starts with a noun and wraps onto a second line.
+"**/tests/**" = ["D205", "D401", "PLR0917", "PLR2004", "RUF001", "S101", "S603", "S607"]
+# E501: the Markdown packets in this file's triple-quoted strings keep their lines whole so the
+#   fixture text reads as the real file.
+"tests/test_plc_checkpoint_fixtures.py" = ["E501"]
 # This skill script's docstrings start with a noun phrase that says what the function returns
-# ("The lines of a file ..."), so the imperative-mood and one-line-summary rules do not fit.
+# ("The lines of a file ..."), and some summaries wrap onto a second line, so the
+# imperative-mood and one-line-summary rules do not fit.
 "skills/plc-planning/scripts/format_check.py" = ["D205", "D401"]

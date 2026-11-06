@@ -100,7 +100,10 @@ def has_mr_row(readme: str, phase: str, number: int) -> bool:
 
 def has_plan_line(body: str, names: list[str], phase: str) -> bool:
     alternatives = "|".join(re.escape(name) for name in names)
-    pattern = rf"^\s*(?:[-*]\s+)?(?:\*\*)?Plan:(?:\*\*)?\s+`?(?:{alternatives})`?\s+`?{re.escape(phase)}\b"
+    pattern = (
+        rf"^\s*(?:[-*]\s+)?(?:\*\*)?Plan:(?:\*\*)?\s+"
+        rf"`?(?:{alternatives})`?\s+`?{re.escape(phase)}\b"
+    )
     return re.search(pattern, body, flags=re.MULTILINE | re.IGNORECASE) is not None
 
 

@@ -234,7 +234,8 @@ def print_mr(mr: dict, gitlab: bool, args: list[str]) -> None:
         for thread in mr["discussions"]:
             for note in thread["notes"]:
                 print(
-                    f"\n--- {note['author']} (thread {thread['id']}, resolved: {thread['resolved']})"
+                    f"\n--- {note['author']} (thread {thread['id']}, resolved: "
+                    f"{thread['resolved']})"
                 )
                 print(note["body"])
 
