@@ -71,6 +71,7 @@ flowchart LR
 | Hosted Windows CI | Deferred | Adds a deliverable; the owner chose not now on 2026-11-06 |
 | Split `bootstrap.ps1` into functions with a dot-source guard instead of a separate module | Accepted | Bootstrap must stay one file a user can download and run; the guard lets tests load functions without running it |
 | One adapter record per host, plus one installer handler per installer type | Accepted | Puts each host's and tool's details in one place, which the audit and REQ-017 and REQ-019 require |
+| One `Installer` record of functions per installer type (`uv`, `npm`, `github-release`) holding install, command, version, latest-version, staleness, problems and lock; tool entries parsed once into a typed `Tool` record | Accepted | Matches the host adapters' shape; each install method lives in one place, and strict type checking covers tool fields. A first draft used an abstract class hierarchy and untyped entries, which the audit rejected against the next row |
 | A plugin registry or class hierarchy for hosts and tools | Rejected | Four hosts and three installer types do not need dynamic loading; plain records and functions are enough |
 | Keep `agent-dependencies.json` at `schema_version` 1 and add required fields | Accepted | The file and the code that reads it change in the same commit in one repository; a version bump would add a migration path with no reader |
 

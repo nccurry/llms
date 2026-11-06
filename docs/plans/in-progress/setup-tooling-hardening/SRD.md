@@ -187,14 +187,21 @@ tools:install: agent-dependencies.json tools.gitnexus.installer must be one of u
     reports its version from its environment's package metadata; the others
     run `<bin> --version`.
   - `bin` (required): the main executable the tool installs.
-  - `extra_bins` (optional): other executables it installs, such as
-    `serena-hooks`.
+  - `extra_bins` (optional, informational): other executables it installs,
+    such as `serena-hooks`.
   - `runs_with` (npm only, required): `native` or `node`.
-  - `entry` (npm only, required when `runs_with` is `node`): the script path
-    inside the package, used when the package is not installed yet.
+  - `entry` (npm only, required when `runs_with` is `node`; not allowed for
+    other installers): the script path inside the package, used when the
+    package is not installed yet.
 
-  Invalid or missing values stop install, configure, doctor and run with the
-  message above; no partial install happens.
+  The existing fields are also checked: every tool needs `version`; `uv` and
+  `npm` tools need `package` (a PyPI or npm name), and `uv` tools need
+  `python`; a `github-release` tool needs `source` (a GitHub repository URL),
+  `release` (exactly `<source>/releases/download/<tag>`, the tag ending in the
+  version) and `checksums`. Tool names, `bin` and `extra_bins` items are plain
+  names, and `entry` is a relative path that stays inside the package. Invalid
+  or missing values stop every command with the message above, before anything
+  is downloaded or written; no partial install happens.
 - New Task names: `lint:python`, `lint:shell`, `lint:powershell`,
   `test:powershell`. Each exits 0 on success and non-zero with the failing
   file and rule otherwise.

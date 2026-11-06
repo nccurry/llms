@@ -11,11 +11,11 @@ in one place.
 - Owner: @nccurry
 - Last updated: 2026-11-06, `main` at `beb4a06` (P1 to P4 merged)
 - Selected work: P1 to P5 — REQ-001 to REQ-020 and REQ-022; delivered by direct merges into `main`, each phase closing when its requirements' checks pass on `main`.
-- Next action: P5 child (Sonnet) adds `installer`, `bin` and related fields to the tool entries in its worktree.
+- Next action: Run the REQ-020 preview comparison from `main`, then reconfigure this machine and run `doctor`.
 - Blocker: None
 - Depends on: None
-- Current state: P1 to P4 Verified on `main`; P5 not started.
-- Resume check: `./bootstrap.sh deps:dev-tools && ./bootstrap.sh lint:python` → 0 errors; `./bootstrap.sh test` → piw 185 passed, setup-script tests 83 OK, launcher tests 6 pass.
+- Current state: P1 to P4 Verified on `main`; P5 merged, its REQ-020 check and the final reconfigure pending.
+- Resume check: `./bootstrap.sh deps:dev-tools && ./bootstrap.sh lint:python` → 0 errors; `./bootstrap.sh test` → piw 185 passed, setup-script tests 143 OK, launcher tests 6 pass.
 
 Where the work lives:
 
@@ -31,7 +31,7 @@ Where the work lives:
 | [P2](IMPLEMENTATION_PLAN.md#p2-windows-checks-from-linux) | Windows checks from Linux | | Verified — check (lint:shell, lint:powershell, 23 Pester tests, repo tests) and test:tooling 70 OK on the merged source @ fecb474 |
 | [P3](IMPLEMENTATION_PLAN.md#p3-end-to-end-configure-test) | End-to-end configure test | | Verified — test:tooling 48 OK with pinned tools required, fresh-clone run OK @ d0c60a9; merged by fast-forward |
 | [P4](IMPLEMENTATION_PLAN.md#p4-host-adapters-and-a-split-configure) | Host adapters and a split configure | | Verified — check and test:tooling 83 OK, old-vs-new harness 15/15 same; REQ-020 preview from `main` identical to the pre-P4 baseline @ beb4a06 |
-| [P5](IMPLEMENTATION_PLAN.md#p5-tools-described-by-the-manifest) | Tools described by the manifest | | Planned |
+| [P5](IMPLEMENTATION_PLAN.md#p5-tools-described-by-the-manifest) | Tools described by the manifest | | Merged — REQ-016, REQ-018, REQ-019, REQ-022 pass (test:tooling 143 OK, lint:python with C901 and strict, check, harnesses same) @ 4104078; REQ-020 preview from `main` and the final reconfigure still to run |
 
 ## Done when
 
@@ -49,3 +49,4 @@ The requirements and their checks are in [SRD.md](SRD.md).
 - 2026-11-06 P2 merged and verified: strict audit PASS after two passes; the second replaced reshim-after-install with a rule that a checkout sharing another's mise data never installs into it, and kept `task.cmd` files that differ only in line endings ([SADD](SADD.md#decisions-and-alternatives)).
 - 2026-11-06 P4 merged: strict audit PASS after one repair batch; P2's quoting helper folded into the adapter-based hook helpers during integration. REQ-017's check is scoped to `manage_agent_tools.py`, and REQ-020 is checked from `main` after merge.
 - 2026-11-06 P4 verified: the preview from `main` after the merge is identical to the baseline saved before P4.
+- 2026-11-06 P5 merged: strict audit PASS after two passes (security re-audit of the `TOOL` quoting and manifest validation); installers became records of functions and tool entries a typed record ([SADD](SADD.md#decisions-and-alternatives)).
