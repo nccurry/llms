@@ -163,31 +163,50 @@ Hosted Windows CI is not selected (the owner chose not now).
 - Exit criterion: REQ-014 and REQ-015 pass on `main` with no change to
   setup behavior.
 - Rollback or fallback: revert; tests only.
-- Evidence (code commit 9ceb757, base 1164802):
-  - Test: `tests/test_configure_end_to_end.py`, fixtures in `tests/fixtures/configure/` (`seed/`
-    FIX-001 to FIX-004, `golden/` FIX-006, `fake_upstream_tools.py` FIX-005). It copies `scripts/`
-    and `agent-dependencies.json` into a temporary repository and runs
-    `manage_agent_tools.py --command configure --target all` twice, then `--command doctor
-    --output json`, as subprocesses. No function of the script is imported or patched.
-  - Faked: serena, serena-hooks, cq, ast-grep, GitNexus and Serena's environment Python (including
-    the Serena config renderer, answered by a small line-based stand-in over an invented template),
-    plus `claude`, `codex` and `opencode` on PATH (`opencode --version` prints 1.18.20). Real: the
-    script, and the pinned Node with the pinned `jsonc-parser` (from `.tools/agent-tools`) for
-    `opencode.jsonc`. Without them the test is skipped, or fails when
-    `LLMS_REQUIRE_PINNED_TOOLS` is set (both paths checked).
-  - REQ-014, REQ-015: `./bootstrap.sh test:tooling` → 37 tests OK (11 new). Checks: golden match
-    for the ten FIX-006 files, second run same bytes and mode for every file under the home, user
-    keys and hooks kept, `opencode.json` removed, `.codex/hooks.json` mode 0644, doctor reports
-    problems for every host before configure and none after.
-  - Break test: `data.pop("userID", None)` added to `merge_json` → the golden test for
-    `.claude.json` and the user-content test fail; making `configure_pi` always append the prefix
-    → `test_second_run_changes_no_file` fails on `.pi/agent/settings.json`. Both restored.
-  - `./bootstrap.sh test` and `./bootstrap.sh lint:python` exit 0; `git diff 1164802 -- scripts/
-    piw/` is empty; the owner's real `~/.claude.json`, `~/.claude/settings.json`,
-    `~/.codex/config.toml` and `~/.codex/hooks.json` kept the same mtime and size.
-  - Not covered: the Claude cq-plugin migration of an old manual cq entry, and OpenCode 2's
-    `mcp.servers` layout (the fake `opencode` reports 1.x). Comments inside a migrated legacy
-    `mcp` block would be lost, so the seed has none there.
+- Evidence (code commits 9ceb757 and d0c60a9, base 1164802):
+  - Test: `tests/test_configure_end_to_end.py`; fixtures in `tests/fixtures/configure/`: `seed/`
+    (FIX-001 to FIX-004), `golden/` (FIX-006, ten files), `scenarios/<name>/{seed,golden}`,
+    `fake_upstream_tools.py` and `fake_gitnexus_cli.js` (FIX-005). It copies `scripts/` and
+    `agent-dependencies.json` into a temporary repository (path of only `[A-Za-z0-9_./-]`) and runs
+    `manage_agent_tools.py --command configure --target all` (twice for the main run) and
+    `--command doctor --output json` as subprocesses. No function of the script is imported or
+    patched. The fake GitNexus edits an existing `opencode.json`, `opencode.jsonc` or `config.json`
+    in place with jsonc-parser; only the fake cq creates a server-only `opencode.json`.
+  - Real dependency: the pinned Node and `jsonc-parser` from `.tools/agent-tools`. Missing → the
+    tests skip; with `LLMS_REQUIRE_PINNED_TOOLS` set they fail. `check` and `ci` now pass
+    `REQUIRE_PINNED_TOOLS=1` as a Task variable down to `skills:test` and `test:agent-launchers`
+    (a task's `env` does not reach called tasks on Task 3.54.0); `test` and `test:tooling` still skip.
+  - REQ-014, REQ-015: `./bootstrap.sh test:tooling` → 48 tests OK, no skips (26 before, 22 new).
+    The main run checks the ten golden files, exact modes (0600 for setup's own private files,
+    0644 for `hooks.json` and seeded 0644 files and the fake-made AGENTS.md), same bytes and mode
+    after the second run, user content kept, the removed server-only `opencode.json` (a backup of
+    it proves the fake made it), doctor problems for every host before configure and none after,
+    and that every fixture is tracked by git.
+  - Scenarios (REQ-016 cover): `CODEX_HOME` elsewhere and a different Serena home (exit 1, message,
+    nothing written); Claude cq plugin with an old manual cq entry (golden, dropped key reported,
+    doctor clean) and with a foreign entry (conflict error); OpenCode 2.x (`mcp.servers` golden);
+    no Claude CLI; failing `serena setup` ("not found or not functional"; golden); a user-owned
+    `opencode.json` kept.
+  - Fresh clone: `git clone -b plc/sth-p3-e2e` into the campaign `_output/p3-clone`, linking only
+    the toolchain into `.tools`: `./bootstrap.sh test:tooling REQUIRE_PINNED_TOOLS=1` → 48 tests
+    OK with the golden Serena file present (it had been hidden by `.gitignore` line `.serena/`;
+    now `!tests/fixtures/configure/golden/.serena/`).
+  - Pinned tools hidden (same clone, no `.tools/agent-tools`): `./bootstrap.sh test:tooling` and
+    `./bootstrap.sh test` → OK (skipped=9) and launcher "skipped 1"; `./bootstrap.sh check` exits
+    201 with "AssertionError: Node and the pinned jsonc-parser are missing"; `test:agent-launchers
+    REQUIRE_PINNED_TOOLS=1` → fail 1, without the variable → skipped 1.
+  - Known-fault controls, each in `scripts/manage_agent_tools.py`, each restored with `git checkout`
+    (suite fails, then passes): `merge_json` drops `userID` → golden `.claude.json`, user-content
+    and three scenario goldens fail; `restore_servers` writes JSONC with `json.dumps` → golden
+    `.jsonc`, comment-keeping and OpenCode 2 tests fail; `private_permissions` makes files 0644 →
+    `.serena/serena_config.yml` mode test fails; `configure_pi` always appends the prefix →
+    `test_second_run_keeps_every_file_unchanged` fails on `.pi/agent/settings.json`.
+  - `./bootstrap.sh test`, `./bootstrap.sh lint:python` exit 0; `git diff 1164802 -- scripts/ piw/`
+    is empty; the owner's real `~/.claude.json`, `~/.claude/settings.json`, `~/.codex/config.toml`
+    and `~/.codex/hooks.json` kept their mtimes.
+  - Seen, not changed: an OpenCode 2 migration drops comments inside the legacy `mcp` block, so
+    the main seed's comment inside `mcp` is kept only because OpenCode 1.x is faked there; the
+    `opencode_2` golden shows the loss.
 
 ### P4: Host adapters and a split configure
 
