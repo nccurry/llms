@@ -116,8 +116,7 @@ def plan_files(variant: str, start: str) -> dict[str, str]:
     if variant == "unmet":
         requirements += REQ_FOOTER
         summary = (
-            "Frame the daily notification email with a `Digest:` header"
-            " and an unsubscribe line."
+            "Frame the daily notification email with a `Digest:` header and an unsubscribe line."
         )
         p1 = (
             "P1",
@@ -143,9 +142,7 @@ def plan_files(variant: str, start: str) -> dict[str, str]:
                 "- Checks: `test_slack_text` and `test_slack_channel` pass.",
             )
         )
-        checkouts.append(
-            ("notify-wt/digest/p2-slack", "plc/digest-p2", "p2 child", "in progress")
-        )
+        checkouts.append(("notify-wt/digest/p2-slack", "plc/digest-p2", "p2 child", "in progress"))
     return packet(
         "digest",
         "Digest",

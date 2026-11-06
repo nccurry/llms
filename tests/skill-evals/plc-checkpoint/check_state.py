@@ -131,7 +131,9 @@ def srd_row_problems(packet: Path, expected: dict[str, list[str]]) -> list[str]:
         if req not in rows:
             problems.append(f"SRD.md has no requirement row {req}")
             continue
-        has_column = [row for row in rows[req] if "check" in (n.strip("*_` ").lower() for n in row[0])]
+        has_column = [
+            row for row in rows[req] if "check" in (n.strip("*_` ").lower() for n in row[0])
+        ]
         header, cells = (has_column or rows[req])[0]
         joined = " ".join(cells)
         problems += [f"SRD.md's {req} row lacks {text!r}" for text in texts if text not in joined]
@@ -158,7 +160,9 @@ def lost_requirements(old: str, new: str) -> list[str] | None:
     return [
         req
         for req, rows in before.items()
-        if not all(any(keeps(cells, new_cells) for _, new_cells in after.get(req, [])) for _, cells in rows)
+        if not all(
+            any(keeps(cells, new_cells) for _, new_cells in after.get(req, [])) for _, cells in rows
+        )
     ]
 
 
@@ -179,7 +183,9 @@ def srd_violations(
             new = (checkout / new_rel).read_text(encoding="utf-8")
             if old is not None and lost_requirements(old, new) == []:
                 return []
-        return [f"{label}: requirement file {rel_file} removed, with no copy that keeps its requirements"]
+        return [
+            f"{label}: requirement file {rel_file} removed, with no copy that keeps its requirements"
+        ]
     lost = lost_requirements(old, path.read_text(encoding="utf-8")) if old is not None else None
     if lost == []:
         return []
@@ -205,8 +211,7 @@ def packet_content_problems(
     plan_path = packet / "IMPLEMENTATION_PLAN.md"
     plan = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
     problems = [
-        phase_rule_problem(readme, phase, rule)
-        for phase, rule in content.get("phases", {}).items()
+        phase_rule_problem(readme, phase, rule) for phase, rule in content.get("phases", {}).items()
     ]
     problems += [
         f"IMPLEMENTATION_PLAN.md lacks {text!r}"
@@ -340,9 +345,7 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
             f"refs/heads/{branch}"
             for branch in expect.get("deleted_branches", {}).get(checkout, [])
         }
-        checked_out = {
-            f"refs/heads/{wt['branch']}" for wt in info["worktrees"].values()
-        }
+        checked_out = {f"refs/heads/{wt['branch']}" for wt in info["worktrees"].values()}
         tidied += compare_refs(
             checkout,
             ref_map(info["branches"]),
@@ -393,30 +396,20 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
                     merges = git(path, "rev-list", "--merges", f"{wt['head']}..{head}")
                     if merges:
                         violations.append(f"{rel}: merge commit added")
-                    touched = git(
-                        path, "diff", "--name-only", wt["head"], head
-                    ).splitlines()
+                    touched = git(path, "diff", "--name-only", wt["head"], head).splitlines()
                     outside = [p for p in touched if not p.startswith(PACKET_ROOT)]
                     if outside:
-                        violations.append(
-                            f"{rel}: commits touch non-packet files {outside}"
-                        )
+                        violations.append(f"{rel}: commits touch non-packet files {outside}")
                     packet_changes += [
-                        f"{rel}: committed {p}"
-                        for p in touched
-                        if p.startswith(PACKET_ROOT)
+                        f"{rel}: committed {p}" for p in touched if p.startswith(PACKET_ROOT)
                     ]
             new_status = status_paths(path)
             old_status = set(wt["status_paths"])
             changed = new_status - old_status
             outside = [p for p in changed if not p.startswith(PACKET_ROOT)]
             if outside:
-                violations.append(
-                    f"{rel}: uncommitted non-packet changes {sorted(outside)}"
-                )
-            discarded = [
-                p for p in old_status - new_status if not p.startswith(PACKET_ROOT)
-            ]
+                violations.append(f"{rel}: uncommitted non-packet changes {sorted(outside)}")
+            discarded = [p for p in old_status - new_status if not p.startswith(PACKET_ROOT)]
             if discarded:
                 violations.append(
                     f"{rel}: existing uncommitted work discarded or committed {sorted(discarded)}"
@@ -462,9 +455,7 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
         )
         if snap_wt is None:
             violations.append(f"protected worktree not in snapshot: {worktree}")
-        elif sha256(dest / worktree / rel_file) != snap_wt["packet_files"].get(
-            rel_file
-        ):
+        elif sha256(dest / worktree / rel_file) != snap_wt["packet_files"].get(rel_file):
             violations.append(f"{worktree}: protected file {rel_file} changed")
 
     return {

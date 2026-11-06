@@ -200,9 +200,7 @@ class Checker:
             if line
         }
         for branch in sorted(local - before):
-            self.failures.append(
-                f"local branch {branch} was added during the run and still exists"
-            )
+            self.failures.append(f"local branch {branch} was added during the run and still exists")
         heads = self.remote_git("for-each-ref", "--format=%(refname:short)", "refs/heads")
         remote_heads = set(heads.stdout.split())
         for branch in self.cleanup("deleted_remote_branches"):

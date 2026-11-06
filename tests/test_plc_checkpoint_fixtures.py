@@ -256,8 +256,18 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         scratch = Path(self.tmp.name) / "scratch"
         scratch.mkdir()
         git(scratch, "init", "-q", "-b", "main")
-        git(scratch, "-c", "user.name=x", "-c", "user.email=x@x.invalid", "commit",
-            "-q", "--allow-empty", "-m", "scratch")
+        git(
+            scratch,
+            "-c",
+            "user.name=x",
+            "-c",
+            "user.email=x@x.invalid",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "scratch",
+        )
         refs_before = git(scratch, "for-each-ref")
         index = scratch / ".git" / "index"
         index_before = index.read_bytes() if index.exists() else None
@@ -308,9 +318,7 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertNotIn(
             "cost", (app / "src/shop_row.py").read_text(encoding="utf-8").split("#")[0]
         )
-        self.assertEqual(
-            git(app, "rev-parse", "main"), git(app, "rev-parse", "origin/main")
-        )
+        self.assertEqual(git(app, "rev-parse", "main"), git(app, "rev-parse", "origin/main"))
         self.assertEqual(len(git(app, "worktree", "list").splitlines()), 1)
         # The palette decision is recorded; the chat decisions and the
         # SHOP-001 gap are not, and P1 is not ticked off.
@@ -326,9 +334,7 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
             "parse_duration", (lib / "timekit/__init__.py").read_text(encoding="utf-8")
         )
         git(lib, "fetch", "-q", "origin")
-        self.assertIn(
-            "parse_duration", git(lib, "show", "origin/main:timekit/__init__.py")
-        )
+        self.assertIn("parse_duration", git(lib, "show", "origin/main:timekit/__init__.py"))
         self.assertIn("TK-7", git(lib, "log", "-1", "--format=%s", "origin/main"))
         readme = (self.dest / "scheduler/docs/plans/durations/README.md").read_text(
             encoding="utf-8"
@@ -487,9 +493,7 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         def drop_done_when(text: str) -> str:
             return text.replace(f"## Done when\n\n{DONE_WHEN_LINE}\n\n", "")
 
-        self.assert_old_shape_violation(
-            "README has no ## Done when", change_readme=drop_done_when
-        )
+        self.assert_old_shape_violation("README has no ## Done when", change_readme=drop_done_when)
 
     def test_old_shape_without_a_readme_fails(self):
         packet, _, _ = self.convert_old_shape()
@@ -575,7 +579,9 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         head = git(app, "rev-parse", "--short", "HEAD")
         merge = git(app, "rev-parse", "--short", "HEAD^")
         readme = GROWN_README.format(head=head, merge=merge, done_when=TIDE_REQUIREMENTS)
-        readme = readme.replace("- 2026-11-04 Added SRD.md: the `--max-age` flag is a public contract.\n", "")
+        readme = readme.replace(
+            "- 2026-11-04 Added SRD.md: the `--max-age` flag is a public contract.\n", ""
+        )
         (app / ONE_FILE_PLAN).write_text(readme, encoding="utf-8", newline="\n")
         expected = [f"{GROWN}: the one-file plan tides/{ONE_FILE_PLAN} is still there"]
         self.assertEqual(check(self.dest)["violations"], expected)
@@ -588,7 +594,9 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
 
     def test_grow_plan_without_the_log_line_fails(self):
         def drop_log_line(text: str) -> str:
-            return text.replace("- 2026-11-04 Added SRD.md: the `--max-age` flag is a public contract.\n", "")
+            return text.replace(
+                "- 2026-11-04 Added SRD.md: the `--max-age` flag is a public contract.\n", ""
+            )
 
         self.assert_grow_plan_violation(
             "no dated ## Log line holds 'SRD.md'", change_readme=drop_log_line
@@ -602,12 +610,18 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
                 self.setUp()
 
                 def drop_check(text: str) -> str:
-                    return text.replace("| `python -m unittest tests.test_cli` → passes |", check_cell)
+                    return text.replace(
+                        "| `python -m unittest tests.test_cli` → passes |", check_cell
+                    )
 
-                self.assert_grow_plan_violation("SRD.md's TIDE-002 row has no check", change_srd=drop_check)
+                self.assert_grow_plan_violation(
+                    "SRD.md's TIDE-002 row has no check", change_srd=drop_check
+                )
 
     def test_grow_plan_check_forms_pass(self):
-        check_cell = "| `python -m unittest tests.test_cli` → passes<br>`tides show --max-age <n>` exits 2 |"
+        check_cell = (
+            "| `python -m unittest tests.test_cli` → passes<br>`tides show --max-age <n>` exits 2 |"
+        )
 
         def two_checks(text: str) -> str:
             return text.replace("| `python -m unittest tests.test_cli` → passes |", check_cell)
@@ -623,7 +637,9 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
 
     def test_grow_plan_without_the_moved_requirement_fails(self):
         def drop_tide_001(text: str) -> str:
-            return "".join(line for line in text.splitlines(True) if not line.startswith("| TIDE-001"))
+            return "".join(
+                line for line in text.splitlines(True) if not line.startswith("| TIDE-001")
+            )
 
         self.assert_grow_plan_violation(
             "SRD.md has no requirement row TIDE-001", change_srd=drop_tide_001
@@ -632,7 +648,9 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
     def test_grow_plan_moved_requirement_reworded_fails(self):
         # TIDE-002's row quotes the old text, but only TIDE-001's own row counts.
         def reword(text: str) -> str:
-            text = text.replace("within a minute reads the feed once", "within `--max-age` seconds reads it once")
+            text = text.replace(
+                "within a minute reads the feed once", "within `--max-age` seconds reads it once"
+            )
             return text.replace(
                 "turns the cache off.",
                 "turns the cache off, unlike TIDE-001's A second `tides show` within a minute reads the feed once.",
@@ -649,7 +667,9 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         def move_line(text: str) -> str:
             return text.replace(line, "").replace("| Planned |\n", f"| Planned |\n\n{line}")
 
-        self.assert_grow_plan_violation("no dated ## Log line holds 'SRD.md'", change_readme=move_line)
+        self.assert_grow_plan_violation(
+            "no dated ## Log line holds 'SRD.md'", change_readme=move_line
+        )
 
     def test_grow_plan_undated_log_line_fails(self):
         def undate(text: str) -> str:
@@ -784,9 +804,7 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
 
     def test_snapshot_records_every_checkout(self):
         build("cross-repo-wait", self.dest)
-        snapshot = json.loads(
-            (self.dest / "_snapshot.json").read_text(encoding="utf-8")
-        )
+        snapshot = json.loads((self.dest / "_snapshot.json").read_text(encoding="utf-8"))
         self.assertEqual(sorted(snapshot["checkouts"]), ["scheduler", "timekit"])
         self.assertEqual(sorted(snapshot["remotes"]), ["scheduler.git", "timekit.git"])
 
@@ -879,7 +897,9 @@ class CheckStateTest(unittest.TestCase):
 
     def test_moved_packet_with_changed_requirements_is_a_violation(self):
         target = self.move_packet()
-        self.replace_in_srd("Jobs accept a start time.", "Jobs accept a start date.", f"{target}/SRD.md")
+        self.replace_in_srd(
+            "Jobs accept a start time.", "Jobs accept a start date.", f"{target}/SRD.md"
+        )
         self.assertEqual(
             check(self.dest)["violations"],
             [
@@ -926,7 +946,9 @@ class CheckStateTest(unittest.TestCase):
         )
 
     def test_removed_requirement_row_is_a_violation(self):
-        self.replace_in_srd("| SCH-001 | Jobs accept a start time. | `test_start_time` passes. |\n", "")
+        self.replace_in_srd(
+            "| SCH-001 | Jobs accept a start time. | `test_start_time` passes. |\n", ""
+        )
         self.assertEqual(
             check(self.dest)["violations"],
             [f"scheduler: requirement text changed in {self.packet}/SRD.md: SCH-001"],
@@ -952,7 +974,9 @@ class CheckStateTest(unittest.TestCase):
         self.assertEqual(check_state.lost_requirements(srd, template), [])
         # With the ID in a second table too, each of its rows must stay.
         traced = srd + "\n| ID | Phase |\n| --- | --- |\n| A-1 | P1 |\n"
-        self.assertEqual(check_state.lost_requirements(traced, traced.replace("One.", "Uno.")), ["A-1"])
+        self.assertEqual(
+            check_state.lost_requirements(traced, traced.replace("One.", "Uno.")), ["A-1"]
+        )
 
     def test_srd_rows_read_the_requirements_table(self):
         """An ID that is also in an earlier table without a Check column is
@@ -970,14 +994,15 @@ class CheckStateTest(unittest.TestCase):
         """Without the snapshot's own SRD.md text to compare, any change to it fails."""
         srd = self.app / self.packet / "SRD.md"
         committed = srd.read_text(encoding="utf-8")
-        srd.write_text(committed.replace("start time.", "start date."), encoding="utf-8", newline="\n")
+        srd.write_text(
+            committed.replace("start time.", "start date."), encoding="utf-8", newline="\n"
+        )
         fixture_lib.snapshot(self.dest, [self.app, self.dest / "timekit"])
         srd.write_text(committed, encoding="utf-8", newline="\n")
         self.assertEqual(
             check(self.dest)["violations"],
             [f"scheduler: requirement text changed in {self.packet}/SRD.md"],
         )
-
 
     def test_code_commit_is_a_violation(self):
         self.edit(self.app / "src/jobs.py", "\n# changed\n")
@@ -1023,7 +1048,10 @@ class SideFileRequirementsTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.dest = Path(self.tmp.name)
-        files = {self.PLAN: "# Tide cache\n\nCache the feed.\n", self.SIDE: f"# Requirements\n\n{self.ROWS}"}
+        files = {
+            self.PLAN: "# Tide cache\n\nCache the feed.\n",
+            self.SIDE: f"# Requirements\n\n{self.ROWS}",
+        }
         self.app = fixture_lib.make_repo(self.dest, "app", files)
         fixture_lib.snapshot(self.dest, [self.app])
         (self.app / "docs/plans/in-progress/tide-cache").mkdir()
@@ -1040,12 +1068,16 @@ class SideFileRequirementsTest(unittest.TestCase):
         self.rewrite_srd("once a minute", "once an hour")
         self.assertEqual(
             check(self.dest)["violations"],
-            [f"app: requirement file {self.SIDE} removed, with no copy that keeps its requirements"],
+            [
+                f"app: requirement file {self.SIDE} removed, with no copy that keeps its requirements"
+            ],
         )
 
     def test_renamed_side_file_in_the_template_table_passes(self):
-        self.rewrite_srd("| ID | Requirement | Check |\n| --- | --- | --- |\n| TIDE-001 |",
-                         "| ID | Priority | Requirement | Check |\n| --- | --- | --- | --- |\n| TIDE-001 | Must |")
+        self.rewrite_srd(
+            "| ID | Requirement | Check |\n| --- | --- | --- |\n| TIDE-001 |",
+            "| ID | Priority | Requirement | Check |\n| --- | --- | --- | --- |\n| TIDE-001 | Must |",
+        )
         self.assertEqual(check(self.dest)["violations"], [])
 
 

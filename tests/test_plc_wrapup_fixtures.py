@@ -213,9 +213,7 @@ class WrapThisUpFixtureTest(unittest.TestCase):
             "- Current state: Work in progress in the worktrees below; nothing merged yet.",
             f"- Current state: P1 merged and verified @ `{merge}`.",
         )
-        self.edit_readme(
-            "| In progress |", f"| Verified — run_tests.py → 2 passed @ `{merge}` |"
-        )
+        self.edit_readme("| In progress |", f"| Verified — run_tests.py → 2 passed @ `{merge}` |")
         (self.merge_dir / "docs/plans/completed").mkdir()
         git(self.merge_dir, "mv", PLAN, COMPLETED)
         self.replace_in("AGENTS.md", f"{PLAN}/README.md", f"{COMPLETED}/README.md")
@@ -257,8 +255,7 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         for row in new_rows:
             self.add_phase_row(row.format(merge=merge))
         self.add_open_question(
-            "Build DIG-003 next, or defer or drop it?"
-            f" (blocks {moved_to or 'P1'}; waits on @alex)"
+            f"Build DIG-003 next, or defer or drop it? (blocks {moved_to or 'P1'}; waits on @alex)"
         )
         self.add_log_line(
             f"2026-11-03 DIG-001 merged @ `{merge}`; surprise: DIG-003 was never built."
@@ -364,8 +361,17 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         # P1 passes its tests, but nothing implements or tests the footer.
         self.assertTrue(tests_pass(self.p1))
         found = git(
-            self.p1, "grep", "-n", "-e", "Unsubscribe", "-e", "test_email_footer",
-            "--", "src", "tests", check=False,
+            self.p1,
+            "grep",
+            "-n",
+            "-e",
+            "Unsubscribe",
+            "-e",
+            "test_email_footer",
+            "--",
+            "src",
+            "tests",
+            check=False,
         )
         self.assertEqual(found, "")
 
@@ -559,10 +565,7 @@ class WrapThisUpFixtureTest(unittest.TestCase):
 
     def assert_removed_checkout_listed(self, plan: str = PLAN, worktree: str = P1_WORKTREE) -> None:
         self.assert_failures(
-            [
-                f"plan {plan} on origin/main: Where the work lives still names removed "
-                f"{worktree}"
-            ]
+            [f"plan {plan} on origin/main: Where the work lives still names removed {worktree}"]
         )
 
     def test_listing_p2_removed_checkout_fails_direct_mid_stream(self):
@@ -650,9 +653,7 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         self.finish_p1()
         git(self.merge_dir, "switch", "-q", "-c", "wrap/digest")
         self.close_merge_checkout()
-        self.assert_failures(
-            ["local branch wrap/digest was added during the run and still exists"]
-        )
+        self.assert_failures(["local branch wrap/digest was added during the run and still exists"])
 
     def test_switching_the_primary_checkout_fails(self):
         self.build("near-miss-status")
@@ -949,7 +950,9 @@ class MrForReviewFixtureTest(unittest.TestCase):
         self.dest = Path(self.tmp.name) / "fixture"
         subprocess.run(
             [sys.executable, str(MR_CASE / "fixture" / "build.py"), str(self.dest)],
-            check=True, capture_output=True, env=GIT_ENV,
+            check=True,
+            capture_output=True,
+            env=GIT_ENV,
         )
         self.app = self.dest / "app"
         self.worktree = self.dest / MR_WORKTREE
@@ -957,8 +960,12 @@ class MrForReviewFixtureTest(unittest.TestCase):
     def glab(self, *args: str) -> str:
         env = dict(GIT_ENV, PYTHONDONTWRITEBYTECODE="1")
         result = subprocess.run(
-            [str(self.dest / "bin" / "glab"), *args], cwd=self.app,
-            capture_output=True, text=True, encoding="utf-8", env=env,
+            [str(self.dest / "bin" / "glab"), *args],
+            cwd=self.app,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=env,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         return result.stdout
@@ -966,7 +973,10 @@ class MrForReviewFixtureTest(unittest.TestCase):
     def check(self) -> dict:
         result = subprocess.run(
             [sys.executable, str(CASES / "check_mr_route.py"), str(self.dest)],
-            capture_output=True, text=True, encoding="utf-8", env=GIT_ENV,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=GIT_ENV,
         )
         return json.loads(result.stdout)
 
@@ -974,8 +984,18 @@ class MrForReviewFixtureTest(unittest.TestCase):
         body = "Adds a capped backoff delay between retries. `python run_tests.py` passes."
         if plan_line:
             body += "\n\nPlan: PLC-004 P1"
-        self.glab("mr", "create", "--title", "Add a capped backoff delay", "--source-branch", "retry-backoff",
-                  "--target-branch", "main", "--description", body)
+        self.glab(
+            "mr",
+            "create",
+            "--title",
+            "Add a capped backoff delay",
+            "--source-branch",
+            "retry-backoff",
+            "--target-branch",
+            "main",
+            "--description",
+            body,
+        )
 
     def update_plan(self, readme_edits: list[tuple[str, str]]) -> None:
         """Commit the plan update on the branch, push it, and remove the worktree."""
@@ -985,7 +1005,10 @@ class MrForReviewFixtureTest(unittest.TestCase):
             ("| In progress |\n\n## Done", "| Implemented — !3 open for review |\n\n## Done"),
             ("- Next action: open the merge request for P1", "- Next action: review and merge !3"),
             (f"| `{MR_WORKTREE}` | `retry-backoff` | p1 child | in progress |", "| None | | | |"),
-            ("- 2026-11-04 Created.\n", "- 2026-11-04 Created.\n- 2026-11-05 P1 Implemented: !3 open.\n"),
+            (
+                "- 2026-11-04 Created.\n",
+                "- 2026-11-04 Created.\n- 2026-11-05 P1 Implemented: !3 open.\n",
+            ),
             *readme_edits,
         ]
         for old, new in edits:
@@ -1005,22 +1028,29 @@ class MrForReviewFixtureTest(unittest.TestCase):
 
     def test_untouched_fixture_fails(self):
         report = self.check()
-        self.assertEqual(report["failures"], [
-            "no merge request from retry-backoff to main",
-            f"plan {MR_PLAN} on retry-backoff: phase P1 is In progress, expected Implemented",
-            f"worktree {MR_WORKTREE} is still registered",
-            f"worktree {MR_WORKTREE} folder still exists",
-        ])
+        self.assertEqual(
+            report["failures"],
+            [
+                "no merge request from retry-backoff to main",
+                f"plan {MR_PLAN} on retry-backoff: phase P1 is In progress, expected Implemented",
+                f"worktree {MR_WORKTREE} is still registered",
+                f"worktree {MR_WORKTREE} folder still exists",
+            ],
+        )
         self.assertEqual(report["missed_suggestions"], ["merge_requests_row", "plan_line"])
 
     def test_row_and_plan_line_are_credited(self):
         self.open_mr(plan_line=True)
         self.update_plan([("## Log", MR_ROW)])
-        self.assertEqual(self.check(), {
-            "ok": True, "failures": [],
-            "suggestions": {"merge_requests_row": True, "plan_line": True},
-            "missed_suggestions": [],
-        })
+        self.assertEqual(
+            self.check(),
+            {
+                "ok": True,
+                "failures": [],
+                "suggestions": {"merge_requests_row": True, "plan_line": True},
+                "missed_suggestions": [],
+            },
+        )
 
     def test_missing_row_and_plan_line_are_only_missed_suggestions(self):
         self.open_mr(plan_line=False)
@@ -1041,15 +1071,30 @@ class MrForReviewFixtureTest(unittest.TestCase):
         self.update_plan([("## Log", MR_ROW.replace("| Open |", "| open |"))])
         failures = self.check()["failures"]
         self.assertEqual(len(failures), 1, failures)
-        self.assertIn("State is not Open, Merged @ <commit> or Closed — <reason>: open", failures[0])
+        self.assertIn(
+            "State is not Open, Merged @ <commit> or Closed — <reason>: open", failures[0]
+        )
 
     def test_a_second_open_mr_fails_and_the_open_one_is_credited(self):
         self.open_mr(plan_line=True)
         self.update_plan([("## Log", MR_ROW)])
-        self.glab("mr", "create", "--title", "Again", "--source-branch", "retry-backoff",
-                  "--target-branch", "main", "--description", "Plan: PLC-004 P1")
+        self.glab(
+            "mr",
+            "create",
+            "--title",
+            "Again",
+            "--source-branch",
+            "retry-backoff",
+            "--target-branch",
+            "main",
+            "--description",
+            "Plan: PLC-004 P1",
+        )
         report = self.check()
-        self.assertEqual(report["failures"], ["more than one open merge request from retry-backoff to main: !3, !4"])
+        self.assertEqual(
+            report["failures"],
+            ["more than one open merge request from retry-backoff to main: !3, !4"],
+        )
         self.assertEqual(report["missed_suggestions"], [])
 
     def test_row_names_the_open_mr_after_a_closed_one(self):
@@ -1059,8 +1104,18 @@ class MrForReviewFixtureTest(unittest.TestCase):
         state = json.loads(state_file.read_text(encoding="utf-8"))
         state["mrs"][0]["state"] = "closed"
         state_file.write_text(json.dumps(state), encoding="utf-8")
-        self.glab("mr", "create", "--title", "Retry", "--source-branch", "retry-backoff",
-                  "--target-branch", "main", "--description", "Plan: retry-backoff P1")
+        self.glab(
+            "mr",
+            "create",
+            "--title",
+            "Retry",
+            "--source-branch",
+            "retry-backoff",
+            "--target-branch",
+            "main",
+            "--description",
+            "Plan: retry-backoff P1",
+        )
         self.update_plan([("## Log", MR_ROW)])
         report = self.check()
         self.assertTrue(report["ok"], report["failures"])
@@ -1070,15 +1125,19 @@ class MrForReviewFixtureTest(unittest.TestCase):
         self.open_mr(plan_line=True)
         self.update_plan([("## Log", MR_ROW)])
         self.glab("mr", "merge", "3")
-        self.assertIn("merge request !3 was merged or set to merge, but the user asked to leave it for review",
-                      self.check()["failures"])
+        self.assertIn(
+            "merge request !3 was merged or set to merge, but the user asked to leave it for review",
+            self.check()["failures"],
+        )
 
     def test_pushing_to_main_fails(self):
         self.open_mr(plan_line=True)
         self.update_plan([("## Log", MR_ROW)])
         git(self.app, "push", "-q", "origin", "origin/retry-backoff:refs/heads/main")
-        self.assertIn("main on the remote moved; the work must reach it through the merge request",
-                      self.check()["failures"])
+        self.assertIn(
+            "main on the remote moved; the work must reach it through the merge request",
+            self.check()["failures"],
+        )
 
 
 if __name__ == "__main__":

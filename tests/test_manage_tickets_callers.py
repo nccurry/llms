@@ -7,11 +7,19 @@ import unittest
 from pathlib import Path
 
 SKILLS = Path(__file__).resolve().parents[1] / "skills"
-CALLERS = ["plc-planning", "plc-feature-start", "create-mr-description", "plc-mr-review", "plc-wrapup"]
+CALLERS = [
+    "plc-planning",
+    "plc-feature-start",
+    "create-mr-description",
+    "plc-mr-review",
+    "plc-wrapup",
+]
 CONDITION = re.compile(r"(?i)\bhas a ticket or the project uses tickets\b")
 RUNS_IT = re.compile(r"\brun (?:\[manage-tickets\]\(|`manage-tickets`)")
 # Wording that tells the reader not to change tickets, which is allowed.
-NOT_CHANGING = re.compile(r"(?i)\b(?:don't|do not|never) (?:change|write to|update) (?:the )?tickets?\b")
+NOT_CHANGING = re.compile(
+    r"(?i)\b(?:don't|do not|never) (?:change|write to|update) (?:the )?tickets?\b"
+)
 WRITES = re.compile(
     r"(?i)\b(?:create|close|transition|move|comment on|update|change|write to)s?\b[^.]*\btickets?\b"
 )
@@ -45,7 +53,9 @@ class ManageTicketsCallersTest(unittest.TestCase):
     def test_checkpoint_only_reads_tickets(self):
         body = text("plc-checkpoint")
         self.assertNotIn("manage-tickets", body)
-        ticket_lines = [s for s in sentences("plc-checkpoint") if re.search(r"\btickets?\b", s, re.I)]
+        ticket_lines = [
+            s for s in sentences("plc-checkpoint") if re.search(r"\btickets?\b", s, re.I)
+        ]
         self.assertTrue(ticket_lines, "plc-checkpoint reads ticket state in step 3")
         step3 = re.split(r"(?m)^## 3\.", body, maxsplit=1)[1]
         step3 = re.split(r"(?m)^## ", step3, maxsplit=1)[0]

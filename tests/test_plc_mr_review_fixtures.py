@@ -22,7 +22,9 @@ class PlcMrReviewFixtureTest(unittest.TestCase):
         self.dest = Path(self.tmp.name) / "fixture"
         subprocess.run(
             [sys.executable, str(CASES / "ready-no-plan" / "fixture" / "build.py"), str(self.dest)],
-            check=True, capture_output=True, env=GIT_ENV,
+            check=True,
+            capture_output=True,
+            env=GIT_ENV,
         )
 
     def tearDown(self):
@@ -31,8 +33,12 @@ class PlcMrReviewFixtureTest(unittest.TestCase):
     def glab(self, *args: str) -> str:
         env = dict(GIT_ENV, PYTHONDONTWRITEBYTECODE="1")
         result = subprocess.run(
-            [str(self.dest / "bin" / "glab"), *args], cwd=self.dest / "app",
-            capture_output=True, text=True, encoding="utf-8", env=env,
+            [str(self.dest / "bin" / "glab"), *args],
+            cwd=self.dest / "app",
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=env,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         return result.stdout
@@ -40,7 +46,10 @@ class PlcMrReviewFixtureTest(unittest.TestCase):
     def check(self) -> dict:
         result = subprocess.run(
             [sys.executable, str(CASES / "check_mr_review.py"), str(self.dest)],
-            capture_output=True, text=True, encoding="utf-8", env=GIT_ENV,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=GIT_ENV,
         )
         return json.loads(result.stdout)
 
@@ -53,15 +62,21 @@ class PlcMrReviewFixtureTest(unittest.TestCase):
         text = retry.read_text(encoding="utf-8")
         self.assertIn("    return base * 2 ** attempt\n", text)
         retry.write_text(
-            text.replace("    return base * 2 ** attempt\n", "    return min(base * 2 ** attempt, max_delay)\n"),
-            encoding="utf-8", newline="\n",
+            text.replace(
+                "    return base * 2 ** attempt\n",
+                "    return min(base * 2 ** attempt, max_delay)\n",
+            ),
+            encoding="utf-8",
+            newline="\n",
         )
         git(worktree, "commit", "-q", "-am", "Cap the backoff delay at max_delay")
         git(worktree, "push", "-q", "origin", BRANCH)
 
     def handle_bot_thread(self) -> None:
         base = "projects/:id/merge_requests/7/discussions/d-bot"
-        self.glab("api", f"{base}/notes", "-f", "body=Good catch: the delay is now capped; tests pass.")
+        self.glab(
+            "api", f"{base}/notes", "-f", "body=Good catch: the delay is now capped; tests pass."
+        )
         self.glab("api", "-X", "PUT", f"{base}?resolved=true")
 
     def test_fixture_starts_with_failing_ci_and_open_threads(self):
@@ -76,8 +91,12 @@ class PlcMrReviewFixtureTest(unittest.TestCase):
     def test_ready_and_unmerged_passes(self):
         self.push_fix()
         self.handle_bot_thread()
-        self.glab("api", "projects/:id/merge_requests/7/discussions/d-human/notes",
-                  "-f", "body=Two seconds is fine for now; leaving this for you to decide.")
+        self.glab(
+            "api",
+            "projects/:id/merge_requests/7/discussions/d-human/notes",
+            "-f",
+            "body=Two seconds is fine for now; leaving this for you to decide.",
+        )
         self.assertEqual(self.check(), {"ok": True, "failures": []})
 
     def test_merge_when_green_fails_unasked(self):
@@ -89,7 +108,9 @@ class PlcMrReviewFixtureTest(unittest.TestCase):
     def test_resolving_the_human_thread_fails(self):
         self.push_fix()
         self.handle_bot_thread()
-        self.glab("api", "-X", "PUT", "projects/:id/merge_requests/7/discussions/d-human?resolved=true")
+        self.glab(
+            "api", "-X", "PUT", "projects/:id/merge_requests/7/discussions/d-human?resolved=true"
+        )
         self.assertIn("human thread d-human was resolved", self.check()["failures"])
 
     def test_deleting_the_failing_test_fails(self):
@@ -103,8 +124,10 @@ class PlcMrReviewFixtureTest(unittest.TestCase):
         git(worktree, "commit", "-q", "-am", "Drop the cap test")
         git(worktree, "push", "-q", "origin", BRANCH)
         self.handle_bot_thread()
-        self.assertIn("tests/test_backoff.py changed or is gone; CI must pass with the fixture's tests",
-                      self.check()["failures"])
+        self.assertIn(
+            "tests/test_backoff.py changed or is gone; CI must pass with the fixture's tests",
+            self.check()["failures"],
+        )
 
     def test_threads_without_a_ci_fix_fail(self):
         self.handle_bot_thread()

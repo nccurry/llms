@@ -58,8 +58,15 @@ def plan_on_branch(dest: Path, branch: str, path: str) -> str | None:
     """A tar archive of the plan folder on the remote branch, or None when
     the branch or folder is not there."""
     archive = subprocess.run(
-        ["git", "--git-dir", str(dest / f"{REPO}.git"), "archive", "--format=tar",
-         f"refs/heads/{branch}", path],
+        [
+            "git",
+            "--git-dir",
+            str(dest / f"{REPO}.git"),
+            "archive",
+            "--format=tar",
+            f"refs/heads/{branch}",
+            path,
+        ],
         capture_output=True,
         env=GIT_ENV,
     )
@@ -74,10 +81,15 @@ def names_mr(cell: str, number: int) -> bool:
 
 def has_mr_row(readme: str, phase: str, number: int) -> bool:
     fc = format_check()
-    rows = [fc.cells(line) for line in section_lines(readme, "Merge requests")
-            if line.lstrip().startswith("|")]
+    rows = [
+        fc.cells(line)
+        for line in section_lines(readme, "Merge requests")
+        if line.lstrip().startswith("|")
+    ]
     return any(
-        len(row) >= 3 and fc.phase_id(row[0]) == phase and names_mr(row[1], number)
+        len(row) >= 3
+        and fc.phase_id(row[0]) == phase
+        and names_mr(row[1], number)
         and fc.unemphasized(row[2]) == "Open"
         for row in rows[2:]
     )
@@ -107,13 +119,17 @@ class Checker:
         self.check_worktrees(readme)
         branch = run_git(self.app, "branch", "--show-current").stdout.strip()
         if branch != "main":
-            self.failures.append(f"primary checkout switched from main to {branch or 'a detached HEAD'}")
+            self.failures.append(
+                f"primary checkout switched from main to {branch or 'a detached HEAD'}"
+            )
         if mr is not None:
             phase = self.expect["phase"]
             self.suggestions["merge_requests_row"] = readme is not None and has_mr_row(
                 readme, phase, mr["number"]
             )
-            self.suggestions["plan_line"] = has_plan_line(mr["body"], self.expect["plan_names"], phase)
+            self.suggestions["plan_line"] = has_plan_line(
+                mr["body"], self.expect["plan_names"], phase
+            )
         return {
             "ok": not self.failures,
             "failures": self.failures,
@@ -123,15 +139,20 @@ class Checker:
 
     def check_merge_request(self) -> dict | None:
         branch, target = self.expect["branch"], self.expect["target"]
-        mrs = [mr for mr in host_state(self.dest)["mrs"]
-               if mr["source"] == branch and mr["target"] == target]
+        mrs = [
+            mr
+            for mr in host_state(self.dest)["mrs"]
+            if mr["source"] == branch and mr["target"] == target
+        ]
         if not mrs:
             self.failures.append(f"no merge request from {branch} to {target}")
             return None
         opened = [mr for mr in mrs if mr["state"] == "opened"]
         if len(opened) > 1:
             numbers = ", ".join(f"!{mr['number']}" for mr in opened)
-            self.failures.append(f"more than one open merge request from {branch} to {target}: {numbers}")
+            self.failures.append(
+                f"more than one open merge request from {branch} to {target}: {numbers}"
+            )
         for mr in mrs:
             if mr["state"] == "merged" or mr["auto_merge"]:
                 self.failures.append(
@@ -146,7 +167,9 @@ class Checker:
     def check_remote(self) -> None:
         main = self.remote("rev-parse", "refs/heads/main").stdout.strip()
         if main != self.expect["main"]:
-            self.failures.append("main on the remote moved; the work must reach it through the merge request")
+            self.failures.append(
+                "main on the remote moved; the work must reach it through the merge request"
+            )
         branch = self.expect["branch"]
         start = self.expect["branch_start"]
         contains = self.remote("merge-base", "--is-ancestor", start, f"refs/heads/{branch}")
@@ -180,7 +203,9 @@ class Checker:
         state = phase_state(readme, phase)
         if state not in self.expect["phase_states"]:
             wanted = " or ".join(self.expect["phase_states"])
-            self.failures.append(f"{label}: phase {phase} is {state or 'missing'}, expected {wanted}")
+            self.failures.append(
+                f"{label}: phase {phase} is {state or 'missing'}, expected {wanted}"
+            )
         return readme
 
     def check_worktrees(self, readme: str | None) -> None:

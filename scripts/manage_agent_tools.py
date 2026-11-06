@@ -68,9 +68,7 @@ def tool_env() -> dict[str, str]:
     env.pop("GITNEXUS_STORAGE_PATH", None)
     paths = [str(TOOLS / "bin")]
     receipt = TOOLS / "runtime.json"
-    runtime = (
-        json.loads(receipt.read_text(encoding="utf-8")) if receipt.is_file() else {}
-    )
+    runtime = json.loads(receipt.read_text(encoding="utf-8")) if receipt.is_file() else {}
     for name in ("node", "uv", "task"):
         executable = runtime.get(name) or shutil.which(name)
         if executable:
@@ -220,11 +218,7 @@ def serena_dependency_versions() -> dict[str, str]:
     packages = manifest()["tools"].get("serena", {}).get("dependency_overrides", {})
     if not packages:
         return {}
-    python = (
-        TOOLS
-        / "uv/serena-agent"
-        / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-    )
+    python = TOOLS / "uv/serena-agent" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     code = (
         "import importlib.metadata as m, json; print(json.dumps({p:m.version(p) for p in "
         + repr(list(packages))
@@ -258,9 +252,7 @@ def install_cq(spec: dict[str, Any]) -> None:
     name = "cq.exe" if system == "Windows" else "cq"
     if system == "Windows":
         with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-            files = [
-                member for member in archive.namelist() if Path(member).name == name
-            ]
+            files = [member for member in archive.namelist() if Path(member).name == name]
             if len(files) != 1:
                 raise RuntimeError("cq archive must contain exactly one executable")
             executable = archive.read(files[0])
@@ -291,8 +283,7 @@ def npm_package() -> dict[str, Any]:
         "version": "0.0.0",
         "private": True,
         "dependencies": {
-            specs[name]["package"]: specs[name]["version"]
-            for name in ("ast-grep", "gitnexus")
+            specs[name]["package"]: specs[name]["version"] for name in ("ast-grep", "gitnexus")
         },
     }
 
@@ -313,18 +304,12 @@ def npm_lock_current() -> bool:
 def install_npm_tools() -> None:
     source = ROOT / "agent-tools/package-lock.json"
     lock = json.loads(source.read_text(encoding="utf-8"))
-    if (
-        lock.get("packages", {}).get("", {}).get("dependencies")
-        != npm_package()["dependencies"]
-    ):
-        raise RuntimeError(
-            "npm lock does not match the declared tool pins; run task tools:lock"
-        )
+    if lock.get("packages", {}).get("", {}).get("dependencies") != npm_package()["dependencies"]:
+        raise RuntimeError("npm lock does not match the declared tool pins; run task tools:lock")
     update_file(TOOLS / "npm/package.json", json.dumps(npm_package(), indent=2) + "\n")
     update_file(TOOLS / "npm/package-lock.json", source.read_text(encoding="utf-8"))
     run(
-        npm_command()
-        + ["ci", "--prefix", str(TOOLS / "npm"), "--no-audit", "--no-fund"],
+        npm_command() + ["ci", "--prefix", str(TOOLS / "npm"), "--no-audit", "--no-fund"],
         timeout=1200,
     )
 
@@ -348,9 +333,7 @@ def lock_npm_tools() -> dict[str, Any]:
                 "--no-fund",
             ]
         )
-        action = update_file(
-            destination, (path / "package-lock.json").read_text(encoding="utf-8")
-        )
+        action = update_file(destination, (path / "package-lock.json").read_text(encoding="utf-8"))
     return {"lockfile": str(destination), "action": action}
 
 
@@ -440,9 +423,7 @@ def install() -> dict[str, Any]:
             if name == "serena":
                 uv = shutil.which("uv")
                 if not uv:
-                    raise RuntimeError(
-                        "uv is missing. Run ./bootstrap.sh deps:install first."
-                    )
+                    raise RuntimeError("uv is missing. Run ./bootstrap.sh deps:install first.")
                 command = [
                     uv,
                     "tool",
@@ -469,22 +450,17 @@ def install() -> dict[str, Any]:
                 npm_reinstalled = True
         actual = installed_version(name)
         if actual != expected:
-            raise RuntimeError(
-                f"{name}: expected {expected}, installed version is {actual!r}"
-            )
+            raise RuntimeError(f"{name}: expected {expected}, installed version is {actual!r}")
         if name == "serena" and serena_dependency_versions() != spec.get(
             "dependency_overrides", {}
         ):
-            raise RuntimeError(
-                "Serena's reviewed security dependency overrides were not installed"
-            )
+            raise RuntimeError("Serena's reviewed security dependency overrides were not installed")
         results.append(
             {
                 "tool": name,
                 "version": actual,
                 "action": "installed"
-                if needs_install
-                or (name in {"ast-grep", "gitnexus"} and npm_reinstalled)
+                if needs_install or (name in {"ast-grep", "gitnexus"} and npm_reinstalled)
                 else "unchanged",
                 "command": tool_command(name),
             }
@@ -566,9 +542,7 @@ def backup_configuration(path: Path) -> None:
     backup.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
     for directory in (backup.parent, backup.parent.parent):
         private_permissions(directory)
-    with os.fdopen(
-        os.open(backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb"
-    ) as output:
+    with os.fdopen(os.open(backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as output:
         output.write(path.read_bytes())
     # Backups can hold credentials; keep enough to undo recent runs, no more.
     stamps = sorted(backup.parent.parent.iterdir(), reverse=True)
@@ -576,14 +550,8 @@ def backup_configuration(path: Path) -> None:
         shutil.rmtree(stale, ignore_errors=True)
 
 
-def merge_json(
-    path: Path, servers: dict[str, Any], host: str, *, dry_run: bool = False
-) -> str:
-    if (
-        dry_run
-        and path.suffix == ".jsonc"
-        and not (TOOLS / "npm/package.json").is_file()
-    ):
+def merge_json(path: Path, servers: dict[str, Any], host: str, *, dry_run: bool = False) -> str:
+    if dry_run and path.suffix == ".jsonc" and not (TOOLS / "npm/package.json").is_file():
         return "would merge JSONC after tools:install; source validation pending"
     data = read_host_json(path) if path.exists() else {}
     if host == "opencode":
@@ -645,10 +613,7 @@ def merge_codex(path: Path, servers: dict[str, Any], *, dry_run: bool = False) -
             else:
                 existing[key] = value
     agents = document.setdefault("agents", tomlkit.table())
-    if (
-        "max_concurrent_threads_per_session" not in agents
-        and "max_threads" not in agents
-    ):
+    if "max_concurrent_threads_per_session" not in agents and "max_threads" not in agents:
         agents["max_concurrent_threads_per_session"] = 3
     result = tomlkit.dumps(document)
     tomllib.loads(result)
@@ -662,9 +627,7 @@ def serena_home() -> Path:
 
 def serena_configuration(*, apply: bool = False, dry_run: bool = False) -> dict[str, Any]:
     settings = manifest()["tools"]["serena"]["config"]
-    python = TOOLS / "uv/serena-agent" / (
-        "Scripts/python.exe" if os.name == "nt" else "bin/python"
-    )
+    python = TOOLS / "uv/serena-agent" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     if not python.is_file():
         return {
             "action": "requires tools:install",
@@ -687,9 +650,7 @@ def serena_configuration(*, apply: bool = False, dry_run: bool = False) -> dict[
     path = Path(result["config"])
     result["configured"] = path.is_file() and result["current"] == settings
     if apply:
-        result["action"] = update_file(
-            path, text, dry_run=dry_run, expected_digest=original_digest
-        )
+        result["action"] = update_file(path, text, dry_run=dry_run, expected_digest=original_digest)
         result["configured"] = result["configured"] or not dry_run
     return result
 
@@ -697,8 +658,7 @@ def serena_configuration(*, apply: bool = False, dry_run: bool = False) -> dict[
 def servers() -> dict[str, Any]:
     environment = tool_env()
     launch_env = {
-        key: environment[key]
-        for key in ("PATH", "UV_PYTHON_INSTALL_DIR", "UV_CACHE_DIR")
+        key: environment[key] for key in ("PATH", "UV_PYTHON_INSTALL_DIR", "UV_CACHE_DIR")
     }
     configured = {
         "serena": {
@@ -772,24 +732,21 @@ def require_standard_profiles(target: str) -> None:
         if host == "pi" or not path.is_file():
             continue
         if host == "codex":
-            entry = tomllib.loads(path.read_text(encoding="utf-8")).get(
-                "mcp_servers", {}
-            ).get("serena", {})
+            entry = (
+                tomllib.loads(path.read_text(encoding="utf-8"))
+                .get("mcp_servers", {})
+                .get("serena", {})
+            )
         else:
             if path.suffix == ".jsonc" and not (TOOLS / "npm/package.json").is_file():
                 continue  # Preview reports that JSONC validation awaits installation.
             data = read_host_json(path)
-            container = (
-                data.get("mcp", {})
-                if host == "opencode"
-                else data.get("mcpServers", {})
-            )
+            container = data.get("mcp", {}) if host == "opencode" else data.get("mcpServers", {})
             entry = container.get("servers", container).get("serena", {})
         environment = entry.get("environment" if host == "opencode" else "env", {})
         override = environment.get("SERENA_HOME", "").strip()
         if override and (
-            not Path(override).is_absolute()
-            or Path(override).resolve() != serena_home()
+            not Path(override).is_absolute() or Path(override).resolve() != serena_home()
         ):
             raise RuntimeError(
                 f"{host} has a different Serena home. Set SERENA_HOME to its existing "
@@ -824,10 +781,7 @@ def read_host_json(path: Path, text: str | None = None) -> dict[str, Any]:
 
 
 def snapshot_configs(paths: set[Path]) -> dict[Path, str | None]:
-    return {
-        path: path.read_text(encoding="utf-8") if path.is_file() else None
-        for path in paths
-    }
+    return {path: path.read_text(encoding="utf-8") if path.is_file() else None for path in paths}
 
 
 def restore_servers(snapshot: dict[Path, str | None]) -> None:
@@ -850,7 +804,9 @@ def restore_servers(snapshot: dict[Path, str | None]) -> None:
         key = (
             "mcp_servers"
             if path.suffix == ".toml"
-            else "mcpServers" if path.name == ".claude.json" else "mcp"
+            else "mcpServers"
+            if path.name == ".claude.json"
+            else "mcp"
         )
         if path.suffix == ".toml":
             document = tomlkit.parse(current)
@@ -886,19 +842,13 @@ def existing_server(host: str, name: str) -> bool:
     if not path.exists():
         return False
     if host == "codex":
-        return name in tomllib.loads(path.read_text(encoding="utf-8")).get(
-            "mcp_servers", {}
-        )
-    return name in json.loads(path.read_text(encoding="utf-8-sig")).get(
-        "mcpServers", {}
-    )
+        return name in tomllib.loads(path.read_text(encoding="utf-8")).get("mcp_servers", {})
+    return name in json.loads(path.read_text(encoding="utf-8-sig")).get("mcpServers", {})
 
 
 def required_tool_paths() -> set[str]:
     receipt = TOOLS / "runtime.json"
-    runtime = (
-        json.loads(receipt.read_text(encoding="utf-8")) if receipt.is_file() else {}
-    )
+    runtime = json.loads(receipt.read_text(encoding="utf-8")) if receipt.is_file() else {}
     paths = [
         TOOLS / "bin",
         *(Path(value).parent for value in runtime.values() if value),
@@ -914,9 +864,7 @@ def host_servers(host: str) -> dict[str, Any]:
         for server in selected.values():
             server.pop("startup_timeout_sec", None)
         arguments = selected["serena"]["args"]
-        arguments[arguments.index("--context") + 1] = (
-            "claude-code" if host == "claude" else "ide"
-        )
+        arguments[arguments.index("--context") + 1] = "claude-code" if host == "claude" else "ide"
     return selected
 
 
@@ -941,9 +889,7 @@ def configure_claude_environment(*, dry_run: bool = False) -> str:
 def configure_pi(*, dry_run: bool = False) -> str:
     settings_path = Path.home() / ".pi/agent/settings.json"
     settings = (
-        json.loads(settings_path.read_text(encoding="utf-8"))
-        if settings_path.exists()
-        else {}
+        json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
     )
     prefix = settings.get("shellCommandPrefix", "").rstrip()
     local_prefix = "export CQ_ADDR='';"
@@ -951,9 +897,7 @@ def configure_pi(*, dry_run: bool = False) -> str:
         settings["shellCommandPrefix"] = (
             prefix + (" " if prefix.endswith(";") else "; ") if prefix else ""
         ) + local_prefix
-    return update_file(
-        settings_path, json.dumps(settings, indent=2) + "\n", dry_run=dry_run
-    )
+    return update_file(settings_path, json.dumps(settings, indent=2) + "\n", dry_run=dry_run)
 
 
 def preview(target: str) -> dict[str, Any]:
@@ -1001,10 +945,7 @@ def skill_health(target: str) -> dict[str, Any]:
     validation = installer.validate_source(source, manifest=dependencies)
     sources = {name: source / name for name in installer.MANAGED_SKILLS}
     sources.update(
-        {
-            name: installer.external_cache() / name
-            for name in installer.external_specs(dependencies)
-        }
+        {name: installer.external_cache() / name for name in installer.external_specs(dependencies)}
     )
     targets = installer.selected_targets(
         installer.resolve_targets(installer.parse_args([])), target
@@ -1092,9 +1033,7 @@ def gitnexus_owned_hooks(data: dict[str, Any], host: str) -> list[dict[str, Any]
         if isinstance(value, dict):
             command = value.get("command", "")
             arguments = value.get("args", [])
-            references = (
-                [command, *arguments] if isinstance(arguments, list) else [command]
-            )
+            references = [command, *arguments] if isinstance(arguments, list) else [command]
             if any(
                 isinstance(part, str)
                 and any(
@@ -1238,13 +1177,10 @@ def configure(target: str) -> dict[str, Any]:
             host == "codex" or (host == "claude" and shutil.which("claude"))
         ) and not existing_server(host, "serena"):
             try:
-                upstream.append(
-                    run(tool_command("serena") + ["setup", client], timeout=90)
-                )
+                upstream.append(run(tool_command("serena") + ["setup", client], timeout=90))
             except RuntimeError as error:
                 if "not found or not functional" not in str(error) and not (
-                    host == "claude"
-                    and "requires remote managed settings" in str(error)
+                    host == "claude" and "requires remote managed settings" in str(error)
                 ):
                     raise
                 limitations.append(
@@ -1260,9 +1196,7 @@ def configure(target: str) -> dict[str, Any]:
             )
         for path in server_paths - set(paths):
             backup_configuration(path)
-        if host != "pi" and manifest()["tools"]["gitnexus"].get(
-            "integration_enabled", True
-        ):
+        if host != "pi" and manifest()["tools"]["gitnexus"].get("integration_enabled", True):
             snapshot = snapshot_configs(server_paths)
             try:
                 upstream.append(
@@ -1280,13 +1214,9 @@ def configure(target: str) -> dict[str, Any]:
         if host != "claude" or shutil.which("claude"):
             snapshot = snapshot_configs(server_paths) if host != "pi" else {}
             try:
-                upstream.append(
-                    run(tool_command("cq") + ["install", "--target", host], timeout=90)
-                )
+                upstream.append(run(tool_command("cq") + ["install", "--target", host], timeout=90))
             except RuntimeError as error:
-                if host != "claude" or "requires remote managed settings" not in str(
-                    error
-                ):
+                if host != "claude" or "requires remote managed settings" not in str(error):
                     raise
                 limitations.append(
                     f"cq plugin setup unavailable; rerun agents:configure after claude auth login: {error}"
@@ -1371,15 +1301,10 @@ def host_problems(host: str) -> list[str]:
         text = path.read_text(encoding="utf-8")
         settings_path = home / ".pi/agent/settings.json"
         settings = (
-            json.loads(settings_path.read_text(encoding="utf-8"))
-            if settings_path.exists()
-            else {}
+            json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
         )
         cq_block = re.search(r"<!-- cq:start -->(.*?)<!-- cq:end -->", text, re.S)
-        if not (
-            cq_block
-            and f"The cq binary is: `{tool_command('cq')[0]}`." in cq_block.group(1)
-        ):
+        if not (cq_block and f"The cq binary is: `{tool_command('cq')[0]}`." in cq_block.group(1)):
             reasons.append(f"cq instructions in {path} are missing or point elsewhere")
         if not settings.get("shellCommandPrefix", "").rstrip().endswith("export CQ_ADDR='';"):
             reasons.append(f"{settings_path} does not keep cq local (CQ_ADDR)")
@@ -1430,9 +1355,7 @@ def host_problems(host: str) -> list[str]:
     if "gitnexus" in expected and host in {"codex", "claude"}:
         hooks_path, hook_script = gitnexus_hook_paths(host)
         hook_data = (
-            json.loads(hooks_path.read_text(encoding="utf-8-sig"))
-            if hooks_path.is_file()
-            else {}
+            json.loads(hooks_path.read_text(encoding="utf-8-sig")) if hooks_path.is_file() else {}
         )
         owned = gitnexus_owned_hooks(hook_data, host)
         launch = gitnexus_hook_launch(host)
@@ -1447,7 +1370,9 @@ def host_problems(host: str) -> list[str]:
         if "cq" in container:
             reasons.append(f"an old cq server entry in {path} duplicates the cq plugin")
         if settings.get("env", {}).get("CQ_ADDR") != "":
-            reasons.append("CQ_ADDR in ~/.claude/settings.json is not empty, so cq may sync remotely")
+            reasons.append(
+                "CQ_ADDR in ~/.claude/settings.json is not empty, so cq may sync remotely"
+            )
     return reasons
 
 
@@ -1525,10 +1450,7 @@ def emit(result: dict[str, Any], output: str) -> None:
         print(f"lock: {lock['action']}; {lock['lockfile']}")
     if result.get("serena"):
         serena = result["serena"]
-        print(
-            "Serena preferences: "
-            + serena.get("action", f"configured={serena['configured']}")
-        )
+        print("Serena preferences: " + serena.get("action", f"configured={serena['configured']}"))
     for tool in result.get("tools", []):
         selected = tool.get("version", tool.get("pinned", tool.get("expected")))
         observed = tool.get("installed", tool.get("version"))
@@ -1538,9 +1460,7 @@ def emit(result: dict[str, Any], output: str) -> None:
         if isinstance(host, str):
             print(f"host: {host}")
         else:
-            state = host.get(
-                "action", "configured" if host.get("configured") else "NOT configured"
-            )
+            state = host.get("action", "configured" if host.get("configured") else "NOT configured")
             print(f"{host['host']}: {state}")
             for limitation in host.get("limitations", []):
                 print(f"  skipped (needs follow-up): {limitation}")
@@ -1590,9 +1510,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise RuntimeError(
                     f"The pinned {args.tool} is not installed. Run ./bootstrap.sh tools:install first."
                 )
-            arguments = (
-                args.arguments[1:] if args.arguments[:1] == ["--"] else args.arguments
-            )
+            arguments = args.arguments[1:] if args.arguments[:1] == ["--"] else args.arguments
             cwd = Path(os.environ.get("LLMS_CALLER_CWD", str(Path.cwd())))
             return subprocess.run(
                 tool_command(args.tool) + arguments, cwd=cwd, env=tool_env()
@@ -1654,8 +1572,7 @@ def main(argv: list[str] | None = None) -> int:
                         entry["latest"] = next(
                             release["tag_name"].removeprefix("cli/v")
                             for release in releases
-                            if release["tag_name"].startswith("cli/v")
-                            and not release["prerelease"]
+                            if release["tag_name"].startswith("cli/v") and not release["prerelease"]
                         )
         result["command"] = args.command
         emit(result, args.output)

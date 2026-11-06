@@ -27,7 +27,9 @@ class ManageTicketsFixtureTest(unittest.TestCase):
     def build(self, case: str) -> None:
         subprocess.run(
             [sys.executable, str(CASES / case / "fixture" / "build.py"), str(self.dest)],
-            check=True, capture_output=True, env=GIT_ENV,
+            check=True,
+            capture_output=True,
+            env=GIT_ENV,
         )
 
     def run_tool(self, *argv: str) -> str:
@@ -35,8 +37,12 @@ class ManageTicketsFixtureTest(unittest.TestCase):
         env = dict(GIT_ENV, PYTHONDONTWRITEBYTECODE="1")
         env["PATH"] = f"{self.dest / 'bin'}{os.pathsep}{env.get('PATH', '')}"
         result = subprocess.run(
-            [str(self.dest / "bin" / argv[0]), *argv[1:]], cwd=self.dest / "app",
-            capture_output=True, text=True, encoding="utf-8", env=env,
+            [str(self.dest / "bin" / argv[0]), *argv[1:]],
+            cwd=self.dest / "app",
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=env,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         return result.stdout
@@ -44,7 +50,10 @@ class ManageTicketsFixtureTest(unittest.TestCase):
     def check(self) -> dict:
         result = subprocess.run(
             [sys.executable, str(CASES / "check_tickets.py"), str(self.dest)],
-            capture_output=True, text=True, encoding="utf-8", env=GIT_ENV,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=GIT_ENV,
         )
         return json.loads(result.stdout)
 
@@ -59,13 +68,25 @@ class ManageTicketsFixtureTest(unittest.TestCase):
         self.build("no-tracker")
         self.assert_common_start()
         app = self.dest / "app"
-        text = git(app, "log", "--all", "--format=%B") + git(app, "grep", "-n", "-I", "-e", "#", "--", ".", check=False)
+        text = git(app, "log", "--all", "--format=%B") + git(
+            app, "grep", "-n", "-I", "-e", "#", "--", ".", check=False
+        )
         self.assertNotRegex(text, r"\b[A-Z][A-Z0-9]+-\d+\b|#\d+")
         self.assertNotIn("jira", os.listdir(self.dest / "bin"))
 
-        self.run_tool("glab", "mr", "create", "--source-branch", BRANCH, "--target-branch", "main",
-                      "--title", "Add a backoff delay between retries",
-                      "--description", "Waits longer before each retry, up to two seconds.")
+        self.run_tool(
+            "glab",
+            "mr",
+            "create",
+            "--source-branch",
+            BRANCH,
+            "--target-branch",
+            "main",
+            "--title",
+            "Add a backoff delay between retries",
+            "--description",
+            "Waits longer before each retry, up to two seconds.",
+        )
         self.assertEqual(self.check(), {"ok": True, "failures": []})
 
         self.run_tool("glab", "issue", "create", "--title", "Track backoff", "--description", "x")
@@ -73,8 +94,19 @@ class ManageTicketsFixtureTest(unittest.TestCase):
 
     def test_no_tracker_rejects_an_invented_key(self):
         self.build("no-tracker")
-        self.run_tool("glab", "mr", "create", "-s", BRANCH, "-b", "main",
-                      "-t", "APP-1: Add a backoff delay", "-d", "Waits longer.")
+        self.run_tool(
+            "glab",
+            "mr",
+            "create",
+            "-s",
+            BRANCH,
+            "-b",
+            "main",
+            "-t",
+            "APP-1: Add a backoff delay",
+            "-d",
+            "Waits longer.",
+        )
         self.assertFalse(self.check()["ok"])
 
     def test_jira_key(self):
@@ -82,11 +114,24 @@ class ManageTicketsFixtureTest(unittest.TestCase):
         self.assert_common_start()
         app = self.dest / "app"
         self.assertIn("PROJ-123: ", (app / "CONTRIBUTING.md").read_text(encoding="utf-8"))
-        self.assertIn("CI_MERGE_REQUEST_TITLE", (app / ".gitlab-ci.yml").read_text(encoding="utf-8"))
+        self.assertIn(
+            "CI_MERGE_REQUEST_TITLE", (app / ".gitlab-ci.yml").read_text(encoding="utf-8")
+        )
         self.assertIn("In Progress", self.run_tool("jira", "issue", "view", "PROJ-481"))
 
-        self.run_tool("glab", "mr", "create", "-s", BRANCH, "-b", "main",
-                      "-t", "PROJ-481: Wait between retries", "-d", "Adds a capped backoff delay.")
+        self.run_tool(
+            "glab",
+            "mr",
+            "create",
+            "-s",
+            BRANCH,
+            "-b",
+            "main",
+            "-t",
+            "PROJ-481: Wait between retries",
+            "-d",
+            "Adds a capped backoff delay.",
+        )
         self.assertEqual(self.check(), {"ok": True, "failures": []})
 
         self.run_tool("jira", "issue", "move", "PROJ-481", "In Review")
@@ -94,22 +139,48 @@ class ManageTicketsFixtureTest(unittest.TestCase):
 
     def test_jira_key_in_the_wrong_form_fails(self):
         self.build("jira-key")
-        self.run_tool("glab", "mr", "create", "-s", BRANCH, "-b", "main",
-                      "-t", "Wait between retries [PROJ-481]", "-d", "Adds a capped backoff delay.")
+        self.run_tool(
+            "glab",
+            "mr",
+            "create",
+            "-s",
+            BRANCH,
+            "-b",
+            "main",
+            "-t",
+            "Wait between retries [PROJ-481]",
+            "-d",
+            "Adds a capped backoff delay.",
+        )
         self.assertFalse(self.check()["ok"])
 
     def test_github_closes(self):
         self.build("github-closes")
         self.assert_common_start()
         app = self.dest / "app"
-        self.assertIn("Closes #", (app / ".github/pull_request_template.md").read_text(encoding="utf-8"))
+        self.assertIn(
+            "Closes #", (app / ".github/pull_request_template.md").read_text(encoding="utf-8")
+        )
         self.assertIn("Closes #11", git(app, "log", "--format=%B"))
         self.assertIn("[open]", self.run_tool("gh", "issue", "view", "42"))
 
         body = self.dest / "body.md"
-        body.write_text("## What and why\n\nWaits between retries.\n\nCloses #42\n", encoding="utf-8")
-        self.run_tool("gh", "pr", "create", "--head", BRANCH, "--base", "main",
-                      "--title", "Wait between retries", "--body-file", str(body))
+        body.write_text(
+            "## What and why\n\nWaits between retries.\n\nCloses #42\n", encoding="utf-8"
+        )
+        self.run_tool(
+            "gh",
+            "pr",
+            "create",
+            "--head",
+            BRANCH,
+            "--base",
+            "main",
+            "--title",
+            "Wait between retries",
+            "--body-file",
+            str(body),
+        )
         self.assertEqual(self.check(), {"ok": True, "failures": []})
 
         self.run_tool("gh", "issue", "close", "42")
@@ -117,8 +188,19 @@ class ManageTicketsFixtureTest(unittest.TestCase):
 
     def test_github_partial_reference_fails(self):
         self.build("github-closes")
-        self.run_tool("gh", "pr", "create", "--head", BRANCH, "--base", "main",
-                      "--title", "Wait between retries", "--body", "Refs #42")
+        self.run_tool(
+            "gh",
+            "pr",
+            "create",
+            "--head",
+            BRANCH,
+            "--base",
+            "main",
+            "--title",
+            "Wait between retries",
+            "--body",
+            "Refs #42",
+        )
         self.assertFalse(self.check()["ok"])
 
 

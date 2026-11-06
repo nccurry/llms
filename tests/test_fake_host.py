@@ -19,8 +19,14 @@ class FakeHostTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.dest = Path(self.tmp.name) / "fixture"
         subprocess.run(
-            [sys.executable, str(EVALS / "plc-mr-review" / "ready-no-plan" / "fixture" / "build.py"), str(self.dest)],
-            check=True, capture_output=True, env=GIT_ENV,
+            [
+                sys.executable,
+                str(EVALS / "plc-mr-review" / "ready-no-plan" / "fixture" / "build.py"),
+                str(self.dest),
+            ],
+            check=True,
+            capture_output=True,
+            env=GIT_ENV,
         )
 
     def tearDown(self):
@@ -29,8 +35,12 @@ class FakeHostTest(unittest.TestCase):
     def run_tool(self, *args: str) -> subprocess.CompletedProcess:
         env = dict(GIT_ENV, PYTHONDONTWRITEBYTECODE="1")
         return subprocess.run(
-            [str(self.dest / "bin" / args[0]), *args[1:]], cwd=self.dest / "app",
-            capture_output=True, text=True, encoding="utf-8", env=env,
+            [str(self.dest / "bin" / args[0]), *args[1:]],
+            cwd=self.dest / "app",
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=env,
         )
 
     def notes(self) -> int:

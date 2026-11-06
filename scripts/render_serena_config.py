@@ -19,9 +19,7 @@ def main() -> None:
     existed = path.is_file()
     source = path if existed else Path(SERENA_CONFIG_TEMPLATE_FILE)
     original = source.read_text(encoding="utf-8")
-    original_digest = (
-        hashlib.sha256(original.encode("utf-8")).hexdigest() if existed else ""
-    )
+    original_digest = hashlib.sha256(original.encode("utf-8")).hexdigest() if existed else ""
     yaml = YAML()
     yaml.preserve_quotes = True
     document = yaml.load(original)

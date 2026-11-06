@@ -156,7 +156,9 @@ LINK_TARGET = re.compile(r"\]\([^)]*\)")
 DIVIDER = re.compile(r"^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$")
 PIPE = re.compile(r"(?<!\\)\|")
 KEY = re.compile(r"- (?:\*\*)?([A-Z][A-Za-z /-]*?)(?:\*\*)?:(?:\*\*)?(?:\s+(.*))?$")
-OLD_KEY = re.compile(r"\s*(?:[-*+]\s+)?(?:\*\*)?([A-Z][A-Za-z /-]*?)(?:\*\*)?:(?:\*\*)?(?:\s+(.*))?$")
+OLD_KEY = re.compile(
+    r"\s*(?:[-*+]\s+)?(?:\*\*)?([A-Z][A-Za-z /-]*?)(?:\*\*)?:(?:\*\*)?(?:\s+(.*))?$"
+)
 # Old status sections: any heading that starts with Status, Lifecycle or
 # Current status. An Owner line counts only under one of the exact headings.
 OLD_STATUS_HEADING = re.compile(r"(?:status|lifecycle|current status)\b", re.IGNORECASE)
@@ -197,7 +199,7 @@ def lookup_word(words, text):
         for spelling in [canonical, *older]
     }
     for spelling in sorted(spellings, key=len, reverse=True):
-        ends_word = not re.match(r"[\w-]", text[len(spelling):])
+        ends_word = not re.match(r"[\w-]", text[len(spelling) :])
         if text.startswith(spelling) and ends_word:
             return spellings[spelling]
     return None
@@ -260,7 +262,7 @@ def unfenced(lines):
             marker is not None
             and marker[1][0] == fence[0]
             and len(marker[1]) >= len(fence)
-            and not line[marker.end():].strip()
+            and not line[marker.end() :].strip()
         )
         if closes:
             fence = None
@@ -314,7 +316,11 @@ def remove_comment_block(lines, out, first, start):
     if last == first:
         out[first] = lines[first][:start] + lines[first][close + 3 :]
     else:
-        out[first:last + 1] = [lines[first][:start], *[""] * (last - first - 1), lines[last][close + 3 :]]
+        out[first : last + 1] = [
+            lines[first][:start],
+            *[""] * (last - first - 1),
+            lines[last][close + 3 :],
+        ]
     return last + 1
 
 
@@ -430,7 +436,9 @@ def check_current_work(readme, lines, parts, people, strict, lifecycle):
     blocks = named(parts, "current work")
     found = []
     if len(blocks) != 1:
-        message = f"Current Work: {len(blocks)} ## Current Work sections; a packet needs exactly one"
+        message = (
+            f"Current Work: {len(blocks)} ## Current Work sections; a packet needs exactly one"
+        )
         found.append(finding(readme, 1, message))
     for part in parts:
         if not OLD_STATUS_HEADING.match(part.name):
@@ -438,7 +446,9 @@ def check_current_work(readme, lines, parts, people, strict, lifecycle):
         for i in range(part.start + 1, part.end):
             key = OLD_KEY.match(lines[i])
             if key and looks_like_status(key[1].lower(), key[2] or "", part.name):
-                message = f"Current Work: {key[1]} line belongs in ## Current Work, not ## {part.name}"
+                message = (
+                    f"Current Work: {key[1]} line belongs in ## Current Work, not ## {part.name}"
+                )
                 found.append(finding(readme, i + 1, message))
     if len(blocks) != 1:
         return found
@@ -605,12 +615,16 @@ def check_merge_request_rows(readme, table, known):
     found = []
     for line, row in table.rows:
         if len(row) != len(MR_HEADER):
-            message = f"Merge requests: row has {len(row)} cells, but the header has {len(MR_HEADER)}"
+            message = (
+                f"Merge requests: row has {len(row)} cells, but the header has {len(MR_HEADER)}"
+            )
             found.append(finding(readme, line, message))
             continue
         phase, reference, state = row[0], row[1], row[2]
         if phase_id(phase) not in known:
-            message = f"Merge requests: phase {phase[:60] or '(empty)'} is not in the ## Phases table"
+            message = (
+                f"Merge requests: phase {phase[:60] or '(empty)'} is not in the ## Phases table"
+            )
             found.append(finding(readme, line, message))
         if not MR_REFERENCE.fullmatch(reference):
             value = reference[:60] or "(empty)"
@@ -633,7 +647,9 @@ def check_merge_requests(readme, lines, parts):
         in_section = tables(lines, part.start + 1, part.end)
         if not in_section or [head.lower() for head in in_section[0].header] != wanted:
             where = in_section[0].line if in_section else part.start + 1
-            found.append(finding(readme, where, f"Merge requests: the section needs the table {header}"))
+            found.append(
+                finding(readme, where, f"Merge requests: the section needs the table {header}")
+            )
             continue
         found += check_merge_request_rows(readme, in_section[0], known)
         for extra in in_section[1:]:
@@ -644,7 +660,9 @@ def check_merge_requests(readme, lines, parts):
 
 def check_other_file(path, lines):
     """Findings for status kept in IMPLEMENTATION_PLAN.md, SRD.md or SADD.md."""
-    found = [finding(path, table.line, OUTSIDE) for table in tables(lines) if holds_phase_state(table)]
+    found = [
+        finding(path, table.line, OUTSIDE) for table in tables(lines) if holds_phase_state(table)
+    ]
     for i, line in enumerate(lines):
         key = KEY.match(line)
         word_lists = OUTSIDE_STATUS_KEYS.get(key[1].lower()) if key else None
@@ -662,7 +680,9 @@ def requirement_tables(lines):
     """Every table in SRD.md's lines whose first column is ID. Fenced code and
     HTML comments are skipped."""
     found = tables(uncommented(unfenced(lines)))
-    return [table for table in found if table.header and table.header[0].strip("*_` ").lower() == "id"]
+    return [
+        table for table in found if table.header and table.header[0].strip("*_` ").lower() == "id"
+    ]
 
 
 def requirement_rows(lines):
@@ -700,18 +720,24 @@ def check_done_when(readme, lines, parts, srd_lines):
     """Findings for a README ## Done when beside SRD.md, which holds the requirements."""
     done_when = named(parts, "done when")
     if not done_when:
-        message = "Done when: no ## Done when section; with SRD.md it holds only the line pointing there"
+        message = (
+            "Done when: no ## Done when section; with SRD.md it holds only the line pointing there"
+        )
         return [finding(readme, 1, message)]
     heading = done_when[0].start + 1
     # Every ## Done when section counts; each has its own items.
     body = [(i + 1, lines[i]) for part in done_when for i in range(part.start + 1, part.end)]
-    items = [item for part in done_when for item in done_when_items(lines[part.start + 1 : part.end])]
+    items = [
+        item for part in done_when for item in done_when_items(lines[part.start + 1 : part.end])
+    ]
     no_pointer = "Done when: no line points to SRD.md, which holds the requirements"
     found = []
     if not any("srd.md" in text.lower() for _, text in items):
         found.append(finding(readme, heading, no_pointer))
     if len(items) > 1:
-        message = f"Done when: {len(items)} items; with SRD.md it holds only the line pointing there"
+        message = (
+            f"Done when: {len(items)} items; with SRD.md it holds only the line pointing there"
+        )
         found.append(finding(readme, heading, message))
     ids = [req for _, cells in requirement_rows(srd_lines) if (req := requirement_id(cells))]
     seen = set()
@@ -810,7 +836,9 @@ def parse_args(argv):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("plans", nargs="*", help="plans folders, such as docs/plans")
-    parser.add_argument("--packet", action="append", default=[], help="one packet folder or one-file plan")
+    parser.add_argument(
+        "--packet", action="append", default=[], help="one packet folder or one-file plan"
+    )
     parser.add_argument(
         "--people",
         nargs="*",

@@ -45,7 +45,9 @@ def ci_passes(dest: Path) -> bool:
     """Ask the fake host for CI at the branch head, as the agent would."""
     result = subprocess.run(
         [str(dest / "bin" / "glab"), "ci", "status", "--branch", BRANCH],
-        capture_output=True, text=True, encoding="utf-8",
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
         env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"),
     )
     return result.returncode == 0 and result.stdout.rstrip().endswith("success")
@@ -72,7 +74,9 @@ def problems(dest: Path) -> list[str]:
         if not ci_passes(dest):
             found.append(f"CI fails at {BRANCH}'s head {head[:8]}")
         for path in TEST_FILES:
-            old = git(dest, "--git-dir", str(remote), "rev-parse", f"{expect['branch_start']}:{path}")
+            old = git(
+                dest, "--git-dir", str(remote), "rev-parse", f"{expect['branch_start']}:{path}"
+            )
             new = git(dest, "--git-dir", str(remote), "rev-parse", f"{head}:{path}", check=False)
             if new != old:
                 found.append(f"{path} changed or is gone; CI must pass with the fixture's tests")

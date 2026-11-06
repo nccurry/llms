@@ -35,15 +35,15 @@ def call_with_retry(func, attempts=3):
                 raise
 '''
 
-RUN_TESTS = '''import sys
+RUN_TESTS = """import sys
 import unittest
 
 suite = unittest.defaultTestLoader.discover("tests")
 result = unittest.TextTestRunner(verbosity=2).run(suite)
 sys.exit(0 if result.wasSuccessful() else 1)
-'''
+"""
 
-TEST_RETRY = '''import unittest
+TEST_RETRY = """import unittest
 
 from retry import call_with_retry
 
@@ -51,7 +51,7 @@ from retry import call_with_retry
 class RetryTest(unittest.TestCase):
     def test_returns_the_result(self):
         self.assertEqual(call_with_retry(lambda: 3), 3)
-'''
+"""
 
 BACKOFF_GOOD = '''
 
@@ -68,7 +68,7 @@ def backoff_delay(attempt, base=0.1, max_delay=2.0):
     return base * 2 ** attempt
 '''
 
-TEST_BACKOFF = '''import unittest
+TEST_BACKOFF = """import unittest
 
 from retry import backoff_delay
 
@@ -79,7 +79,7 @@ class BackoffTest(unittest.TestCase):
 
     def test_delay_is_capped(self):
         self.assertEqual(backoff_delay(10), 2.0)
-'''
+"""
 
 
 def build_app(
@@ -119,9 +119,7 @@ def build_app(
     return app
 
 
-def install_host(
-    dest: Path, host: str, tools: tuple[str, ...], state: dict | None = None
-) -> None:
+def install_host(dest: Path, host: str, tools: tuple[str, ...], state: dict | None = None) -> None:
     """Install the fake CLIs named in `tools` (glab, gh, jira) under
     `<dest>/bin`, with a fresh state.
 

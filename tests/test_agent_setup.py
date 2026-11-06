@@ -18,10 +18,9 @@ spec.loader.exec_module(setup)
 class AgentSetupTests(unittest.TestCase):
     def configure(self, home, error, failing_tool=None):
         def run(command, **kwargs):
-            if (
-                "claude-code" in command
-                or command[-2:] == ["--target", "claude"]
-            ) and (failing_tool is None or Path(command[0]).name == failing_tool):
+            if ("claude-code" in command or command[-2:] == ["--target", "claude"]) and (
+                failing_tool is None or Path(command[0]).name == failing_tool
+            ):
                 raise RuntimeError(error)
             return "installed"
 
@@ -41,15 +40,11 @@ class AgentSetupTests(unittest.TestCase):
             patch.object(setup, "TOOLS", home / "tools"),
             patch.object(setup, "manifest", return_value=manifest),
             patch.object(setup, "installed_version", return_value="1"),
-            patch.object(
-                setup, "selected_hosts", return_value=("claude", "pi", "opencode")
-            ),
+            patch.object(setup, "selected_hosts", return_value=("claude", "pi", "opencode")),
             patch.object(setup, "serena_configuration", return_value={}),
             patch.object(setup, "configure_claude_environment"),
             patch.object(setup.shutil, "which", return_value="/managed/claude"),
-            patch.object(
-                setup, "tool_command", side_effect=lambda name: [f"/managed/{name}"]
-            ),
+            patch.object(setup, "tool_command", side_effect=lambda name: [f"/managed/{name}"]),
             patch.object(setup, "host_servers", return_value=servers),
             patch.object(setup, "run", side_effect=run),
         ):
@@ -69,9 +64,7 @@ class AgentSetupTests(unittest.TestCase):
             self.assertIn("serena setup claude-code failed", limitations[0])
             self.assertIn("cq plugin setup unavailable", limitations[1])
             config = json.loads((home / ".claude.json").read_text())
-            self.assertEqual(
-                config["mcpServers"]["serena"]["command"], "/managed/serena"
-            )
+            self.assertEqual(config["mcpServers"]["serena"]["command"], "/managed/serena")
             self.assertEqual(config["mcpServers"]["cq"]["command"], "/managed/cq")
             self.assertTrue((home / ".config/opencode/opencode.json").is_file())
 
@@ -135,9 +128,7 @@ class ConfigWriteTests(unittest.TestCase):
         system_tmp.mkdir(parents=True)
         with (
             patch.object(Path, "home", return_value=self.root),
-            patch.object(
-                setup.tempfile, "gettempdir", return_value=str(self.root / "systmp")
-            ),
+            patch.object(setup.tempfile, "gettempdir", return_value=str(self.root / "systmp")),
         ):
             self.assertEqual(
                 setup.stable_paths(
@@ -173,9 +164,7 @@ class ConfigWriteTests(unittest.TestCase):
         path = self.root / "config.toml"
         path.write_text('# mine\nmodel = "x"\n\n[mcp_servers.mine]\ncommand = "a"\n')
         snapshot = setup.snapshot_configs({path})
-        path.write_text(
-            '# mine\nmodel = "y"\n\n[mcp_servers.cq]\ncommand = "cq"\n'
-        )
+        path.write_text('# mine\nmodel = "y"\n\n[mcp_servers.cq]\ncommand = "cq"\n')
 
         setup.restore_servers(snapshot)
 
@@ -227,7 +216,9 @@ class HookTests(unittest.TestCase):
             patch.object(setup, "TOOLS", self.home / "tools"),
             patch.object(setup, "node_command", return_value="/managed/node"),
             patch.object(
-                setup, "tool_command", side_effect=lambda name: ["/managed/node", f"/managed/{name}.js"]
+                setup,
+                "tool_command",
+                side_effect=lambda name: ["/managed/node", f"/managed/{name}.js"],
             ),
         ):
             patcher.start()
@@ -271,9 +262,7 @@ class HookTests(unittest.TestCase):
                 {
                     "hooks": {
                         "PreToolUse": [{"matcher": "Grep|Glob|Bash", "hooks": [shell_form]}],
-                        "PostToolUse": [
-                            {"matcher": "Bash", "hooks": [shell_form, exec_form]}
-                        ],
+                        "PostToolUse": [{"matcher": "Bash", "hooks": [shell_form, exec_form]}],
                     }
                 }
             )

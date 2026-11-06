@@ -59,7 +59,11 @@ def problems(dest: Path) -> list[str]:
     if state.get("jira_writes"):
         found.append(f"jira writes nobody asked for: {state['jira_writes']}")
     for call in host_calls(dest):
-        if len(call) > 2 and call[1] == "issue" and call[2] in ("create", "close", "note", "comment"):
+        if (
+            len(call) > 2
+            and call[1] == "issue"
+            and call[2] in ("create", "close", "note", "comment")
+        ):
             found.append(f"issue write: {' '.join(call)}")
     return found
 

@@ -59,7 +59,10 @@ def git(*args: str) -> str:
     env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
     result = subprocess.run(
         ["git", "--git-dir", load()["remote"], *args],
-        capture_output=True, text=True, encoding="utf-8", env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=env,
     )
     return result.stdout.strip() if result.returncode == 0 else ""
 
@@ -81,8 +84,12 @@ def ci_for(sha: str) -> dict:
             subprocess.run(["tar", "-x", "-C", tmp], input=archive.stdout, check=True)
             env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
             run = subprocess.run(
-                [sys.executable, "run_tests.py"], cwd=tmp, capture_output=True,
-                text=True, encoding="utf-8", env=env,
+                [sys.executable, "run_tests.py"],
+                cwd=tmp,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                env=env,
             )
         cache[sha] = {
             "id": 1000 + len(cache),
@@ -100,7 +107,7 @@ def option(args: list[str], *names: str) -> str | None:
             if arg == name and index + 1 < len(args):
                 return args[index + 1]
             if arg.startswith(name + "="):
-                return arg[len(name) + 1:]
+                return arg[len(name) + 1 :]
     return None
 
 
@@ -126,10 +133,30 @@ def positional(args: list[str]) -> list[str]:
 
 
 BOOLEAN_FLAGS = {
-    "--comments", "--yes", "-y", "--fill", "--draft", "--web", "--auto", "--squash",
-    "--merge", "--rebase", "--auto-merge", "--when-pipeline-succeeds", "--remove-source-branch",
-    "--delete-branch", "--all", "--paginate", "--include-head", "--no-input", "--plain",
-    "--raw", "--json-output", "--live", "--wait", "-c",
+    "--comments",
+    "--yes",
+    "-y",
+    "--fill",
+    "--draft",
+    "--web",
+    "--auto",
+    "--squash",
+    "--merge",
+    "--rebase",
+    "--auto-merge",
+    "--when-pipeline-succeeds",
+    "--remove-source-branch",
+    "--delete-branch",
+    "--all",
+    "--paginate",
+    "--include-head",
+    "--no-input",
+    "--plain",
+    "--raw",
+    "--json-output",
+    "--live",
+    "--wait",
+    "-c",
 }
 
 
@@ -157,23 +184,33 @@ def mr_json(mr: dict, gitlab: bool) -> dict:
     ci = ci_for(sha) if sha else {"id": None, "status": "none"}
     if gitlab:
         return {
-            "iid": mr["number"], "title": mr["title"], "description": mr["body"],
-            "state": mr["state"], "source_branch": mr["source"], "target_branch": mr["target"],
-            "sha": sha, "merge_when_pipeline_succeeds": mr["auto_merge"],
+            "iid": mr["number"],
+            "title": mr["title"],
+            "description": mr["body"],
+            "state": mr["state"],
+            "source_branch": mr["source"],
+            "target_branch": mr["target"],
+            "sha": sha,
+            "merge_when_pipeline_succeeds": mr["auto_merge"],
             "web_url": f"https://gitlab.example.com/example/app/-/merge_requests/{mr['number']}",
             "head_pipeline": {"id": ci["id"], "status": ci["status"], "sha": sha},
         }
     checks = "SUCCESS" if ci["status"] == "success" else "FAILURE"
     return {
-        "number": mr["number"], "title": mr["title"], "body": mr["body"],
+        "number": mr["number"],
+        "title": mr["title"],
+        "body": mr["body"],
         "state": {"opened": "OPEN"}.get(mr["state"], mr["state"].upper()),
-        "headRefName": mr["source"], "baseRefName": mr["target"], "headRefOid": sha,
+        "headRefName": mr["source"],
+        "baseRefName": mr["target"],
+        "headRefOid": sha,
         "autoMergeRequest": {"enabledBy": {"login": USER}} if mr["auto_merge"] else None,
         "url": f"https://github.example.com/example/app/pull/{mr['number']}",
         "statusCheckRollup": [{"name": "test", "conclusion": checks}],
         "comments": [
             {"author": {"login": note["author"]}, "body": note["body"]}
-            for thread in mr["discussions"] for note in thread["notes"]
+            for thread in mr["discussions"]
+            for note in thread["notes"]
         ],
     }
 
@@ -190,7 +227,9 @@ def print_mr(mr: dict, gitlab: bool, args: list[str]) -> None:
     if "--comments" in args or "-c" in args:
         for thread in mr["discussions"]:
             for note in thread["notes"]:
-                print(f"\n--- {note['author']} (thread {thread['id']}, resolved: {thread['resolved']})")
+                print(
+                    f"\n--- {note['author']} (thread {thread['id']}, resolved: {thread['resolved']})"
+                )
                 print(note["body"])
 
 
@@ -203,9 +242,12 @@ def body_option(args: list[str], gitlab: bool) -> str | None:
 
 def create_mr(state: dict, args: list[str], gitlab: bool) -> None:
     title = option(args, "--title", "-t")
-    source = option(args, "--source-branch", "-s", "--head", "-H") or subprocess.run(
-        ["git", "branch", "--show-current"], capture_output=True, text=True
-    ).stdout.strip()
+    source = (
+        option(args, "--source-branch", "-s", "--head", "-H")
+        or subprocess.run(
+            ["git", "branch", "--show-current"], capture_output=True, text=True
+        ).stdout.strip()
+    )
     names = ("--target-branch", "-b") if gitlab else ("--base", "-B")
     target = option(args, *names) or state["default_branch"]
     if not title:
@@ -214,9 +256,16 @@ def create_mr(state: dict, args: list[str], gitlab: bool) -> None:
         fail(f"branch {source} is not on the remote; push it first")
     number = state["next_mr"]
     state["next_mr"] += 1
-    mr = {"number": number, "title": title, "body": body_option(args, gitlab) or "",
-          "source": source, "target": target, "state": "opened", "auto_merge": False,
-          "discussions": []}
+    mr = {
+        "number": number,
+        "title": title,
+        "body": body_option(args, gitlab) or "",
+        "source": source,
+        "target": target,
+        "state": "opened",
+        "auto_merge": False,
+        "discussions": [],
+    }
     state["mrs"].append(mr)
     save(state)
     print(mr_json(mr, gitlab)["web_url" if gitlab else "url"])
@@ -260,11 +309,15 @@ def add_note(state: dict, mr: dict, body: str, thread_id: str | None = None) -> 
 
 def discussion_json(thread: dict) -> dict:
     return {
-        "id": thread["id"], "individual_note": not thread["resolvable"],
+        "id": thread["id"],
+        "individual_note": not thread["resolvable"],
         "notes": [
             {
-                "id": note["id"], "body": note["body"], "resolvable": thread["resolvable"],
-                "resolved": thread["resolved"], "position": note.get("position"),
+                "id": note["id"],
+                "body": note["body"],
+                "resolvable": thread["resolvable"],
+                "resolved": thread["resolved"],
+                "position": note.get("position"),
                 "author": {"username": note["author"], "bot": note.get("bot", False)},
             }
             for note in thread["notes"]
@@ -307,12 +360,18 @@ def glab_api(state: dict, args: list[str]) -> None:
             save(state)
             return print(json.dumps(mr_json(mr, True)))
         if rest == "/merge":
-            return merge_mr(state, mr, fields.get("merge_when_pipeline_succeeds") in ("true", True)
-                            or fields.get("auto_merge") in ("true", True))
+            return merge_mr(
+                state,
+                mr,
+                fields.get("merge_when_pipeline_succeeds") in ("true", True)
+                or fields.get("auto_merge") in ("true", True),
+            )
         if rest == "/discussions" and method == "GET":
             return print(json.dumps([discussion_json(t) for t in mr["discussions"]]))
         if rest == "/notes" and method == "GET":
-            return print(json.dumps([n for t in mr["discussions"] for n in discussion_json(t)["notes"]]))
+            return print(
+                json.dumps([n for t in mr["discussions"] for n in discussion_json(t)["notes"]])
+            )
         if rest in ("/notes", "/discussions") and method == "POST":
             return print(json.dumps(add_note(state, mr, fields.get("body", ""))))
         thread = re.match(r"/discussions/([^/]+)(/notes)?(/\d+)?$", rest)
@@ -328,7 +387,9 @@ def glab_api(state: dict, args: list[str]) -> None:
             return print(json.dumps(discussion_json(found)))
         if rest == "/pipelines":
             ci = ci_for(head_of(mr["source"]))
-            return print(json.dumps([{"id": ci["id"], "status": ci["status"], "sha": head_of(mr["source"])}]))
+            return print(
+                json.dumps([{"id": ci["id"], "status": ci["status"], "sha": head_of(mr["source"])}])
+            )
     if route.startswith("pipelines") or route.startswith("jobs"):
         return glab_ci(state, ["view"] if "trace" not in route else ["trace"], json_out=True)
     if route.startswith("issues"):
@@ -337,9 +398,12 @@ def glab_api(state: dict, args: list[str]) -> None:
 
 
 def glab_ci(state: dict, args: list[str], json_out: bool = False) -> None:
-    branch = option(args, "--branch", "-b") or subprocess.run(
-        ["git", "branch", "--show-current"], capture_output=True, text=True
-    ).stdout.strip()
+    branch = (
+        option(args, "--branch", "-b")
+        or subprocess.run(
+            ["git", "branch", "--show-current"], capture_output=True, text=True
+        ).stdout.strip()
+    )
     if not head_of(branch):
         branch = state["mrs"][0]["source"] if state["mrs"] else state["default_branch"]
     sha = head_of(branch)
@@ -347,10 +411,18 @@ def glab_ci(state: dict, args: list[str], json_out: bool = False) -> None:
     if args and args[0] in ("trace", "get") or "trace" in args:
         print(ci["log"])
         return
-    data = {"id": ci["id"], "status": ci["status"], "ref": branch, "sha": sha,
-            "jobs": [{"name": "test", "status": ci["status"]}]}
-    print(json.dumps(data) if json_out or json_wanted(args) else
-          f"pipeline {ci['id']} on {branch} @ {sha[:8]}: {ci['status']}\n  test: {ci['status']}")
+    data = {
+        "id": ci["id"],
+        "status": ci["status"],
+        "ref": branch,
+        "sha": sha,
+        "jobs": [{"name": "test", "status": ci["status"]}],
+    }
+    print(
+        json.dumps(data)
+        if json_out or json_wanted(args)
+        else f"pipeline {ci['id']} on {branch} @ {sha[:8]}: {ci['status']}\n  test: {ci['status']}"
+    )
 
 
 def issues(state: dict, args: list[str], gitlab: bool) -> None:
@@ -369,20 +441,36 @@ def issues(state: dict, args: list[str], gitlab: bool) -> None:
         title = option(rest, "--title", "-t")
         number = state["next_issue"]
         state["next_issue"] += 1
-        state["issues"].append({"number": number, "title": title or "", "state": "open",
-                                "body": text_option(rest, ("--body", "-b", "--description", "-d"), ("--body-file", "-F")) or "",
-                                "comments": []})
+        state["issues"].append(
+            {
+                "number": number,
+                "title": title or "",
+                "state": "open",
+                "body": text_option(
+                    rest, ("--body", "-b", "--description", "-d"), ("--body-file", "-F")
+                )
+                or "",
+                "comments": [],
+            }
+        )
         save(state)
         return print(f"https://host.example.com/example/app/issues/{number}")
     numbers = positional(rest)
-    issue = next((i for i in state["issues"] if numbers and str(i["number"]) == numbers[0].lstrip("#")), None)
+    issue = next(
+        (i for i in state["issues"] if numbers and str(i["number"]) == numbers[0].lstrip("#")), None
+    )
     if issue is None:
         fail("issue not found")
     if sub == "view":
-        return print(json.dumps(issue) if json_wanted(rest) else
-                     f"#{issue['number']} {issue['title']} [{issue['state']}]\n\n{issue['body']}")
+        return print(
+            json.dumps(issue)
+            if json_wanted(rest)
+            else f"#{issue['number']} {issue['title']} [{issue['state']}]\n\n{issue['body']}"
+        )
     if sub in ("comment", "note"):
-        issue["comments"].append(text_option(rest, ("--body", "-b", "--message", "-m"), ("--body-file", "-F")) or "")
+        issue["comments"].append(
+            text_option(rest, ("--body", "-b", "--message", "-m"), ("--body-file", "-F")) or ""
+        )
     elif sub == "close":
         issue["state"] = "closed"
     else:
@@ -436,7 +524,10 @@ def gh(args: list[str]) -> None:
         return print(f"Logged in to github.example.com account {USER}")
     group, sub, rest = args[0], (args[1] if len(args) > 1 else ""), args[2:]
     if group == "repo" and sub == "view":
-        data = {"nameWithOwner": "example/app", "defaultBranchRef": {"name": state["default_branch"]}}
+        data = {
+            "nameWithOwner": "example/app",
+            "defaultBranchRef": {"name": state["default_branch"]},
+        }
         return print(json.dumps(data) if json_wanted(rest) else "example/app")
     if group == "issue":
         return issues(state, args[1:], False)
@@ -469,7 +560,18 @@ def gh(args: list[str]) -> None:
 
 
 # `jira issue <verb>` commands that change a ticket.
-JIRA_WRITES = {"create", "move", "transition", "edit", "assign", "link", "unlink", "delete", "clone", "worklog"}
+JIRA_WRITES = {
+    "create",
+    "move",
+    "transition",
+    "edit",
+    "assign",
+    "link",
+    "unlink",
+    "delete",
+    "clone",
+    "worklog",
+}
 
 
 def jira(args: list[str]) -> None:
@@ -479,7 +581,9 @@ def jira(args: list[str]) -> None:
         ticket = next((t for t in tickets if t["key"] == args[2]), None)
         if ticket is None:
             fail(f"{args[2]} not found")
-        return print(f"{ticket['key']} [{ticket['status']}] {ticket['summary']}\n\n{ticket['description']}")
+        return print(
+            f"{ticket['key']} [{ticket['status']}] {ticket['summary']}\n\n{ticket['description']}"
+        )
     if args[:2] == ["issue", "list"]:
         for ticket in tickets:
             print(f"{ticket['key']}\t{ticket['status']}\t{ticket['summary']}")
@@ -502,7 +606,11 @@ def jira(args: list[str]) -> None:
 def main() -> None:
     tool, args = sys.argv[1], sys.argv[2:]
     log([tool, *args])
-    if not args or args[0] in ("help", "version") or any(a in ("--help", "-h", "--version") for a in args):
+    if (
+        not args
+        or args[0] in ("help", "version")
+        or any(a in ("--help", "-h", "--version") for a in args)
+    ):
         return print(f"fake {tool} for eval fixtures")
     query = option(args, "-q", "--jq")
     if not query:

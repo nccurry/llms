@@ -163,14 +163,11 @@ def parse_frontmatter(skill_md: Path) -> tuple[dict[str, Any], list[str]]:
             # Upstream Ponytail uses a folded description. Keep the supported
             # metadata format narrow instead of accepting arbitrary YAML.
             if key != "description":
-                errors.append(
-                    f"folded frontmatter is only supported for description: {key}"
-                )
+                errors.append(f"folded frontmatter is only supported for description: {key}")
                 continue
             folded: list[str] = []
             while frontmatter_lines and (
-                not frontmatter_lines[0].strip()
-                or frontmatter_lines[0].startswith("  ")
+                not frontmatter_lines[0].strip() or frontmatter_lines[0].startswith("  ")
             ):
                 folded.append(frontmatter_lines.popleft().strip())
             value = " ".join(folded).strip()
@@ -249,27 +246,21 @@ def parse_openai_interface(openai_yaml: Path) -> tuple[dict[str, str], list[str]
                 errors.append(f"agents/openai.yaml {key} must be a valid quoted string")
                 continue
             if section != "interface":
-                errors.append(
-                    f"agents/openai.yaml {key} must be nested under interface:"
-                )
+                errors.append(f"agents/openai.yaml {key} must be nested under interface:")
                 continue
             fields[key] = value
             continue
 
         if POLICY_FIELD_RE.fullmatch(line):
             if implicit_invocation_seen:
-                errors.append(
-                    "agents/openai.yaml contains duplicate allow_implicit_invocation"
-                )
+                errors.append("agents/openai.yaml contains duplicate allow_implicit_invocation")
             elif section != "policy":
                 errors.append(
                     "agents/openai.yaml allow_implicit_invocation must be nested under policy:"
                 )
             else:
                 implicit_invocation_seen = True
-                fields["allow_implicit_invocation"] = POLICY_FIELD_RE.fullmatch(
-                    line
-                ).group("value")
+                fields["allow_implicit_invocation"] = POLICY_FIELD_RE.fullmatch(line).group("value")
             continue
 
         errors.append(f"unsupported agents/openai.yaml line: {line!r}")
@@ -283,9 +274,7 @@ def parse_openai_interface(openai_yaml: Path) -> tuple[dict[str, str], list[str]
     return fields, errors
 
 
-def validate_skill(
-    source: Path, name: str, *, external: bool = False
-) -> dict[str, Any]:
+def validate_skill(source: Path, name: str, *, external: bool = False) -> dict[str, Any]:
     skill_dir = source / name
     skill_md = skill_dir / "SKILL.md"
     openai_yaml = skill_dir / "agents" / "openai.yaml"
@@ -314,9 +303,7 @@ def validate_skill(
     if actual_name != name:
         errors.append(f"frontmatter name must be {name!r}, got {actual_name!r}")
     if actual_name and not NAME_RE.match(actual_name):
-        errors.append(
-            "frontmatter name must contain only lowercase letters, digits, and hyphens"
-        )
+        errors.append("frontmatter name must contain only lowercase letters, digits, and hyphens")
     if actual_name.startswith("-") or actual_name.endswith("-") or "--" in actual_name:
         errors.append(
             "frontmatter name cannot start/end with hyphen or contain consecutive hyphens"
@@ -341,9 +328,7 @@ def validate_skill(
         default_prompt = interface.get("default_prompt", "")
         skill_token = re.compile(rf"\${re.escape(name)}(?![a-z0-9-])")
         if default_prompt and not skill_token.search(default_prompt):
-            errors.append(
-                f"default_prompt must mention ${name} as an exact skill token"
-            )
+            errors.append(f"default_prompt must mention ${name} as an exact skill token")
         if not external:
             explicit_only = interface.get("allow_implicit_invocation") == "false"
             portable_explicit_only = frontmatter.get("disable-model-invocation", False)
@@ -400,14 +385,8 @@ def external_specs(manifest: dict[str, Any]) -> dict[str, dict[str, Any]]:
             raise ValueError(f"{name}: source must use a full pinned commit")
         for field in ("url", "license_url"):
             parsed = urllib.parse.urlparse(spec[field])
-            if (
-                parsed.scheme != "https"
-                or not parsed.netloc
-                or spec["commit"] not in parsed.path
-            ):
-                raise ValueError(
-                    f"{name}: {field} must use HTTPS and the pinned commit"
-                )
+            if parsed.scheme != "https" or not parsed.netloc or spec["commit"] not in parsed.path:
+                raise ValueError(f"{name}: {field} must use HTTPS and the pinned commit")
         specs[name] = spec
     return specs
 
@@ -454,9 +433,7 @@ def refresh_external_specs(manifest: dict[str, Any]) -> dict[str, Any]:
                 raise ValueError(f"{repository}: could not resolve upstream HEAD")
             commits[repository] = commit
         old_prefix = f"https://raw.githubusercontent.com/{repository}/{spec['commit']}/"
-        new_prefix = (
-            f"https://raw.githubusercontent.com/{repository}/{commits[repository]}/"
-        )
+        new_prefix = f"https://raw.githubusercontent.com/{repository}/{commits[repository]}/"
         for field, hash_field in (("url", "sha256"), ("license_url", "license_sha256")):
             if not spec[field].startswith(old_prefix):
                 raise ValueError(f"{name}: {field} does not match its GitHub source")
@@ -559,21 +536,15 @@ def validate_source(
     bundle.update({name: external_source / name for name in specs})
     skills = [validate_skill(source, name) for name in MANAGED_SKILLS]
     for skill in skills:
-        skill["errors"].extend(
-            markdown_reference_errors(source / skill["skill"], bundle)
-        )
+        skill["errors"].extend(markdown_reference_errors(source / skill["skill"], bundle))
         skill["valid"] = not skill["errors"]
     for name, spec in specs.items():
         skill = validate_skill(external_source, name, external=True)
         skill["errors"].extend(pinned_external_errors(external_source / name, spec))
-        skill["errors"].extend(
-            markdown_reference_errors(external_source / name, bundle)
-        )
+        skill["errors"].extend(markdown_reference_errors(external_source / name, bundle))
         skill["valid"] = not skill["errors"]
         skills.append(skill)
-    errors = [
-        f"{skill['skill']}: {error}" for skill in skills for error in skill["errors"]
-    ]
+    errors = [f"{skill['skill']}: {error}" for skill in skills for error in skill["errors"]]
     available = {skill["skill"] for skill in skills if skill["valid"]}
     declared = set(MANAGED_SKILLS) | set(specs)
     for owner, dependencies in manifest.get("skill_dependencies", {}).items():
@@ -586,13 +557,9 @@ def validate_source(
             continue
         for name in dependencies:
             if name not in declared:
-                errors.append(
-                    f"{owner}: required skill dependency is not declared: {name}"
-                )
+                errors.append(f"{owner}: required skill dependency is not declared: {name}")
             elif name not in available:
-                errors.append(
-                    f"{owner}: required skill dependency is missing or invalid: {name}"
-                )
+                errors.append(f"{owner}: required skill dependency is missing or invalid: {name}")
     return {
         "command": "validate",
         "source": display_path(source),
@@ -737,10 +704,7 @@ def rollback_skill(result: dict[str, Any], timestamp: str, target_name: str) -> 
 
     if destination.exists():
         failed_path = next_available_path(
-            backup_root(destination.parent)
-            / timestamp
-            / target_name
-            / f"{destination.name}.failed"
+            backup_root(destination.parent) / timestamp / target_name / f"{destination.name}.failed"
         )
         try:
             failed_path.parent.mkdir(parents=True, exist_ok=True)
@@ -754,18 +718,14 @@ def rollback_skill(result: dict[str, Any], timestamp: str, target_name: str) -> 
 
     if action == "updated" and backup:
         if destination.exists():
-            errors.append(
-                "could not restore backup because the destination still exists"
-            )
+            errors.append("could not restore backup because the destination still exists")
         elif not backup.exists():
             errors.append(f"backup is missing: {backup}")
         else:
             try:
                 shutil.move(str(backup), str(destination))
                 if digest_path(destination) != result["destination_digest_before"]:
-                    errors.append(
-                        "restored backup digest does not match the prior installation"
-                    )
+                    errors.append("restored backup digest does not match the prior installation")
             except Exception as error:
                 errors.append(f"could not restore backup: {error}")
 
@@ -835,9 +795,7 @@ def retire_skills(
 ) -> list[dict[str, Any]]:
     """Move skills this installer put here, but no longer ships, into backups."""
     results: list[dict[str, Any]] = []
-    retired = (set(recorded_skills(target_dir)) | set(RETIRED_SKILLS)) - set(
-        current_names
-    )
+    retired = (set(recorded_skills(target_dir)) | set(RETIRED_SKILLS)) - set(current_names)
     for skill_name in sorted(retired):
         candidate = target_dir / skill_name
         if not (candidate.exists() or candidate.is_symlink()):
@@ -905,9 +863,7 @@ def install_skill(
             "verified": None if dry_run else destination_digest == source_digest,
         }
 
-    stage_base = (
-        staging_root(destination.parent) / run_id / target_name / source_skill.name
-    )
+    stage_base = staging_root(destination.parent) / run_id / target_name / source_skill.name
     stage_path = next_available_path(stage_base)
     previous_moved = False
     promotion_attempted = False
@@ -930,9 +886,7 @@ def install_skill(
         stage_path.rename(destination)
         installed_digest = digest_path(destination)
         if installed_digest != source_digest:
-            raise RuntimeError(
-                f"installed skill digest mismatch for {source_skill.name}"
-            )
+            raise RuntimeError(f"installed skill digest mismatch for {source_skill.name}")
     except Exception as error:
         if previous_moved or promotion_attempted:
             rollback_result = {
@@ -977,13 +931,10 @@ def install_skills(
 ) -> dict[str, Any]:
     manifest = dependency_manifest(source) if manifest is None else manifest
     external_source = external_cache() if external_source is None else external_source
-    validation = validate_source(
-        source, manifest=manifest, external_source=external_source
-    )
+    validation = validate_source(source, manifest=manifest, external_source=external_source)
     if not validation["valid"]:
         raise ValueError(
-            "skill validation failed before installation: "
-            + "; ".join(validation["errors"])
+            "skill validation failed before installation: " + "; ".join(validation["errors"])
         )
     sources = {name: source / name for name in MANAGED_SKILLS}
     sources.update({name: external_source / name for name in external_specs(manifest)})
@@ -994,9 +945,7 @@ def install_skills(
     completed: list[tuple[str, dict[str, Any]]] = []
     try:
         for target_name, target_dir in targets.items():
-            legacy_backups = archive_legacy_backups(
-                target_name, target_dir, dry_run, list(sources)
-            )
+            legacy_backups = archive_legacy_backups(target_name, target_dir, dry_run, list(sources))
             skills: list[dict[str, Any]] = []
             for skill_name, source_skill in sources.items():
                 result = install_skill(
@@ -1090,9 +1039,7 @@ def emit(result: dict[str, Any], output: str) -> None:
 
     if command == "fetch":
         prefix = "Dry run: " if result["dry_run"] else ""
-        print(
-            f"{prefix}verified pinned external skill payloads: {', '.join(result['skills'])}"
-        )
+        print(f"{prefix}verified pinned external skill payloads: {', '.join(result['skills'])}")
         return
 
     if command == "validate":
@@ -1162,17 +1109,11 @@ def main(argv: list[str]) -> int:
             return 0
 
         manifest = dependency_manifest(source)
-        if (
-            args.command == "install"
-            and not args.locked
-            and manifest.get("external_skills")
-        ):
+        if args.command == "install" and not args.locked and manifest.get("external_skills"):
             manifest = refresh_external_specs(manifest)
         if args.command in {"fetch", "install"} and manifest.get("external_skills"):
             if args.dry_run:
-                with tempfile.TemporaryDirectory(
-                    prefix="llms-external-skills-"
-                ) as workspace:
+                with tempfile.TemporaryDirectory(prefix="llms-external-skills-") as workspace:
                     external_source = prepare_external_skills(manifest, Path(workspace))
                     validation = validate_source(
                         source, manifest=manifest, external_source=external_source

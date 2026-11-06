@@ -434,9 +434,7 @@ class PacketShapeTest(unittest.TestCase):
 
     def test_every_template_key_and_the_work_table_are_required(self):
         no_resume = self.GOOD.replace("- Resume check: `python -m unittest` → OK\n", "")
-        self.assertEqual(
-            self.problems(no_resume), ["eval: Current Work has no Resume check line"]
-        )
+        self.assertEqual(self.problems(no_resume), ["eval: Current Work has no Resume check line"])
         no_table = self.GOOD.replace(
             "Where the work lives:\n\n| Checkout | Branch | Owner | State |\n"
             "| --- | --- | --- | --- |\n| None | | | |\n\n",

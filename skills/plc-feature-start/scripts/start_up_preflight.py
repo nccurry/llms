@@ -112,7 +112,9 @@ def choose_main_branch(path, requested):
         if ref_exists(path, f"refs/heads/{candidate}"):
             return candidate
 
-    default_remote = run_git(path, ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"])
+    default_remote = run_git(
+        path, ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]
+    )
     default_remote_name = default_remote.stdout.strip()
     if "/" in default_remote_name:
         return default_remote_name.split("/", 1)[1]
@@ -174,7 +176,9 @@ def make_target_report(root, worktrees, branch, target_path):
 def build_report(path, requested_main, target_branch, target_path):
     root = run_git(path, ["rev-parse", "--show-toplevel"], check=True).stdout.strip()
     branch = run_git(root, ["branch", "--show-current"], check=True).stdout.strip()
-    worktrees = parse_worktrees(run_git(root, ["worktree", "list", "--porcelain"], check=True).stdout)
+    worktrees = parse_worktrees(
+        run_git(root, ["worktree", "list", "--porcelain"], check=True).stdout
+    )
     main_branch = choose_main_branch(root, requested_main)
     remote_main_ref = choose_remote_main_ref(root, main_branch)
     base_ref = remote_main_ref or main_branch
@@ -240,9 +244,13 @@ def build_report(path, requested_main, target_branch, target_path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Inspect git state before starting an isolated worktree.")
+    parser = argparse.ArgumentParser(
+        description="Inspect git state before starting an isolated worktree."
+    )
     parser.add_argument("--path", default=".", help="Repository path to inspect.")
-    parser.add_argument("--main", help="Main branch name to require instead of auto-detecting main/master.")
+    parser.add_argument(
+        "--main", help="Main branch name to require instead of auto-detecting main/master."
+    )
     parser.add_argument("--branch", help="Target feature branch to check.")
     parser.add_argument("--worktree-path", help="Target linked worktree path to check.")
     args = parser.parse_args()

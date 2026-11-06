@@ -138,9 +138,7 @@ def make_repo(
     return checkout
 
 
-def add_worktree(
-    checkout: Path, campaign: str, name: str, branch: str, base: str = "main"
-) -> Path:
+def add_worktree(checkout: Path, campaign: str, name: str, branch: str, base: str = "main") -> Path:
     path = checkout.parent / f"{checkout.name}-wt" / campaign / name
     git(checkout, "worktree", "add", "-q", "-b", branch, str(path), base)
     return path

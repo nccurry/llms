@@ -53,9 +53,7 @@ class ExternalRefreshTests(unittest.TestCase):
         for item in result["external_skills"]:
             self.assertEqual(item["commit"], "b" * 40)
             self.assertIn("/" + "b" * 40 + "/", item["url"])
-            self.assertEqual(
-                item["sha256"], installer.hashlib.sha256(b"upstream").hexdigest()
-            )
+            self.assertEqual(item["sha256"], installer.hashlib.sha256(b"upstream").hexdigest())
         self.assertEqual(original, self.manifest())
 
     def test_failed_download_keeps_the_original_pins(self):
@@ -65,9 +63,7 @@ class ExternalRefreshTests(unittest.TestCase):
             "run",
             return_value=SimpleNamespace(stdout="b" * 40 + "\tHEAD\n"),
         ):
-            with patch.object(
-                installer.urllib.request, "urlopen", side_effect=OSError("offline")
-            ):
+            with patch.object(installer.urllib.request, "urlopen", side_effect=OSError("offline")):
                 with self.assertRaisesRegex(OSError, "offline"):
                     installer.refresh_external_specs(original)
         self.assertEqual(original, self.manifest())
@@ -102,14 +98,10 @@ class ExternalRefreshTests(unittest.TestCase):
             manifest_file.write_text("original pins")
             with (
                 patch.object(installer, "repo_root", return_value=root),
-                patch.object(
-                    installer, "dependency_manifest", return_value=self.manifest()
-                ),
+                patch.object(installer, "dependency_manifest", return_value=self.manifest()),
                 patch.object(installer, "refresh_external_specs") as refresh,
                 patch.object(installer, "prepare_external_skills"),
-                patch.object(
-                    installer, "validate_source", return_value={"valid": True}
-                ),
+                patch.object(installer, "validate_source", return_value={"valid": True}),
                 patch.object(installer, "install_skills", return_value={}),
                 redirect_stdout(io.StringIO()),
             ):
@@ -126,13 +118,9 @@ class ExternalRefreshTests(unittest.TestCase):
             with (
                 patch.object(installer, "repo_root", return_value=root),
                 patch.object(installer, "dependency_manifest", return_value=manifest),
-                patch.object(
-                    installer, "refresh_external_specs", return_value=manifest
-                ) as refresh,
+                patch.object(installer, "refresh_external_specs", return_value=manifest) as refresh,
                 patch.object(installer, "prepare_external_skills"),
-                patch.object(
-                    installer, "validate_source", return_value={"valid": True}
-                ),
+                patch.object(installer, "validate_source", return_value={"valid": True}),
                 patch.object(installer, "install_skills", return_value={}) as install,
                 redirect_stdout(io.StringIO()),
             ):
@@ -203,13 +191,9 @@ class RetiredSkillTests(unittest.TestCase):
         self.record("kept", "dropped")
         result = self.install(dry_run=True)
 
-        self.assertEqual(
-            self.installed(), ["dropped", "someone-elses", "start-this-up"]
-        )
+        self.assertEqual(self.installed(), ["dropped", "someone-elses", "start-this-up"])
         actions = {r["skill"]: r["action"] for r in result["targets"]["agent"]["retired"]}
-        self.assertEqual(
-            actions, {"dropped": "would_retire", "start-this-up": "would_retire"}
-        )
+        self.assertEqual(actions, {"dropped": "would_retire", "start-this-up": "would_retire"})
         self.assertEqual(installer.recorded_skills(self.target), ["kept", "dropped"])
 
     def test_failed_install_retires_nothing(self):
@@ -218,9 +202,7 @@ class RetiredSkillTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "boom"):
                 self.install()
 
-        self.assertEqual(
-            self.installed(), ["dropped", "someone-elses", "start-this-up"]
-        )
+        self.assertEqual(self.installed(), ["dropped", "someone-elses", "start-this-up"])
         self.assertEqual(installer.recorded_skills(self.target), ["kept", "dropped"])
 
 
