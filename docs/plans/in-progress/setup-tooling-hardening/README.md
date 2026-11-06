@@ -9,13 +9,13 @@ in one place.
 
 - Status: In progress
 - Owner: @nccurry
-- Last updated: 2026-11-06, `main` at `1ea0b4b` (P1 merged)
+- Last updated: 2026-11-06, `main` at `d0c60a9` (P1 and P3 merged)
 - Selected work: P1 to P5 — REQ-001 to REQ-020 and REQ-022; delivered by direct merges into `main`, each phase closing when its requirements' checks pass on `main`.
-- Next action: Start P2 (Windows checks) and P3 (end-to-end configure test) in parallel, each in its own Sonnet child worktree from `main`.
+- Next action: Start P4 (host adapters) from `main`; merge P2 after its audit repairs.
 - Blocker: None
 - Depends on: None
-- Current state: P1 Verified on `main`; P2 to P5 not started.
-- Resume check: `./bootstrap.sh deps:dev-tools && ./bootstrap.sh lint:python` → 0 errors; `./bootstrap.sh test` → piw 185 passed, setup-script tests 26 OK, launcher tests 3 pass.
+- Current state: P1 and P3 Verified on `main`; P2 repairing after audit; P4 and P5 not started.
+- Resume check: `./bootstrap.sh deps:dev-tools && ./bootstrap.sh lint:python` → 0 errors; `./bootstrap.sh test` → piw 185 passed, setup-script tests 48 OK, launcher tests 3 pass.
 
 Where the work lives:
 
@@ -29,7 +29,7 @@ Where the work lives:
 | --- | --- | --- | --- |
 | [P1](IMPLEMENTATION_PLAN.md#p1-separate-lint-and-type-checks-for-python-outside-piw) | Separate lint and type checks for Python outside piw | | Verified — lint:python 0 findings, test and check pass @ 1ea0b4b; merged by fast-forward |
 | [P2](IMPLEMENTATION_PLAN.md#p2-windows-checks-from-linux) | Windows checks from Linux | | Planned |
-| [P3](IMPLEMENTATION_PLAN.md#p3-end-to-end-configure-test) | End-to-end configure test | | Planned |
+| [P3](IMPLEMENTATION_PLAN.md#p3-end-to-end-configure-test) | End-to-end configure test | | Verified — test:tooling 48 OK with pinned tools required, fresh-clone run OK @ d0c60a9; merged by fast-forward |
 | [P4](IMPLEMENTATION_PLAN.md#p4-host-adapters-and-a-split-configure) | Host adapters and a split configure | | Planned |
 | [P5](IMPLEMENTATION_PLAN.md#p5-tools-described-by-the-manifest) | Tools described by the manifest | | Planned |
 
@@ -45,3 +45,4 @@ The requirements and their checks are in [SRD.md](SRD.md).
 - 2026-11-06 Decision: removed the commit-scan requirement (formerly REQ-021) at the owner's request.
 - 2026-11-06 Started execution: Opus parent, Sonnet implementation children, direct merges into `main`.
 - 2026-11-06 P1 merged by fast-forward and verified: strict audit (six domains) PASS after one repair batch; decisions on targets, Node for pyright and test ignores recorded in [SADD](SADD.md#decisions-and-alternatives).
+- 2026-11-06 P3 merged by fast-forward and verified: strict audit (correctness, test quality, plan alignment, code quality) PASS after one repair batch, which committed a golden file `.gitignore` had hidden, added host scenarios (FIX-010) and made `check` and `ci` really require the pinned tools.
