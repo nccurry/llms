@@ -28,6 +28,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / ".tools" / "agent-tools"
 HOSTS = ("codex", "claude", "pi", "opencode")
+BACKUP_RUNS_KEPT = 60
 REMOTE_SERVER_FIELDS = (
     "url",
     "headers",
@@ -88,16 +89,32 @@ def tool_env() -> dict[str, str]:
     # uv's isolated interpreter prepends a temporary Scripts/bin directory.
     # Host configuration must not retain that short-lived invocation path.
     inherited = env.get("LLMS_ORIGINAL_PATH", env.get("PATH", ""))
-    entries = paths + inherited.split(os.pathsep)
+    env["PATH"] = os.pathsep.join(stable_paths(paths + inherited.split(os.pathsep)))
+    return env
+
+
+def stable_paths(entries: list[str]) -> list[str]:
+    """Keep absolute, existing, non-temporary directories once each, in order."""
+    temporary_roots = [
+        os.path.normcase(os.path.realpath(root))
+        for root in (tempfile.gettempdir(), Path.home() / ".codex/tmp")
+    ]
     seen: set[str] = set()
-    stable_paths = []
+    kept = []
     for entry in entries:
         key = os.path.normcase(os.path.normpath(entry))
-        if entry and key not in seen:
-            stable_paths.append(entry)
-            seen.add(key)
-    env["PATH"] = os.pathsep.join(stable_paths)
-    return env
+        real = os.path.normcase(os.path.realpath(entry)) if entry else ""
+        if (
+            not entry
+            or key in seen
+            or not os.path.isabs(entry)
+            or not os.path.isdir(entry)
+            or any(real == root or real.startswith(root + os.sep) for root in temporary_roots)
+        ):
+            continue
+        kept.append(entry)
+        seen.add(key)
+    return kept
 
 
 def run(
@@ -428,7 +445,8 @@ def private_permissions(path: Path, *, copy_from: Path | None = None) -> None:
             command.extend(["-CopyFrom", str(copy_from)])
         run(command, timeout=20)
     elif copy_from is not None:
-        path.chmod(stat.S_IMODE(copy_from.stat().st_mode))
+        # Keep the owner's choice, but never let others rewrite agent config.
+        path.chmod(stat.S_IMODE(copy_from.stat().st_mode) & ~0o022)
     else:
         path.chmod(0o700 if path.is_dir() else 0o600)
 
@@ -440,11 +458,15 @@ def update_file(
     dry_run: bool = False,
     expected_digest: str | None = None,
 ) -> str:
+    # Write through a symlink (e.g. a dotfiles checkout) instead of replacing it.
+    path = path.resolve() if path.is_symlink() else path
     old = path.read_text(encoding="utf-8") if path.exists() else None
     digest = hashlib.sha256(old.encode("utf-8")).hexdigest() if old is not None else ""
     if expected_digest is not None and digest != expected_digest:
         raise RuntimeError(f"Configuration changed during rendering: {path}")
     if old == text:
+        if not dry_run and os.name != "nt" and path.stat().st_mode & 0o022:
+            private_permissions(path, copy_from=path)
         return "unchanged"
     if dry_run:
         return "would update" if old is not None else "would create"
@@ -481,6 +503,10 @@ def backup_configuration(path: Path) -> None:
         os.open(backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb"
     ) as output:
         output.write(path.read_bytes())
+    # Backups can hold credentials; keep enough to undo recent runs, no more.
+    stamps = sorted(backup.parent.parent.iterdir(), reverse=True)
+    for stale in stamps[BACKUP_RUNS_KEPT:]:
+        shutil.rmtree(stale, ignore_errors=True)
 
 
 def merge_json(
@@ -660,14 +686,7 @@ def host_config(host: str) -> Path:
             ),
             directory / "opencode.json",
         )
-    return (
-        home
-        / {
-            "claude": ".claude.json",
-            "pi": ".pi/agent/AGENTS.md",
-            "opencode": ".config/opencode/opencode.json",
-        }[host]
-    )
+    return home / {"claude": ".claude.json", "pi": ".pi/agent/AGENTS.md"}[host]
 
 
 def standard_codex_profile() -> bool:
@@ -709,8 +728,12 @@ def require_standard_profiles(target: str) -> None:
             )
 
 
-def jsonc_document(path: Path, desired: dict[str, Any] | None = None) -> dict[str, Any]:
-    payload: dict[str, Any] = {"text": path.read_text(encoding="utf-8-sig")}
+def jsonc_document(
+    path: Path, desired: dict[str, Any] | None = None, *, text: str | None = None
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "text": path.read_text(encoding="utf-8-sig") if text is None else text
+    }
     if desired is not None:
         payload["desired"] = desired
     return json.loads(
@@ -725,12 +748,68 @@ def jsonc_document(path: Path, desired: dict[str, Any] | None = None) -> dict[st
     )
 
 
-def read_host_json(path: Path) -> dict[str, Any]:
-    return (
-        jsonc_document(path)["data"]
-        if path.suffix == ".jsonc"
-        else json.loads(path.read_text(encoding="utf-8-sig"))
-    )
+def read_host_json(path: Path, text: str | None = None) -> dict[str, Any]:
+    if path.suffix == ".jsonc":
+        return jsonc_document(path, text=text)["data"]
+    return json.loads(path.read_text(encoding="utf-8-sig") if text is None else text)
+
+
+def snapshot_configs(paths: set[Path]) -> dict[Path, str | None]:
+    return {
+        path: path.read_text(encoding="utf-8") if path.is_file() else None
+        for path in paths
+    }
+
+
+def restore_servers(snapshot: dict[Path, str | None]) -> None:
+    """Undo an upstream installer's MCP server edits, keeping all other changes.
+
+    Upstream installers replace server entries this script manages, and some
+    write a config file the host does not read. Only the server section is put
+    back, onto the current file, so edits made meanwhile by a running host
+    survive. A file the installer created that holds nothing else is removed.
+    """
+    import tomlkit
+
+    for path, original in snapshot.items():
+        if not path.is_file():
+            continue
+        current = path.read_text(encoding="utf-8")
+        if current == original:
+            continue
+        digest = hashlib.sha256(current.encode("utf-8")).hexdigest()
+        key = (
+            "mcp_servers"
+            if path.suffix == ".toml"
+            else "mcpServers" if path.name == ".claude.json" else "mcp"
+        )
+        if path.suffix == ".toml":
+            document = tomlkit.parse(current)
+            previous = tomlkit.parse(original or "")
+            if key in previous:
+                document[key] = previous[key]
+            else:
+                document.pop(key, None)
+            remaining = set(document)
+            text = tomlkit.dumps(document)
+        else:
+            document = read_host_json(path, current)
+            previous = read_host_json(path, original) if original else {}
+            if key in previous:
+                document[key] = previous[key]
+            else:
+                document.pop(key, None)
+            remaining = set(document)
+            text = (
+                jsonc_document(path, document)["text"]
+                if path.suffix == ".jsonc"
+                else json.dumps(document, indent=2) + "\n"
+            )
+        if original is None and remaining <= {"$schema"}:
+            backup_configuration(path)
+            path.unlink()
+        else:
+            update_file(path, text, expected_digest=digest)
 
 
 def existing_server(host: str, name: str) -> bool:
@@ -785,17 +864,8 @@ def configure_claude_environment(*, dry_run: bool = False) -> str:
     path = Path.home() / ".claude/settings.json"
     settings = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     environment = settings.setdefault("env", {})
-    paths = tool_env()["PATH"].split(os.pathsep) + environment.get("PATH", "").split(
-        os.pathsep
-    )
-    seen: set[str] = set()
-    stable = []
-    for entry in paths:
-        key = os.path.normcase(os.path.normpath(entry))
-        if entry and key not in seen:
-            stable.append(entry)
-            seen.add(key)
-    environment.update(PATH=os.pathsep.join(stable), CQ_ADDR="")
+    # Rebuild rather than extend the previous value, so stale entries drop out.
+    environment.update(PATH=tool_env()["PATH"], CQ_ADDR="")
     return update_file(path, json.dumps(settings, indent=2) + "\n", dry_run=dry_run)
 
 
@@ -822,7 +892,7 @@ def preview(target: str) -> dict[str, Any]:
     planned = []
     for host in selected_hosts(target):
         path = host_config(host)
-        expected = host_servers(host)
+        expected = host_servers(host) if host != "pi" else {}
         if host == "codex":
             action = merge_codex(path, expected, dry_run=True)
         elif host == "pi":
@@ -837,7 +907,7 @@ def preview(target: str) -> dict[str, Any]:
                 "host": host,
                 "config": str(path),
                 "action": action,
-                "managed_servers": list(expected) if host != "pi" else [],
+                "managed_servers": list(expected),
                 "environment_action": environment_action,
                 "upstream_setup": "would run supported upstream installers; native plugin changes are host-dependent",
             }
@@ -1049,24 +1119,20 @@ def configure(target: str) -> dict[str, Any]:
                 limitations.append(
                     f"Serena client setup unavailable; using documented manual MCP configuration: {error}"
                 )
+        # Upstream installers own their skills and hooks but rewrite MCP server
+        # entries; the managed merge below writes those.
+        server_paths = {host_config(host)}
+        if host == "opencode":
+            server_paths.update(
+                home / ".config/opencode" / name
+                for name in ("opencode.json", "opencode.jsonc", "config.json")
+            )
+        for path in server_paths - set(paths):
+            backup_configuration(path)
         if host != "pi" and manifest()["tools"]["gitnexus"].get(
             "integration_enabled", True
         ):
-            config_paths = {host_config(host)}
-            if host == "codex":
-                config_paths.add(home / ".codex/config.toml")
-            elif host == "opencode":
-                config_paths.update(
-                    home / ".config/opencode" / name
-                    for name in ("opencode.json", "opencode.jsonc", "config.json")
-                )
-            originals = {
-                path: path.read_text(encoding="utf-8")
-                for path in config_paths
-                if path.is_file()
-            }
-            for path in config_paths - set(paths):
-                backup_configuration(path)
+            snapshot = snapshot_configs(server_paths)
             try:
                 upstream.append(
                     run(
@@ -1076,20 +1142,12 @@ def configure(target: str) -> dict[str, Any]:
                     )
                 )
             finally:
-                # Native setup owns bundled skills/hooks but replaces MCP entries.
-                # Restore caller configuration before our preserving local merge.
-                for path, original in originals.items():
-                    update_file(path, original)
+                restore_servers(snapshot)
             configure_gitnexus_hooks(host)
         # Use cq's maintained skill/instruction installer. Claude's plugin route
         # needs Claude CLI; other hosts can be configured without their binaries.
         if host != "claude" or shutil.which("claude"):
-            cq_config_path = host_config(host)
-            cq_original_config = (
-                cq_config_path.read_text(encoding="utf-8")
-                if host == "codex" and cq_config_path.is_file()
-                else None
-            )
+            snapshot = snapshot_configs(server_paths) if host != "pi" else {}
             try:
                 upstream.append(
                     run(tool_command("cq") + ["install", "--target", host], timeout=90)
@@ -1103,29 +1161,12 @@ def configure(target: str) -> dict[str, Any]:
                     f"cq plugin setup unavailable; rerun agents:configure after claude auth login: {error}"
                 )
             finally:
-                # Restore only cq's entry so other settings edited during native
-                # setup survive. The managed merge below applies local defaults.
-                if cq_original_config is not None:
-                    import tomlkit
-
-                    current = cq_config_path.read_text(encoding="utf-8")
-                    document = tomlkit.parse(current)
-                    previous = tomlkit.parse(cq_original_config).get("mcp_servers", {})
-                    configured = document.setdefault("mcp_servers", tomlkit.table())
-                    if "cq" in previous:
-                        configured["cq"] = previous["cq"]
-                    else:
-                        configured.pop("cq", None)
-                    update_file(
-                        cq_config_path,
-                        tomlkit.dumps(document),
-                        expected_digest=hashlib.sha256(current.encode("utf-8")).hexdigest(),
-                    )
+                restore_servers(snapshot)
         else:
             limitations.append(
                 "cq's Claude plugin installation requires Claude CLI; rerun agents:configure after installing that client"
             )
-        selected = host_servers(host)
+        selected = host_servers(host) if host != "pi" else {}
         if host == "codex":
             path = host_config(host)
             action = merge_codex(path, selected)
@@ -1143,9 +1184,15 @@ def configure(target: str) -> dict[str, Any]:
                     settings_path = home / ".claude/settings.json"
                     settings = json.loads(settings_path.read_text(encoding="utf-8"))
                     environment = settings.setdefault("env", {})
+                    # Global env reaches every Claude process; move only the
+                    # values this script wrote, and report anything else.
                     for key, value in manual.get("env", {}).items():
-                        if key not in {"PATH", "CQ_ADDR"}:
+                        if key in {"UV_PYTHON_INSTALL_DIR", "UV_CACHE_DIR"}:
                             environment.setdefault(key, value)
+                        elif key not in {"PATH", "CQ_ADDR"}:
+                            limitations.append(
+                                f"dropped {key} from the old cq server entry; set it again where cq needs it"
+                            )
                     update_file(settings_path, json.dumps(settings, indent=2) + "\n")
                     del data["mcpServers"]["cq"]
                     update_file(path, json.dumps(data, indent=2) + "\n")
