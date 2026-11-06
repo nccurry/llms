@@ -151,7 +151,7 @@ tasks:
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       LLMS_REQUIRE_PINNED_TOOLS: '{{.REQUIRE_PINNED_TOOLS | default ""}}'
-    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_configure_end_to_end'
+    cmd: '{{.PYTHON}} -m unittest tests.test_agent_setup tests.test_install_skills tests.test_fake_host tests.test_host_adapters tests.test_configure_end_to_end'
 
   test:agent-launchers:
     desc: Check pinned GitNexus launchers and emitted refresh commands.

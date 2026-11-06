@@ -23,13 +23,15 @@ import tomllib
 import urllib.parse
 import urllib.request
 import zipfile
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / ".tools" / "agent-tools"
-HOSTS = ("codex", "claude", "pi", "opencode")
 BACKUP_RUNS_KEPT = 60
+JSONC_PENDING = "would merge JSONC after tools:install; source validation pending"
+MANAGED_SETTINGS_ERROR = "requires remote managed settings"
 REMOTE_SERVER_FIELDS = (
     "url",
     "headers",
@@ -555,51 +557,66 @@ def backup_configuration(path: Path) -> None:
         shutil.rmtree(stale, ignore_errors=True)
 
 
-def merge_json(path: Path, servers: dict[str, Any], host: str, *, dry_run: bool = False) -> str:
-    if dry_run and path.suffix == ".jsonc" and not (TOOLS / "npm/package.json").is_file():
-        return "would merge JSONC after tools:install; source validation pending"
-    data = read_host_json(path) if path.exists() else {}
-    if host == "opencode":
-        # OpenCode 2 uses mcp.servers; keep v1 when an installed host requires it.
-        binary = shutil.which("opencode")
-        version = run([binary, "--version"], timeout=15) if binary else "2"
-        mcp = data.setdefault("mcp", {})
-        if version.startswith("1."):
-            container = mcp
-        else:
-            container = mcp.setdefault("servers", {})
-            for name, entry in list(mcp.items()):
-                if (
-                    name != "servers"
-                    and isinstance(entry, dict)
-                    and entry.get("type") in {"local", "remote"}
-                ):
-                    if name not in container:
-                        container[name] = entry
-                    del mcp[name]
-        for name, server in servers.items():
-            existing = container.setdefault(name, {})
-            for key in REMOTE_SERVER_FIELDS:
-                existing.pop(key, None)
-            environment = {**existing.get("environment", {}), **server.get("env", {})}
-            existing.update(
-                type="local",
-                command=[server["command"], *server["args"]],
-                environment=environment,
-            )
-    else:
-        for name, server in servers.items():
-            existing = data.setdefault("mcpServers", {}).setdefault(name, {})
-            for key in REMOTE_SERVER_FIELDS:
-                existing.pop(key, None)
-            environment = {**existing.get("env", {}), **server.get("env", {})}
-            existing.update(server, env=environment, type="stdio")
+def jsonc_pending(path: Path, dry_run: bool) -> bool:
+    return dry_run and path.suffix == ".jsonc" and not (TOOLS / "npm/package.json").is_file()
+
+
+def write_json_config(path: Path, data: dict[str, Any], *, dry_run: bool) -> str:
     text = (
         jsonc_document(path, data)["text"]
         if path.suffix == ".jsonc"
         else json.dumps(data, indent=2) + "\n"
     )
     return update_file(path, text, dry_run=dry_run)
+
+
+def merge_mcp_servers_json(path: Path, servers: dict[str, Any], *, dry_run: bool = False) -> str:
+    """Write stdio servers under `mcpServers`, with command, args and env."""
+    if jsonc_pending(path, dry_run):
+        return JSONC_PENDING
+    data = read_host_json(path) if path.exists() else {}
+    for name, server in servers.items():
+        existing = data.setdefault("mcpServers", {}).setdefault(name, {})
+        for key in REMOTE_SERVER_FIELDS:
+            existing.pop(key, None)
+        environment = {**existing.get("env", {}), **server.get("env", {})}
+        existing.update(server, env=environment, type="stdio")
+    return write_json_config(path, data, dry_run=dry_run)
+
+
+def merge_opencode_servers(path: Path, servers: dict[str, Any], *, dry_run: bool = False) -> str:
+    """Write local servers under `mcp` (v1) or `mcp.servers` (v2), whichever OpenCode reads."""
+    if jsonc_pending(path, dry_run):
+        return JSONC_PENDING
+    data = read_host_json(path) if path.exists() else {}
+    # OpenCode 2 uses mcp.servers; keep v1 when an installed host requires it.
+    binary = shutil.which(OPENCODE.name)
+    version = run([binary, "--version"], timeout=15) if binary else "2"
+    mcp = data.setdefault("mcp", {})
+    if version.startswith("1."):
+        container = mcp
+    else:
+        container = mcp.setdefault("servers", {})
+        for name, entry in list(mcp.items()):
+            if (
+                name != "servers"
+                and isinstance(entry, dict)
+                and entry.get("type") in {"local", "remote"}
+            ):
+                if name not in container:
+                    container[name] = entry
+                del mcp[name]
+    for name, server in servers.items():
+        existing = container.setdefault(name, {})
+        for key in REMOTE_SERVER_FIELDS:
+            existing.pop(key, None)
+        environment = {**existing.get("environment", {}), **server.get("env", {})}
+        existing.update(
+            type="local",
+            command=[server["command"], *server["args"]],
+            environment=environment,
+        )
+    return write_json_config(path, data, dry_run=dry_run)
 
 
 def merge_codex(path: Path, servers: dict[str, Any], *, dry_run: bool = False) -> str:
@@ -672,7 +689,7 @@ def servers() -> dict[str, Any]:
                 "start-mcp-server",
                 "--project-from-cwd",
                 "--context",
-                "codex",
+                "",  # host_servers sets the host's own value
                 "--open-web-dashboard",
                 "false",
             ],
@@ -702,61 +719,49 @@ def servers() -> dict[str, Any]:
     return configured
 
 
+def adapter_for(host: str) -> HostAdapter:
+    try:
+        return ADAPTERS[host]
+    except KeyError:
+        raise ValueError(f"Unknown host: {host}") from None
+
+
+def adapter_for_file(path: Path) -> HostAdapter:
+    """Find the adapter whose MCP server file has this name."""
+    for adapter in ADAPTERS.values():
+        if path.name in {file.name for file in adapter.server_files()}:
+            return adapter
+    raise ValueError(f"No host keeps its MCP servers in {path}")
+
+
 def selected_hosts(target: str) -> tuple[str, ...]:
-    return HOSTS if target == "all" else (target,)
+    return tuple(ADAPTERS) if target == "all" else (target,)
 
 
 def host_config(host: str) -> Path:
-    home = Path.home()
-    if host == "codex":
-        return Path(os.environ.get("CODEX_HOME", str(home / ".codex"))) / "config.toml"
-    if host == "opencode":
-        directory = home / ".config/opencode"
-        return next(
-            (
-                directory / name
-                for name in ("opencode.jsonc", "opencode.json", "config.json")
-                if (directory / name).is_file()
-            ),
-            directory / "opencode.json",
-        )
-    return home / {"claude": ".claude.json", "pi": ".pi/agent/AGENTS.md"}[host]
-
-
-def standard_codex_profile() -> bool:
-    return host_config("codex").parent.resolve() == (Path.home() / ".codex").resolve()
+    return adapter_for(host).config_path()
 
 
 def require_standard_profiles(target: str) -> None:
-    if "codex" in selected_hosts(target) and not standard_codex_profile():
-        raise RuntimeError(
-            f"CODEX_HOME is set to {host_config('codex').parent}; agents:configure supports only "
-            "the default ~/.codex. Unset CODEX_HOME and rerun, or use skills:install, "
-            "which supports a custom CODEX_HOME."
-        )
-    for host in selected_hosts(target):
-        path = host_config(host)
-        if host == "pi" or not path.is_file():
+    adapters = [adapter_for(host) for host in selected_hosts(target)]
+    for adapter in adapters:
+        profile = adapter.profile
+        if profile and not profile.is_standard():
+            raise RuntimeError(profile.startup_error.format(directory=adapter.config_path().parent))
+    for adapter in adapters:
+        path = adapter.config_path()
+        if not adapter.manages_servers or not path.is_file():
             continue
-        if host == "codex":
-            entry = (
-                tomllib.loads(path.read_text(encoding="utf-8"))
-                .get("mcp_servers", {})
-                .get("serena", {})
-            )
-        else:
-            if path.suffix == ".jsonc" and not (TOOLS / "npm/package.json").is_file():
-                continue  # Preview reports that JSONC validation awaits installation.
-            data = read_host_json(path)
-            container = data.get("mcp", {}) if host == "opencode" else data.get("mcpServers", {})
-            entry = container.get("servers", container).get("serena", {})
-        environment = entry.get("environment" if host == "opencode" else "env", {})
+        if path.suffix == ".jsonc" and not (TOOLS / "npm/package.json").is_file():
+            continue  # Preview reports that JSONC validation awaits installation.
+        entry = adapter.read_servers(path).get("serena", {})
+        environment = entry.get(adapter.env_key, {})
         override = environment.get("SERENA_HOME", "").strip()
         if override and (
             not Path(override).is_absolute() or Path(override).resolve() != serena_home()
         ):
             raise RuntimeError(
-                f"{host} has a different Serena home. Set SERENA_HOME to its existing "
+                f"{adapter.name} has a different Serena home. Set SERENA_HOME to its existing "
                 "absolute home before configuring, or deliberately remove that host override."
             )
 
@@ -791,13 +796,15 @@ def snapshot_configs(paths: set[Path]) -> dict[Path, str | None]:
     return {path: path.read_text(encoding="utf-8") if path.is_file() else None for path in paths}
 
 
-def restore_servers(snapshot: dict[Path, str | None]) -> None:
+def restore_servers(snapshot: dict[Path, str | None], adapter: HostAdapter | None = None) -> None:
     """Undo an upstream installer's MCP server edits, keeping all other changes.
 
     Upstream installers replace server entries this script manages, and some
     write a config file the host does not read. Only the server section is put
     back, onto the current file, so edits made meanwhile by a running host
     survive. A file the installer created that holds nothing else is removed.
+    The host's adapter names the server section; without one, the adapter that
+    owns the file is used.
     """
     import tomlkit  # noqa: PLC0415 - only Codex files need tomlkit, so import it when used
 
@@ -808,13 +815,7 @@ def restore_servers(snapshot: dict[Path, str | None]) -> None:
         if current == original:
             continue
         digest = hashlib.sha256(current.encode("utf-8")).hexdigest()
-        key = (
-            "mcp_servers"
-            if path.suffix == ".toml"
-            else "mcpServers"
-            if path.name == ".claude.json"
-            else "mcp"
-        )
+        key = (adapter or adapter_for_file(path)).servers_key
         if path.suffix == ".toml":
             document = tomlkit.parse(current)
             previous = tomlkit.parse(original or "")
@@ -845,12 +846,9 @@ def restore_servers(snapshot: dict[Path, str | None]) -> None:
 
 
 def existing_server(host: str, name: str) -> bool:
-    path = host_config(host)
-    if not path.exists():
-        return False
-    if host == "codex":
-        return name in tomllib.loads(path.read_text(encoding="utf-8")).get("mcp_servers", {})
-    return name in json.loads(path.read_text(encoding="utf-8-sig")).get("mcpServers", {})
+    adapter = adapter_for(host)
+    path = adapter.config_path()
+    return path.exists() and name in adapter.read_servers(path)
 
 
 def required_tool_paths() -> set[str]:
@@ -864,15 +862,20 @@ def required_tool_paths() -> set[str]:
 
 
 def host_servers(host: str) -> dict[str, Any]:
+    adapter = adapter_for(host)
     selected = servers()
-    if host == "claude" and claude_plugin_enabled():
-        selected.pop("cq", None)
-    if host != "codex":
+    for name in adapter.dropped_servers():
+        selected.pop(name, None)
+    if not adapter.keeps_startup_timeout:
         for server in selected.values():
             server.pop("startup_timeout_sec", None)
-        arguments = selected["serena"]["args"]
-        arguments[arguments.index("--context") + 1] = "claude-code" if host == "claude" else "ide"
+    arguments = selected["serena"]["args"]
+    arguments[arguments.index("--context") + 1] = adapter.serena_context
     return selected
+
+
+def managed_servers(host: str) -> dict[str, Any]:
+    return host_servers(host) if adapter_for(host).manages_servers else {}
 
 
 def claude_plugin_enabled() -> bool:
@@ -911,16 +914,12 @@ def preview(target: str) -> dict[str, Any]:
     require_standard_profiles(target)
     planned = []
     for host in selected_hosts(target):
-        path = host_config(host)
-        expected = host_servers(host) if host != "pi" else {}
-        if host == "codex":
-            action = merge_codex(path, expected, dry_run=True)
-        elif host == "pi":
-            action = configure_pi(dry_run=True)
-        else:
-            action = merge_json(path, expected, host, dry_run=True)
+        adapter = adapter_for(host)
+        path = adapter.config_path()
+        expected = managed_servers(host)
+        action = adapter.write_config(path, expected, dry_run=True)
         environment_action = (
-            configure_claude_environment(dry_run=True) if host == "claude" else None
+            adapter.environment_step(dry_run=True) if adapter.environment_step else None
         )
         planned.append(
             {
@@ -970,11 +969,7 @@ def skill_health(target: str) -> dict[str, Any]:
             if installer.digest_path(path / name) != installer.digest_path(src)
             or not (path / name / "SKILL.md").is_file()
         ]
-        roots = (
-            [Path.home() / ".agents/skills", Path.home() / ".codex/skills"]
-            if host == "codex"
-            else [path]
-        )
+        roots = adapter_for(host).skill_roots() or [path]
         conflicts = [
             name
             for name, src in sources.items()
@@ -1007,10 +1002,11 @@ def skill_health(target: str) -> dict[str, Any]:
 
 
 def gitnexus_hook_paths(host: str) -> tuple[Path, Path]:
-    directory = Path.home() / (".codex" if host == "codex" else ".claude")
-    return directory / (
-        "hooks.json" if host == "codex" else "settings.json"
-    ), directory / "hooks/gitnexus/gitnexus-hook.cjs"
+    adapter = adapter_for(host)
+    if adapter.hooks_dir is None:
+        raise ValueError(f"{host} has no hooks folder")
+    directory = Path.home() / adapter.hooks_dir
+    return directory / adapter.hooks_file, directory / "hooks/gitnexus/gitnexus-hook.cjs"
 
 
 def gitnexus_hook_launch(host: str) -> dict[str, Any]:
@@ -1022,7 +1018,7 @@ def gitnexus_hook_launch(host: str) -> dict[str, Any]:
         hook.as_posix(),
         Path(tool_command("gitnexus")[1]).as_posix(),
     ]
-    if host == "claude":
+    if adapter_for(host).hook_exec_form:
         return {"command": arguments[0], "args": arguments[1:]}
     script = "& " + " ".join("'" + arg.replace("'", "''") + "'" for arg in arguments)
     encoded = base64.b64encode(script.encode("utf-16-le")).decode("ascii")
@@ -1067,7 +1063,7 @@ def gitnexus_owned_hooks(data: dict[str, Any], host: str) -> list[dict[str, Any]
 
 
 def configure_gitnexus_hooks(host: str) -> None:
-    if host not in {"codex", "claude"}:
+    if adapter_for(host).hooks_dir is None:
         return
     path, _ = gitnexus_hook_paths(host)
     if not path.is_file():
@@ -1099,26 +1095,12 @@ def configure_gitnexus_hooks(host: str) -> None:
     update_file(path, json.dumps(data, indent=2) + "\n")
 
 
-# (event, matcher, serena-hooks command) per host, from Serena's client docs.
-SERENA_HOOKS = {
-    "claude": (
-        ("SessionStart", "startup|resume|clear|compact", "activate"),
-        ("PreToolUse", "", "remind"),
-        ("SessionEnd", "", "cleanup"),
-    ),
-    "codex": (
-        ("SessionStart", "startup|resume", "activate"),
-        ("PreToolUse", "Bash", "remind"),
-        ("SessionEnd", "", "cleanup"),
-    ),
-}
-
-
 def serena_hook(host: str, action: str) -> dict[str, Any]:
     binary = str(TOOLS / "bin" / ("serena-hooks" + (".exe" if os.name == "nt" else "")))
-    arguments = [action, "--client=" + ("claude-code" if host == "claude" else host)]
+    adapter = adapter_for(host)
+    arguments = [action, "--client=" + adapter.serena_client]
     hook: dict[str, Any] = {"type": "command", "timeout": 3 if action == "cleanup" else 5}
-    if host == "claude":
+    if adapter.hook_exec_form:
         hook.update(command=binary, args=arguments)
     else:
         join = subprocess.list2cmdline if os.name == "nt" else shlex.join
@@ -1128,7 +1110,8 @@ def serena_hook(host: str, action: str) -> dict[str, Any]:
 
 def configure_serena_hooks(host: str, *, dry_run: bool = False) -> str:
     """Remind agents to use Serena; without hooks they rarely load its tools."""
-    if host not in SERENA_HOOKS:
+    adapter = adapter_for(host)
+    if not adapter.serena_hooks:
         return "not applicable"
     path, _ = gitnexus_hook_paths(host)
     data = json.loads(path.read_text(encoding="utf-8-sig")) if path.is_file() else {}
@@ -1143,7 +1126,7 @@ def configure_serena_hooks(host: str, *, dry_run: bool = False) -> str:
         hooks[event] = [group for group in hooks[event] if group.get("hooks")]
         if not hooks[event]:
             del hooks[event]
-    for event, matcher, action in SERENA_HOOKS[host]:
+    for event, matcher, action in adapter.serena_hooks:
         group: dict[str, Any] = {"hooks": [serena_hook(host, action)]}
         if matcher:
             group = {"matcher": matcher, **group}
@@ -1151,195 +1134,194 @@ def configure_serena_hooks(host: str, *, dry_run: bool = False) -> str:
     return update_file(path, json.dumps(data, indent=2) + "\n", dry_run=dry_run)
 
 
-def configure(target: str) -> dict[str, Any]:
-    require_standard_profiles(target)
-    results = []
-    missing = [
-        name
-        for name, spec in manifest()["tools"].items()
-        if installed_version(name) != spec["version"]
-    ]
-    if missing:
+class StandardProfile(NamedTuple):
+    """A host whose profile folder an environment variable can move."""
+
+    is_standard: Callable[[], bool]
+    startup_error: str  # uses {directory}
+    doctor_problem: str  # uses {directory}
+
+
+class HostAdapter(NamedTuple):
+    """Everything setup needs to know about one host.
+
+    `configure`, `preview`, `doctor` and the helpers under them take host
+    details only from here. To add a host, define one adapter and add it to
+    `ADAPTERS`.
+    """
+
+    name: str  # also the host's command-line client and cq's `--target`
+    config_path: Callable[[], Path]  # the file that holds the managed servers
+    # Write the managed servers to the config file; return the action taken.
+    write_config: Callable[..., str]
+    # Name each way the config differs from what `write_config` writes.
+    check_config: Callable[[HostAdapter, Path], list[str]]
+    serena_client: str  # `serena setup <client>` and `serena-hooks --client=<client>`
+    gitnexus_client: str  # `gitnexus setup -c <client>`
+    serena_context: str  # Serena's `--context` for this host
+    # Files other than the config and hooks files that configure backs up first.
+    backup_paths: Callable[[], list[Path]] = list
+    # Other files an upstream installer might write this host's servers to.
+    extra_server_files: Callable[[], set[Path]] = set
+    # Folders that can also hold this host's skills; empty: only the installer's folder.
+    skill_roots: Callable[[], list[Path]] = list
+    manages_servers: bool = True  # False: no MCP servers, only a CLI mapping
+    servers_key: str = "mcpServers"  # the config section that holds the servers
+    env_key: str = "env"  # a server's environment, under that name
+    command_is_list: bool = False  # server command and args are one list
+    read_servers: Callable[[Path], dict[str, Any]] = lambda path: {}
+    keeps_startup_timeout: bool = False
+    dropped_servers: Callable[[], tuple[str, ...]] = lambda: ()
+    hooks_dir: str | None = None  # under the home folder; None: no hooks file
+    hooks_file: str = ""
+    hook_exec_form: bool = False  # hooks hold `command` and `args`, not one command line
+    serena_hooks: tuple[tuple[str, str, str], ...] = ()  # (event, matcher, action)
+    runs_serena_setup: bool = False
+    needs_client_binary: bool = False  # serena and cq setup need the host's own client
+    missing_client_limitation: str = ""
+    tolerates_managed_settings_error: bool = False
+    managed_settings_limitation: str = ""  # uses {error}
+    profile: StandardProfile | None = None
+    environment_step: Callable[..., str] | None = None
+    migrate_config: Callable[[Path, list[str]], None] | None = None
+    extra_problems: Callable[[Path, dict[str, Any]], list[str]] | None = None
+
+    def server_files(self) -> set[Path]:
+        return {self.config_path(), *self.extra_server_files()}
+
+
+def codex_config_path() -> Path:
+    return Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))) / "config.toml"
+
+
+def standard_codex_profile() -> bool:
+    return codex_config_path().parent.resolve() == (Path.home() / ".codex").resolve()
+
+
+def codex_backup_paths() -> list[Path]:
+    return [codex_config_path().parent / "AGENTS.md"]
+
+
+def codex_skill_roots() -> list[Path]:
+    return [Path.home() / ".agents/skills", Path.home() / ".codex/skills"]
+
+
+def read_codex_servers(path: Path) -> dict[str, Any]:
+    return tomllib.loads(path.read_text(encoding="utf-8")).get("mcp_servers", {})
+
+
+def claude_config_path() -> Path:
+    return Path.home() / ".claude.json"
+
+
+def read_claude_servers(path: Path) -> dict[str, Any]:
+    return read_host_json(path).get("mcpServers", {})
+
+
+def claude_dropped_servers() -> tuple[str, ...]:
+    return ("cq",) if claude_plugin_enabled() else ()
+
+
+def migrate_claude_cq_entry(path: Path, limitations: list[str]) -> None:
+    """Move this script's old cq server entry into Claude's settings for the cq plugin."""
+    if not (claude_plugin_enabled() and path.exists()):
+        return
+    data = json.loads(path.read_text(encoding="utf-8-sig"))
+    manual = data.get("mcpServers", {}).get("cq", {})
+    if manual.get("command") == tool_command("cq")[0]:
+        settings_path = Path.home() / ".claude/settings.json"
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+        environment = settings.setdefault("env", {})
+        # Global env reaches every Claude process; move only the
+        # values this script wrote, and report anything else.
+        for key, value in manual.get("env", {}).items():
+            if key in {"UV_PYTHON_INSTALL_DIR", "UV_CACHE_DIR"}:
+                environment.setdefault(key, value)
+            elif key not in {"PATH", "CQ_ADDR"}:
+                limitations.append(
+                    f"dropped {key} from the old cq server entry; set it again where cq needs it"
+                )
+        update_file(settings_path, json.dumps(settings, indent=2) + "\n")
+        del data["mcpServers"]["cq"]
+        update_file(path, json.dumps(data, indent=2) + "\n")
+    elif manual:
         raise RuntimeError(
-            "Pinned tools are missing: "
-            + ", ".join(missing)
-            + ". Run ./bootstrap.sh tools:install first."
+            "An existing unmanaged Claude cq server conflicts with the cq plugin; "
+            "preserve its settings and resolve that entry before configuring"
         )
-    serena = serena_configuration(apply=True)
-    home = Path.home()
-    for host in selected_hosts(target):
-        upstream = []
-        limitations = []
-        paths = [host_config(host)]
-        if host == "claude":
-            paths.append(home / ".claude/settings.json")
-        elif host == "codex":
-            paths.append(host_config(host).parent / "AGENTS.md")
-            paths.append(gitnexus_hook_paths(host)[0])
-        elif host == "pi":
-            paths.append(home / ".pi/agent/settings.json")
-        else:
-            paths.append(home / ".config/opencode/AGENTS.md")
-        for path in paths:
-            backup_configuration(path)
-        # Register an absent server through upstream; preserve existing entries.
-        client = "claude-code" if host == "claude" else host
-        if host == "claude":
-            configure_claude_environment()
-        if (
-            host == "codex" or (host == "claude" and shutil.which("claude"))
-        ) and not existing_server(host, "serena"):
-            try:
-                upstream.append(run([*tool_command("serena"), "setup", client], timeout=90))
-            except RuntimeError as error:
-                if "not found or not functional" not in str(error) and not (
-                    host == "claude" and "requires remote managed settings" in str(error)
-                ):
-                    raise
-                limitations.append(
-                    f"serena setup {client} failed, so this script wrote Serena's MCP entry "
-                    f"itself: {error}"
-                )
-        # Upstream installers own their skills and hooks but rewrite MCP server
-        # entries; the managed merge below writes those.
-        server_paths = {host_config(host)}
-        if host == "opencode":
-            server_paths.update(
-                home / ".config/opencode" / name
-                for name in ("opencode.json", "opencode.jsonc", "config.json")
-            )
-        for path in server_paths - set(paths):
-            backup_configuration(path)
-        if host != "pi" and manifest()["tools"]["gitnexus"].get("integration_enabled", True):
-            snapshot = snapshot_configs(server_paths)
-            try:
-                upstream.append(
-                    run(
-                        [
-                            *tool_command("gitnexus"),
-                            "setup",
-                            "-c",
-                            "claude" if host == "claude" else host,
-                        ],
-                        timeout=90,
-                    )
-                )
-            finally:
-                restore_servers(snapshot)
-            configure_gitnexus_hooks(host)
-        # Use cq's maintained skill/instruction installer. Claude's plugin route
-        # needs Claude CLI; other hosts can be configured without their binaries.
-        if host != "claude" or shutil.which("claude"):
-            snapshot = snapshot_configs(server_paths) if host != "pi" else {}
-            try:
-                upstream.append(run([*tool_command("cq"), "install", "--target", host], timeout=90))
-            except RuntimeError as error:
-                if host != "claude" or "requires remote managed settings" not in str(error):
-                    raise
-                limitations.append(
-                    "cq plugin setup unavailable; rerun agents:configure after "
-                    f"claude auth login: {error}"
-                )
-            finally:
-                restore_servers(snapshot)
-        else:
-            limitations.append(
-                "cq's Claude plugin installation requires Claude CLI; "
-                "rerun agents:configure after installing that client"
-            )
-        hooks_action = configure_serena_hooks(host)
-        selected = host_servers(host) if host != "pi" else {}
-        if host == "codex":
-            path = host_config(host)
-            action = merge_codex(path, selected)
-        elif host == "pi":
-            # Pi uses cq's CLI mapping, not an invented MCP adapter.
-            path = home / ".pi/agent/AGENTS.md"
-            action = "configured CLI mapping"
-            configure_pi()
-        else:
-            path = host_config(host)
-            if host == "claude" and claude_plugin_enabled() and path.exists():
-                data = json.loads(path.read_text(encoding="utf-8-sig"))
-                manual = data.get("mcpServers", {}).get("cq", {})
-                if manual.get("command") == tool_command("cq")[0]:
-                    settings_path = home / ".claude/settings.json"
-                    settings = json.loads(settings_path.read_text(encoding="utf-8"))
-                    environment = settings.setdefault("env", {})
-                    # Global env reaches every Claude process; move only the
-                    # values this script wrote, and report anything else.
-                    for key, value in manual.get("env", {}).items():
-                        if key in {"UV_PYTHON_INSTALL_DIR", "UV_CACHE_DIR"}:
-                            environment.setdefault(key, value)
-                        elif key not in {"PATH", "CQ_ADDR"}:
-                            limitations.append(
-                                f"dropped {key} from the old cq server entry; "
-                                "set it again where cq needs it"
-                            )
-                    update_file(settings_path, json.dumps(settings, indent=2) + "\n")
-                    del data["mcpServers"]["cq"]
-                    update_file(path, json.dumps(data, indent=2) + "\n")
-                elif manual:
-                    raise RuntimeError(
-                        "An existing unmanaged Claude cq server conflicts with the cq plugin; "
-                        "preserve its settings and resolve that entry before configuring"
-                    )
-            action = merge_json(path, selected, host)
-        results.append(
-            {
-                "host": host,
-                "config": str(path),
-                "action": action,
-                "serena_hooks": hooks_action,
-                "client_available": bool(shutil.which(host)),
-                "upstream_installers": bool(upstream),
-                "limitations": limitations,
-                "note": (
-                    "MCP servers configured; client connection and hook trust require verification"
-                    if host != "pi"
-                    else "cq CLI mapping; other CLIs available through Task"
-                ),
-            }
-        )
-    return {
-        "serena": serena,
-        "hosts": results,
-        "disabled_integrations": [
-            name
-            for name, spec in manifest()["tools"].items()
-            if spec.get("integration_enabled") is False
-        ],
-    }
 
 
-def host_problems(host: str) -> list[str]:
-    """Name each way a host's managed configuration differs from what configure writes."""
-    home = Path.home()
-    path = host_config(host)
-    if host == "codex" and not standard_codex_profile():
-        return [f"CODEX_HOME is {path.parent}; agents:configure supports only ~/.codex"]
-    if not path.is_file():
-        return [f"{path} not found"]
+def claude_plugin_problems(path: Path, container: dict[str, Any]) -> list[str]:
+    if not claude_plugin_enabled():
+        return []
+    reasons = []
+    settings = json.loads((Path.home() / ".claude/settings.json").read_text(encoding="utf-8"))
+    if "cq" in container:
+        reasons.append(f"an old cq server entry in {path} duplicates the cq plugin")
+    if settings.get("env", {}).get("CQ_ADDR") != "":
+        reasons.append("CQ_ADDR in ~/.claude/settings.json is not empty, so cq may sync remotely")
+    return reasons
+
+
+def pi_config_path() -> Path:
+    return Path.home() / ".pi/agent/AGENTS.md"
+
+
+def pi_backup_paths() -> list[Path]:
+    return [Path.home() / ".pi/agent/settings.json"]
+
+
+def write_pi_mapping(path: Path, servers: dict[str, Any], *, dry_run: bool = False) -> str:
+    """Pi uses cq's CLI mapping, not an invented MCP adapter."""
+    action = configure_pi(dry_run=dry_run)
+    return action if dry_run else "configured CLI mapping"
+
+
+def pi_problems(adapter: HostAdapter, path: Path) -> list[str]:
     reasons: list[str] = []
-    if host == "pi":
-        text = path.read_text(encoding="utf-8")
-        settings_path = home / ".pi/agent/settings.json"
-        settings = (
-            json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
-        )
-        cq_block = re.search(r"<!-- cq:start -->(.*?)<!-- cq:end -->", text, re.S)
-        if not (cq_block and f"The cq binary is: `{tool_command('cq')[0]}`." in cq_block.group(1)):
-            reasons.append(f"cq instructions in {path} are missing or point elsewhere")
-        if not settings.get("shellCommandPrefix", "").rstrip().endswith("export CQ_ADDR='';"):
-            reasons.append(f"{settings_path} does not keep cq local (CQ_ADDR)")
-        return reasons
-    if host == "codex":
-        container = tomllib.loads(path.read_text(encoding="utf-8")).get("mcp_servers", {})
-    else:
-        data = read_host_json(path)
-        container = data.get("mcpServers", {}) if host == "claude" else data.get("mcp", {})
-        container = container.get("servers", container)
-    expected = host_servers(host)
+    text = path.read_text(encoding="utf-8")
+    settings_path = Path.home() / ".pi/agent/settings.json"
+    settings = (
+        json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
+    )
+    cq_block = re.search(r"<!-- cq:start -->(.*?)<!-- cq:end -->", text, re.S)
+    if not (cq_block and f"The cq binary is: `{tool_command('cq')[0]}`." in cq_block.group(1)):
+        reasons.append(f"cq instructions in {path} are missing or point elsewhere")
+    if not settings.get("shellCommandPrefix", "").rstrip().endswith("export CQ_ADDR='';"):
+        reasons.append(f"{settings_path} does not keep cq local (CQ_ADDR)")
+    return reasons
+
+
+def opencode_files() -> set[Path]:
+    directory = Path.home() / ".config/opencode"
+    return {directory / name for name in ("opencode.json", "opencode.jsonc", "config.json")}
+
+
+def opencode_config_path() -> Path:
+    directory = Path.home() / ".config/opencode"
+    return next(
+        (
+            directory / name
+            for name in ("opencode.jsonc", "opencode.json", "config.json")
+            if (directory / name).is_file()
+        ),
+        directory / "opencode.json",
+    )
+
+
+def opencode_backup_paths() -> list[Path]:
+    return [Path.home() / ".config/opencode/AGENTS.md"]
+
+
+def read_opencode_servers(path: Path) -> dict[str, Any]:
+    mcp = read_host_json(path).get("mcp", {})
+    return mcp.get("servers", mcp)
+
+
+def server_problems(adapter: HostAdapter, path: Path) -> list[str]:
+    reasons: list[str] = []
+    container = adapter.read_servers(path)
+    expected = host_servers(adapter.name)
     for name, wanted in expected.items():
         actual = container.get(name)
         if actual is None:
@@ -1347,20 +1329,20 @@ def host_problems(host: str) -> list[str]:
             continue
         if any(key in actual for key in REMOTE_SERVER_FIELDS):
             reasons.append(f"{name} server in {path} has remote connection fields")
-        if (host == "opencode" and actual.get("type") != "local") or (
-            host != "opencode" and actual.get("type") not in {None, "stdio"}
+        if (adapter.command_is_list and actual.get("type") != "local") or (
+            not adapter.command_is_list and actual.get("type") not in {None, "stdio"}
         ):
             reasons.append(f"{name} server in {path} is not a local command")
         wanted_command = (
-            [wanted["command"], *wanted["args"]] if host == "opencode" else wanted["command"]
+            [wanted["command"], *wanted["args"]] if adapter.command_is_list else wanted["command"]
         )
         if actual.get("command") != wanted_command or (
-            host != "opencode" and actual.get("args") != wanted["args"]
+            not adapter.command_is_list and actual.get("args") != wanted["args"]
         ):
             reasons.append(f"{name} server in {path} runs a different command")
         if actual.get("enabled") is False or actual.get("disabled") is True:
             reasons.append(f"{name} server in {path} is turned off")
-        environment = actual.get("environment" if host == "opencode" else "env", {})
+        environment = actual.get(adapter.env_key, {})
         if any(
             environment.get(key) != value
             for key, value in wanted.get("env", {}).items()
@@ -1374,30 +1356,288 @@ def host_problems(host: str) -> list[str]:
         }
         if not required_tool_paths().issubset(actual_paths):
             reasons.append(f"{name} server PATH in {path} lacks the pinned tool folders")
-    if host in SERENA_HOOKS and configure_serena_hooks(host, dry_run=True) != "unchanged":
-        reasons.append(f"Serena hooks in {gitnexus_hook_paths(host)[0]} are missing or stale")
-    if "gitnexus" in expected and host in {"codex", "claude"}:
-        hooks_path, hook_script = gitnexus_hook_paths(host)
+    if adapter.serena_hooks and configure_serena_hooks(adapter.name, dry_run=True) != "unchanged":
+        reasons.append(
+            f"Serena hooks in {gitnexus_hook_paths(adapter.name)[0]} are missing or stale"
+        )
+    if "gitnexus" in expected and adapter.hooks_dir is not None:
+        hooks_path, hook_script = gitnexus_hook_paths(adapter.name)
         hook_data = (
             json.loads(hooks_path.read_text(encoding="utf-8-sig")) if hooks_path.is_file() else {}
         )
-        owned = gitnexus_owned_hooks(hook_data, host)
-        launch = gitnexus_hook_launch(host)
+        owned = gitnexus_owned_hooks(hook_data, adapter.name)
+        launch = gitnexus_hook_launch(adapter.name)
         if (
             not hook_script.is_file()
             or not owned
             or any(any(hook.get(k) != v for k, v in launch.items()) for hook in owned)
         ):
             reasons.append(f"GitNexus hooks in {hooks_path} are missing or stale")
-    if host == "claude" and claude_plugin_enabled():
-        settings = json.loads((home / ".claude/settings.json").read_text(encoding="utf-8"))
-        if "cq" in container:
-            reasons.append(f"an old cq server entry in {path} duplicates the cq plugin")
-        if settings.get("env", {}).get("CQ_ADDR") != "":
-            reasons.append(
-                "CQ_ADDR in ~/.claude/settings.json is not empty, so cq may sync remotely"
-            )
+    if adapter.extra_problems:
+        reasons.extend(adapter.extra_problems(path, container))
     return reasons
+
+
+CODEX = HostAdapter(
+    name="codex",
+    config_path=codex_config_path,
+    write_config=merge_codex,
+    check_config=server_problems,
+    serena_client="codex",
+    gitnexus_client="codex",
+    serena_context="codex",
+    backup_paths=codex_backup_paths,
+    skill_roots=codex_skill_roots,
+    servers_key="mcp_servers",
+    read_servers=read_codex_servers,
+    keeps_startup_timeout=True,
+    hooks_dir=".codex",
+    hooks_file="hooks.json",
+    serena_hooks=(
+        ("SessionStart", "startup|resume", "activate"),
+        ("PreToolUse", "Bash", "remind"),
+        ("SessionEnd", "", "cleanup"),
+    ),
+    runs_serena_setup=True,
+    profile=StandardProfile(
+        is_standard=standard_codex_profile,
+        startup_error=(
+            "CODEX_HOME is set to {directory}; agents:configure supports only "
+            "the default ~/.codex. Unset CODEX_HOME and rerun, or use skills:install, "
+            "which supports a custom CODEX_HOME."
+        ),
+        doctor_problem="CODEX_HOME is {directory}; agents:configure supports only ~/.codex",
+    ),
+)
+CLAUDE = HostAdapter(
+    name="claude",
+    config_path=claude_config_path,
+    write_config=merge_mcp_servers_json,
+    check_config=server_problems,
+    serena_client="claude-code",
+    gitnexus_client="claude",
+    serena_context="claude-code",
+    read_servers=read_claude_servers,
+    dropped_servers=claude_dropped_servers,
+    hooks_dir=".claude",
+    hooks_file="settings.json",
+    hook_exec_form=True,
+    serena_hooks=(
+        ("SessionStart", "startup|resume|clear|compact", "activate"),
+        ("PreToolUse", "", "remind"),
+        ("SessionEnd", "", "cleanup"),
+    ),
+    runs_serena_setup=True,
+    needs_client_binary=True,
+    missing_client_limitation=(
+        "cq's Claude plugin installation requires Claude CLI; "
+        "rerun agents:configure after installing that client"
+    ),
+    tolerates_managed_settings_error=True,
+    managed_settings_limitation=(
+        "cq plugin setup unavailable; rerun agents:configure after claude auth login: {error}"
+    ),
+    environment_step=configure_claude_environment,
+    migrate_config=migrate_claude_cq_entry,
+    extra_problems=claude_plugin_problems,
+)
+PI = HostAdapter(
+    name="pi",
+    config_path=pi_config_path,
+    write_config=write_pi_mapping,
+    check_config=pi_problems,
+    serena_client="pi",
+    gitnexus_client="pi",
+    serena_context="ide",
+    backup_paths=pi_backup_paths,
+    manages_servers=False,
+)
+OPENCODE = HostAdapter(
+    name="opencode",
+    config_path=opencode_config_path,
+    write_config=merge_opencode_servers,
+    check_config=server_problems,
+    serena_client="opencode",
+    gitnexus_client="opencode",
+    serena_context="ide",
+    backup_paths=opencode_backup_paths,
+    extra_server_files=opencode_files,
+    servers_key="mcp",
+    env_key="environment",
+    command_is_list=True,
+    read_servers=read_opencode_servers,
+)
+# The host list: its order is the order setup configures hosts in.
+ADAPTERS: dict[str, HostAdapter] = {
+    adapter.name: adapter for adapter in (CODEX, CLAUDE, PI, OPENCODE)
+}
+
+
+def require_pinned_tools() -> None:
+    missing = [
+        name
+        for name, spec in manifest()["tools"].items()
+        if installed_version(name) != spec["version"]
+    ]
+    if missing:
+        raise RuntimeError(
+            "Pinned tools are missing: "
+            + ", ".join(missing)
+            + ". Run ./bootstrap.sh tools:install first."
+        )
+
+
+def run_with_server_restore(
+    adapter: HostAdapter, command: list[str], server_paths: set[Path]
+) -> str:
+    """Run an upstream installer, then put back the MCP servers it rewrote."""
+    snapshot = snapshot_configs(server_paths)
+    try:
+        return run(command, timeout=90)
+    finally:
+        restore_servers(snapshot, adapter)
+
+
+def back_up_host_files(adapter: HostAdapter) -> list[Path]:
+    paths = [adapter.config_path(), *adapter.backup_paths()]
+    if adapter.hooks_dir is not None:
+        paths.append(gitnexus_hook_paths(adapter.name)[0])
+    for path in paths:
+        backup_configuration(path)
+    return paths
+
+
+def register_serena(adapter: HostAdapter, upstream: list[str], limitations: list[str]) -> None:
+    """Register an absent Serena server through upstream; preserve existing entries."""
+    if not adapter.runs_serena_setup:
+        return
+    if adapter.needs_client_binary and not shutil.which(adapter.name):
+        return
+    if existing_server(adapter.name, "serena"):
+        return
+    try:
+        upstream.append(run([*tool_command("serena"), "setup", adapter.serena_client], timeout=90))
+    except RuntimeError as error:
+        if "not found or not functional" not in str(error) and not (
+            adapter.tolerates_managed_settings_error and MANAGED_SETTINGS_ERROR in str(error)
+        ):
+            raise
+        limitations.append(
+            f"serena setup {adapter.serena_client} failed, so this script wrote Serena's MCP "
+            f"entry itself: {error}"
+        )
+
+
+def back_up_server_files(adapter: HostAdapter, backed_up: list[Path]) -> set[Path]:
+    # Upstream installers own their skills and hooks but rewrite MCP server
+    # entries; the managed merge below writes those.
+    server_paths = adapter.server_files()
+    for path in server_paths - set(backed_up):
+        backup_configuration(path)
+    return server_paths
+
+
+def set_up_gitnexus(adapter: HostAdapter, server_paths: set[Path], upstream: list[str]) -> None:
+    if not (
+        adapter.manages_servers and manifest()["tools"]["gitnexus"].get("integration_enabled", True)
+    ):
+        return
+    upstream.append(
+        run_with_server_restore(
+            adapter,
+            [*tool_command("gitnexus"), "setup", "-c", adapter.gitnexus_client],
+            server_paths,
+        )
+    )
+    configure_gitnexus_hooks(adapter.name)
+
+
+def run_cq_install(
+    adapter: HostAdapter, server_paths: set[Path], upstream: list[str], limitations: list[str]
+) -> None:
+    """Use cq's maintained skill/instruction installer.
+
+    Claude's plugin route needs the Claude CLI; other hosts can be configured
+    without their binaries.
+    """
+    if adapter.needs_client_binary and not shutil.which(adapter.name):
+        limitations.append(adapter.missing_client_limitation)
+        return
+    try:
+        upstream.append(
+            run_with_server_restore(
+                adapter,
+                [*tool_command("cq"), "install", "--target", adapter.name],
+                server_paths if adapter.manages_servers else set(),
+            )
+        )
+    except RuntimeError as error:
+        if not (adapter.tolerates_managed_settings_error and MANAGED_SETTINGS_ERROR in str(error)):
+            raise
+        limitations.append(adapter.managed_settings_limitation.format(error=error))
+
+
+def write_managed_config(adapter: HostAdapter, limitations: list[str]) -> tuple[Path, str]:
+    selected = managed_servers(adapter.name)
+    path = adapter.config_path()
+    if adapter.migrate_config:
+        adapter.migrate_config(path, limitations)
+    return path, adapter.write_config(path, selected)
+
+
+def configure_host(adapter: HostAdapter) -> dict[str, Any]:
+    upstream: list[str] = []
+    limitations: list[str] = []
+    backed_up = back_up_host_files(adapter)
+    if adapter.environment_step:
+        adapter.environment_step()
+    register_serena(adapter, upstream, limitations)
+    server_paths = back_up_server_files(adapter, backed_up)
+    set_up_gitnexus(adapter, server_paths, upstream)
+    run_cq_install(adapter, server_paths, upstream, limitations)
+    hooks_action = configure_serena_hooks(adapter.name)
+    path, action = write_managed_config(adapter, limitations)
+    return {
+        "host": adapter.name,
+        "config": str(path),
+        "action": action,
+        "serena_hooks": hooks_action,
+        "client_available": bool(shutil.which(adapter.name)),
+        "upstream_installers": bool(upstream),
+        "limitations": limitations,
+        "note": (
+            "MCP servers configured; client connection and hook trust require verification"
+            if adapter.manages_servers
+            else "cq CLI mapping; other CLIs available through Task"
+        ),
+    }
+
+
+def configure(target: str) -> dict[str, Any]:
+    require_standard_profiles(target)
+    require_pinned_tools()
+    serena = serena_configuration(apply=True)
+    results = [configure_host(adapter_for(host)) for host in selected_hosts(target)]
+    return {
+        "serena": serena,
+        "hosts": results,
+        "disabled_integrations": [
+            name
+            for name, spec in manifest()["tools"].items()
+            if spec.get("integration_enabled") is False
+        ],
+    }
+
+
+def host_problems(host: str) -> list[str]:
+    """Name each way a host's managed configuration differs from what configure writes."""
+    adapter = adapter_for(host)
+    path = adapter.config_path()
+    if adapter.profile and not adapter.profile.is_standard():
+        return [adapter.profile.doctor_problem.format(directory=path.parent)]
+    if not path.is_file():
+        return [f"{path} not found"]
+    return adapter.check_config(adapter, path)
 
 
 def doctor(target: str) -> dict[str, Any]:
@@ -1515,7 +1755,7 @@ def main(argv: list[str] | None = None) -> int:
         ),
         required=True,
     )
-    parser.add_argument("--target", choices=("all", *HOSTS), default="all")
+    parser.add_argument("--target", choices=("all", *ADAPTERS), default="all")
     parser.add_argument("--output", choices=("json", "text"), default="text")
     parser.add_argument("--tool", choices=("serena", "ast-grep", "gitnexus", "cq"))
     parser.add_argument("arguments", nargs=argparse.REMAINDER)
