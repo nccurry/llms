@@ -81,6 +81,10 @@ RETIRED_SKILLS = [
     "wrap-this-up",
 ]
 
+MAX_DESCRIPTION_LENGTH = 1024
+SHORT_DESCRIPTION_LENGTHS = range(25, 65)
+MAX_EXTERNAL_DOWNLOAD_BYTES = 2_000_000
+
 NAME_RE = re.compile(r"^[a-z0-9-]{1,64}$")
 LEGACY_BACKUP_RE = re.compile(
     r"^(?P<skill>[a-z0-9-]+)\.backup-(?P<timestamp>\d{8}-\d{6})(?:-\d+)?$"
@@ -268,8 +272,7 @@ def parse_openai_interface(openai_yaml: Path) -> tuple[dict[str, str], list[str]
     if not interface_seen:
         errors.append("agents/openai.yaml is missing interface:")
 
-    for key in sorted(required - set(fields)):
-        errors.append(f"agents/openai.yaml is missing {key}")
+    errors.extend(f"agents/openai.yaml is missing {key}" for key in sorted(required - set(fields)))
 
     return fields, errors
 
@@ -312,7 +315,7 @@ def validate_skill(source: Path, name: str, *, external: bool = False) -> dict[s
     description = frontmatter.get("description", "")
     if not description:
         errors.append("frontmatter description is required")
-    if len(description) > 1024:
+    if len(description) > MAX_DESCRIPTION_LENGTH:
         errors.append("frontmatter description must be 1024 characters or fewer")
     if "<" in description or ">" in description:
         errors.append("frontmatter description cannot contain angle brackets")
@@ -323,7 +326,7 @@ def validate_skill(source: Path, name: str, *, external: bool = False) -> dict[s
         interface, interface_errors = parse_openai_interface(openai_yaml)
         errors.extend(interface_errors)
         short_description = interface.get("short_description", "")
-        if short_description and not 25 <= len(short_description) <= 64:
+        if short_description and len(short_description) not in SHORT_DESCRIPTION_LENGTHS:
             errors.append("short_description must contain 25 to 64 characters")
         default_prompt = interface.get("default_prompt", "")
         skill_token = re.compile(rf"\${re.escape(name)}(?![a-z0-9-])")
@@ -334,14 +337,15 @@ def validate_skill(source: Path, name: str, *, external: bool = False) -> dict[s
             portable_explicit_only = frontmatter.get("disable-model-invocation", False)
             if explicit_only != portable_explicit_only:
                 errors.append(
-                    "explicit-only invocation must agree between agents/openai.yaml and disable-model-invocation"
+                    "explicit-only invocation must agree between agents/openai.yaml "
+                    "and disable-model-invocation"
                 )
 
     return {"skill": name, "valid": not errors, "errors": errors}
 
 
 def dependency_manifest(source: Path) -> dict[str, Any]:
-    """Custom sources remain offline and independent of this repository."""
+    """Load the pinned dependency manifest; custom sources get none, staying offline."""
     if source.resolve() != default_source().resolve():
         return {}
     path = repo_root() / "agent-dependencies.json"
@@ -403,9 +407,9 @@ def pinned_external_errors(path: Path, spec: dict[str, Any]) -> list[str]:
 
 
 def download_pinned(url: str, expected_hash: str) -> bytes:
-    with urllib.request.urlopen(url, timeout=30) as response:
-        data = response.read(2_000_001)
-    if len(data) > 2_000_000:
+    with urllib.request.urlopen(url, timeout=30) as response:  # noqa: S310 - manifest URLs are checked to be https
+        data = response.read(MAX_EXTERNAL_DOWNLOAD_BYTES + 1)
+    if len(data) > MAX_EXTERNAL_DOWNLOAD_BYTES:
         raise ValueError("external skill download exceeds 2 MB")
     if hashlib.sha256(data).hexdigest() != expected_hash:
         raise ValueError(f"external download checksum mismatch: {url}")
@@ -421,8 +425,8 @@ def refresh_external_specs(manifest: dict[str, Any]) -> dict[str, Any]:
         if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
             raise ValueError(f"{name}: refresh requires a GitHub owner/repository")
         if repository not in commits:
-            result = subprocess.run(
-                ["git", "ls-remote", f"https://github.com/{repository}.git", "HEAD"],
+            result = subprocess.run(  # noqa: S603 - fixed git command; the repository name is checked above
+                ["git", "ls-remote", f"https://github.com/{repository}.git", "HEAD"],  # noqa: S607 - git is a prerequisite found on PATH
                 check=True,
                 capture_output=True,
                 text=True,
@@ -438,9 +442,9 @@ def refresh_external_specs(manifest: dict[str, Any]) -> dict[str, Any]:
             if not spec[field].startswith(old_prefix):
                 raise ValueError(f"{name}: {field} does not match its GitHub source")
             spec[field] = new_prefix + spec[field][len(old_prefix) :]
-            with urllib.request.urlopen(spec[field], timeout=30) as response:
-                payload = response.read(2_000_001)
-            if len(payload) > 2_000_000:
+            with urllib.request.urlopen(spec[field], timeout=30) as response:  # noqa: S310 - the URL was built from a checked GitHub prefix
+                payload = response.read(MAX_EXTERNAL_DOWNLOAD_BYTES + 1)
+            if len(payload) > MAX_EXTERNAL_DOWNLOAD_BYTES:
                 raise ValueError(f"{name}: upstream payload exceeds 2 MB")
             spec[hash_field] = hashlib.sha256(payload).hexdigest()
         spec["commit"] = commits[repository]
@@ -514,7 +518,8 @@ def markdown_reference_errors(skill_dir: Path, bundle: dict[str, Path]) -> list[
                 relative = file.relative_to(skill_dir).as_posix()
                 if owner not in bundle:
                     errors.append(
-                        f"{relative}:{number}: local Markdown reference is outside the installed skill bundle: {target!r}"
+                        f"{relative}:{number}: local Markdown reference is outside "
+                        f"the installed skill bundle: {target!r}"
                     )
                 elif not bundle[owner].joinpath(*parts[1:]).exists():
                     errors.append(
@@ -652,7 +657,7 @@ def staging_root(target_dir: Path) -> Path:
 
 
 def install_record(target_dir: Path) -> Path:
-    """The file listing the skills this installer put in target_dir."""
+    """Return the file listing the skills this installer put in target_dir."""
     return target_dir.with_name(f".{target_dir.name}-installed.json")
 
 
@@ -830,6 +835,7 @@ def install_skill(
     source_skill: Path,
     destination: Path,
     target_name: str,
+    *,
     dry_run: bool,
     timestamp: str,
     run_id: str,
@@ -872,11 +878,11 @@ def install_skill(
         stage_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(source_skill, stage_path)
         if digest_path(stage_path) != source_digest:
-            raise RuntimeError(f"staged skill digest mismatch for {source_skill.name}")
+            raise RuntimeError(f"staged skill digest mismatch for {source_skill.name}")  # noqa: TRY301 - the except below rolls back and reports it
 
         if destination.exists() or destination.is_symlink():
             if backup_path is None:
-                raise RuntimeError(f"backup path is missing for {destination}")
+                raise RuntimeError(f"backup path is missing for {destination}")  # noqa: TRY301 - the except below rolls back and reports it
             backup_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(destination), str(backup_path))
             previous_moved = True
@@ -886,7 +892,7 @@ def install_skill(
         stage_path.rename(destination)
         installed_digest = digest_path(destination)
         if installed_digest != source_digest:
-            raise RuntimeError(f"installed skill digest mismatch for {source_skill.name}")
+            raise RuntimeError(f"installed skill digest mismatch for {source_skill.name}")  # noqa: TRY301 - the except below rolls back and reports it
     except Exception as error:
         if previous_moved or promotion_attempted:
             rollback_result = {
@@ -952,9 +958,9 @@ def install_skills(
                     source_skill,
                     target_dir / skill_name,
                     target_name,
-                    dry_run,
-                    timestamp,
-                    run_id,
+                    dry_run=dry_run,
+                    timestamp=timestamp,
+                    run_id=run_id,
                 )
                 skills.append(result)
                 if not dry_run and result["action"] in {"created", "updated"}:
@@ -1172,7 +1178,6 @@ def main(argv: list[str]) -> int:
             staged.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
             os.replace(staged, destination)
         emit(result, args.output)
-        return 0
     except Exception as error:
         failure = {"command": args.command, "error": str(error)}
         if args.output == "json":
@@ -1180,6 +1185,8 @@ def main(argv: list[str]) -> int:
         else:
             print(f"error: {error}", file=sys.stderr)
         return 1
+    else:
+        return 0
 
 
 if __name__ == "__main__":
