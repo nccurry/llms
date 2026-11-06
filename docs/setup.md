@@ -47,6 +47,7 @@ Add `OUTPUT=json` to get reports in JSON format.
 | `install:dry-run TARGET=...` | Shows the tool, skill, and configuration changes without making them |
 | `deps:install`, alias `setup` | Installs pinned Task, uv, and Node, and prepares piw's development environment |
 | `deps:dev-tools` | Not part of `deps:install`. Installs the development-only tools: the hash-pinned Ruff and Pyright from `lint/requirements.txt` into `.tools/lint/`, shellcheck and PowerShell 7 pinned in `lint/mise.toml` (locked in `lint/mise.lock`), and the PowerShell modules Pester and PSScriptAnalyzer into `.tools/powershell-modules/`. Each module download is checked against the SHA-256 in `lint/powershell-modules.json` before it is unpacked. `lint:python`, `lint:shell`, `lint:powershell` and `test:powershell` need it |
+| `deps:dev-tools:lock` | Regenerates `lint/requirements.txt` and `lint/mise.lock` after you edit `lint/requirements.in` or `lint/mise.toml` |
 | `lint:python` | Runs Ruff lint, Ruff format check, and Pyright on the Python outside `piw/` |
 | `lint:shell` | Runs shellcheck on `bootstrap.sh` |
 | `lint:powershell` | Runs PSScriptAnalyzer on every tracked `.ps1` file, including its Windows PowerShell 5.1 syntax and command checks |
@@ -126,28 +127,31 @@ For native tool updates, edit `mise.toml`, then refresh `mise.lock` with this
 checkout's mise binary. `vars.mise_version` selects the bootstrap release. Keep exact
 version pins and review lockfile changes. `deps:check` reports updates without applying them.
 
-The lint tools are pinned in `lint/requirements.in` and are not reported by `deps:check`. To
-update them, edit that file, then regenerate the hashed list:
+The Python lint tools are pinned in `lint/requirements.in`, and shellcheck and PowerShell in
+`lint/mise.toml`, apart from `mise.toml`, so the install tasks never download them. None of them is
+reported by `deps:check`. To change one, edit that file, then run:
 
 ```sh
-MISE_DATA_DIR=.tools/mise/data .tools/bin/mise exec -- uv pip compile --generate-hashes --python-version 3.14 lint/requirements.in -o lint/requirements.txt
+task deps:dev-tools:lock
 ```
 
-Review the diff, then rerun `task deps:dev-tools` and `task lint:python`.
+It regenerates the hashed `lint/requirements.txt` and `lint/mise.lock` (for the six platforms in
+`mise.lock`) with the same environment the other tasks use. Review the diff, then rerun
+`task deps:dev-tools` and `task lint:python`.
 
-shellcheck and PowerShell are pinned in `lint/mise.toml`, apart from `mise.toml`, so the
-installed tools (`install`, `deps:install`) never download them. Task runs mise with `lint/` as the
-working directory, and mise then reads `lint/mise.toml` along with the root `mise.toml`. To
-change a version, edit `lint/mise.toml` and refresh the lock with this checkout's mise binary:
-
-```sh
-cd lint && MISE_DATA_DIR=../.tools/mise/data ../.tools/bin/mise lock -p linux-x64,linux-arm64,macos-x64,macos-arm64,windows-x64,windows-arm64
-```
+The lint-only mise tools use their own data directory, `.tools/lint-mise/data`, and read only
+`lint/mise.toml` (Task runs mise with `lint/` as the working directory and stops it at the checkout
+root). mise rebuilds every shim in a data directory it installs into, and rebuilds them to point at
+the `mise` it runs from. Keeping these tools out of `.tools/mise/data` means `deps:dev-tools` never
+changes those shims. For the install itself, `scripts/reshim_shared_data.sh` (run by
+`bootstrap.sh` and `deps:tools`) puts the shims back, using the `mise` of the checkout that owns the
+data directory when `.tools/mise/data` is a link to another checkout's.
 
 Pester and PSScriptAnalyzer are pinned in `lint/powershell-modules.json`. To change one, set the
 new version and the SHA-256 of its `.nupkg` file from
 `https://www.powershellgallery.com/api/v2/package/<name>/<version>`, then rerun
-`task deps:dev-tools`.
+`task deps:dev-tools`. `lint:powershell` and `test:powershell` import the pinned copy by its exact
+path and fail if PowerShell loads a module from anywhere else.
 
 ## Windows setup: what Linux checks cannot prove
 
@@ -161,8 +165,8 @@ Windows itself. These behaviors need a Windows host:
 - Windows PowerShell 5.1 at runtime. The Linux checks run PowerShell 7 and only read the 5.1
   command list; they cannot catch a difference in behavior.
 - The ACLs that `scripts/set_private_permissions.ps1` writes.
-- Task's `[ -L ... ]` test on `.tools/mise/data` in `deps:tools`, when that folder is a junction
-  or symbolic link on Windows.
+- `deps:tools` when `.tools/mise/data` is a junction to another checkout's data. On Linux, a
+  script puts the shims back; on Windows that step is skipped, and nothing has run it.
 - Codex running the Windows hook commands through `cmd`: the Serena hook command line and the
   GitNexus `commandWindows` value that starts Windows PowerShell with `-EncodedCommand`.
 
@@ -171,28 +175,46 @@ Windows itself. These behaviors need a Windows host:
 Use a Windows 10 or 11 machine with Windows PowerShell 5.1 and a user account that is not an
 administrator. Use a checkout path with a space and an apostrophe, such as
 `C:\Users\Test User\My 'Repos'\llms`. To check the typographic apostrophe case too, use
-`O’Brien` (with U+2019) in the user folder name.
+`O’Brien` (with U+2019) in the user folder name. Run the PowerShell commands in a Windows
+PowerShell 5.1 window in the checkout, and the `cmd` commands in a `cmd.exe` window.
 
-1. In a normal (non-elevated) Windows PowerShell 5.1 window, run
-   `powershell -NoProfile -ExecutionPolicy Bypass -File .\bootstrap.ps1 deps:install`. It should end
-   without an error and create `.tools\bin\mise.exe`, `.tools\bin\mise-shim.exe` and
+1. Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\bootstrap.ps1 deps:install`. It
+   should end without an error and create `.tools\bin\mise.exe`, `.tools\bin\mise-shim.exe` and
    `.tools\bin\task.cmd`.
-2. Check the line endings of `task.cmd`:
+2. Check the line endings of `task.cmd`. This should print `True`:
    `$b = [IO.File]::ReadAllBytes('.tools\bin\task.cmd'); ($b | Where-Object { $_ -eq 10 }).Count -eq ($b | Where-Object { $_ -eq 13 }).Count`
-   should print `True`. Run step 1 again and check that the file's last write time did not change.
-3. From a `cmd.exe` window in a different folder, put `.tools\bin` on `PATH` and run
-   `task --version`, then `task` with no arguments. Both should run through the bootstrap and
-   print Task output, not a parse error from `cmd`.
-4. Run `.\bootstrap.ps1 deps:tools` twice. The second run should finish without an error, which
-   covers Task's `[ -L ]` test.
-5. Run `.\bootstrap.ps1 tools:install`, `.\bootstrap.ps1 agents:configure TARGET=codex` and
-   `.\bootstrap.ps1 doctor TARGET=codex`. `doctor` should report no problems.
-6. Open `%USERPROFILE%\.codex\hooks.json`. Copy a Serena hook `command` and the GitNexus
-   `commandWindows` value into a `cmd.exe` window one at a time. Each should start without a
-   quoting error (the Serena command prints a usage or JSON message and exits).
-7. Check the ACLs on a file the setup protects, for example
-   `icacls $env:USERPROFILE\.codex\config.toml`. Only your account and `SYSTEM` should appear,
-   and inheritance should be off.
+   Run step 1 again and check that the file's last write time did not change. To check an upgrade,
+   replace the file's line endings with LF, run step 1 once (the file becomes CRLF again), then
+   once more (no change).
+3. In a `cmd.exe` window in a different folder, run
+   `set "PATH=<checkout>\.tools\bin;%PATH%"`, then `task --version`, then `task` with no
+   arguments. Both should run through the bootstrap and print Task output, not a parse error from
+   `cmd`. Use `task` for the next steps in this window.
+4. Run `task deps:tools` twice. The second run should finish without an error. Then check a
+   junction: make a second checkout (for example `git worktree add ..\llms-second`), and in it
+   run `cmd /c mklink /J .tools\mise\data <first checkout>\.tools\mise\data` (create `.tools\mise`
+   first), then `powershell -NoProfile -ExecutionPolicy Bypass -File .\bootstrap.ps1 deps:tools`.
+   It should end without an error. Back in the first checkout, run
+   `.tools\mise\data\shims\node.exe --version`; it should still print Node's version. Remove the
+   junction (`rmdir .tools\mise\data` removes only the link) and the second checkout afterwards.
+5. Run `task tools:install`, `task agents:configure TARGET=codex` and `task doctor TARGET=codex`.
+   `doctor` should report no problems.
+6. Read the Codex hook commands with PowerShell and run each one by hand in a `cmd.exe` window.
+   List them with:
+   `(Get-Content "$env:USERPROFILE\.codex\hooks.json" -Raw | ConvertFrom-Json).hooks.PSObject.Properties | ForEach-Object { $n = $_.Name; $_.Value.hooks | ForEach-Object { "[$n]"; $_.command; $_.commandWindows } }`
+   It prints each event's name, then each hook's `command` and (when it has one) `commandWindows`.
+   Paste each `commandWindows` value, or the `command` value for a hook without one, into `cmd`
+   with `echo {} |` in front, for example `echo {} | "C:\...\serena-hooks.exe" remind --client=codex`.
+   Each should start without a quoting or parsing error. (A hook may print a message or an error
+   about the empty event it received; that is fine.)
+7. Check the ACLs on something setup always restricts. When setup updates a config file that
+   already exists, it keeps that file's own ACL, so `config.toml` is not a good check on a profile
+   that already had one. Backups are always restricted: run
+   `icacls .tools\agent-tools\config-backups` and then `icacls` on the newest folder inside it.
+   Only your account and `SYSTEM` should appear, and inheritance should be off. If there is no
+   `config-backups` folder, setup updated no existing file (a fresh profile): then
+   `icacls "%USERPROFILE%\.codex\config.toml"` shows the ACL of a file setup created, with the same
+   expected result.
 8. Start Codex, open a project, and confirm that the session-start hook runs without an error in
    its log.
 
