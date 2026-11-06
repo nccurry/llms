@@ -62,12 +62,14 @@ tasks:
       - '[ -L "{{.ROOT_DIR}}/.tools/mise/data" ] || {{.MISE}} reshim'
 
   deps:dev-tools:
-    desc: Rebuild .tools/lint from the hash-pinned lint and type-check tools.
+    desc: Rebuild .tools/lint from the hash-pinned lint and type-check tools; not part of deps:install.
     cmds:
       - '{{.UV}} venv --clear --python "{{.PYTHON_VERSION}}" "{{.ROOT_DIR}}/.tools/lint"'
       - >-
         {{.UV}} pip install --require-hashes --python "{{.LINT_PYTHON}}"
         -r "{{.ROOT_DIR}}/lint/requirements.txt"
+      # Written last: lint:python treats a missing or different copy as a stale or half-built install.
+      - 'cat "{{.ROOT_DIR}}/lint/requirements.txt" > "{{.ROOT_DIR}}/.tools/lint/requirements.txt"'
 
   deps:verify:
     desc: Show resolved native development tools.
@@ -157,20 +159,33 @@ tasks:
   lint:python:
     desc: Run ruff and pyright on the Python outside piw; needs deps:dev-tools first.
     preconditions:
-      - sh: '"{{.LINT_PYTHON}}" --version'
+      - sh: '[ "$(cat "{{.ROOT_DIR}}/.tools/lint/requirements.txt")" = "$(cat "{{.ROOT_DIR}}/lint/requirements.txt")" ]'
+        msg: Run `task deps:dev-tools` to install the lint tools.
+      - sh: '"{{.LINT_BIN}}/ruff" --version && "{{.LINT_BIN}}/pyright" --version'
         msg: Run `task deps:dev-tools` to install the lint tools.
     dir: '{{.ROOT_DIR}}'
+    # Pyright's PyPI wrapper must run its bundled pyright with the pinned nodejs-wheel-binaries
+    # Node. Empty values switch off the variables that would make it download a pyright, a Node
+    # or a Pylance-matched pyright; the folders keep anything it writes under .tools/lint.
     env:
       PYRIGHT_PYTHON_IGNORE_WARNINGS: '1'
+      PYRIGHT_PYTHON_FORCE_VERSION: ''
+      PYRIGHT_PYTHON_PYLANCE_VERSION: ''
+      PYRIGHT_PYTHON_NODE_VERSION: ''
+      PYRIGHT_PYTHON_USE_BUNDLED_PYRIGHT: '1'
+      PYRIGHT_PYTHON_NODEJS_WHEEL: '1'
+      PYRIGHT_PYTHON_GLOBAL_NODE: '0'
+      PYRIGHT_PYTHON_ENV_DIR: '{{.ROOT_DIR}}/.tools/lint/pyright-env'
+      PYRIGHT_PYTHON_CACHE_DIR: '{{.ROOT_DIR}}/.tools/lint/pyright-cache'
     cmds:
       - '"{{.LINT_BIN}}/ruff" --version'
       - '"{{.LINT_BIN}}/pyright" --version'
       - '"{{.LINT_BIN}}/ruff" check'
       - '"{{.LINT_BIN}}/ruff" format --check'
-      - '"{{.LINT_BIN}}/pyright" -p lint/pyrightconfig.json'
+      - '"{{.LINT_BIN}}/pyright" --warnings -p lint/pyrightconfig.json'
 
   check:
-    desc: Run every local check without installing anything; fetches external skills.
+    desc: Run every local check without installing anything; needs deps:dev-tools once first; fetches external skills.
     env:
       LLMS_REQUIRE_PINNED_TOOLS: '1'
     cmds:
