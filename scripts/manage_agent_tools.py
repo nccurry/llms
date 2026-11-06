@@ -158,7 +158,7 @@ def node_command() -> str:
             return recorded
     command = shutil.which("node")
     if not command:
-        raise RuntimeError("Node is missing. Run bootstrap deps:install first.")
+        raise RuntimeError("Node is missing. Run ./bootstrap.sh deps:install first.")
     return command
 
 
@@ -411,7 +411,7 @@ def serena_constraints_current() -> bool:
 def install() -> dict[str, Any]:
     node = shutil.which("node")
     if not node:
-        raise RuntimeError("Node is missing. Run bootstrap deps:install first.")
+        raise RuntimeError("Node is missing. Run ./bootstrap.sh deps:install first.")
     TOOLS.mkdir(parents=True, exist_ok=True)
     runtime = {name: shutil.which(name) for name in ("node", "uv", "task")}
     # .tools/bin/task forwards to this repo's bootstrap; agents get the real Task.
@@ -763,7 +763,9 @@ def standard_codex_profile() -> bool:
 def require_standard_profiles(target: str) -> None:
     if "codex" in selected_hosts(target) and not standard_codex_profile():
         raise RuntimeError(
-            "Managed agent setup supports the standard ~/.codex profile; clear a custom CODEX_HOME before configuration. Skills-only installation supports custom destinations."
+            f"CODEX_HOME is set to {host_config('codex').parent}; agents:configure supports only "
+            "the default ~/.codex. Unset CODEX_HOME and rerun, or use skills:install, "
+            "which supports a custom CODEX_HOME."
         )
     for host in selected_hosts(target):
         path = host_config(host)
@@ -976,6 +978,7 @@ def preview(target: str) -> dict[str, Any]:
                 "action": action,
                 "managed_servers": list(expected),
                 "environment_action": environment_action,
+                "serena_hooks": configure_serena_hooks(host, dry_run=True),
                 "upstream_setup": "would run supported upstream installers; native plugin changes are host-dependent",
             }
         )
@@ -1030,11 +1033,13 @@ def skill_health(target: str) -> dict[str, Any]:
         ]
         if missing:
             problems.append(
-                f"{host} missing or changed installed skills: {', '.join(missing)}"
+                f"{host}: skills missing or changed: {', '.join(missing)}; "
+                f"run ./bootstrap.sh skills:install TARGET={host}"
             )
         if conflicts:
             problems.append(
-                f"{host} conflicting discovery copies: {', '.join(sorted(set(conflicts)))}"
+                f"{host}: other copies of {', '.join(sorted(set(conflicts)))} differ from the "
+                "installed skills and may load instead; remove them or rerun skills:install"
             )
         hosts.append(
             {
@@ -1130,13 +1135,68 @@ def configure_gitnexus_hooks(host: str) -> None:
             for hook in group.get("hooks", []):
                 matcher = group.get("matcher", "")
                 if id(hook) in owned:
-                    if matcher in seen:
+                    # The search augment reopens the graph database on every
+                    # Grep/Glob/Bash call (~0.9 s, ~700 MB); agents can query
+                    # the GitNexus MCP server instead. Keep the stale-index check.
+                    if event == "PreToolUse" or matcher in seen:
                         continue
                     seen.add(matcher)
                 retained.append(hook)
             group["hooks"] = retained
         data["hooks"][event] = [group for group in groups if group.get("hooks")]
     update_file(path, json.dumps(data, indent=2) + "\n")
+
+
+# (event, matcher, serena-hooks command) per host, from Serena's client docs.
+SERENA_HOOKS = {
+    "claude": (
+        ("SessionStart", "startup|resume|clear|compact", "activate"),
+        ("PreToolUse", "", "remind"),
+        ("SessionEnd", "", "cleanup"),
+    ),
+    "codex": (
+        ("SessionStart", "startup|resume", "activate"),
+        ("PreToolUse", "Bash", "remind"),
+        ("SessionEnd", "", "cleanup"),
+    ),
+}
+
+
+def serena_hook(host: str, action: str) -> dict[str, Any]:
+    binary = str(TOOLS / "bin" / ("serena-hooks" + (".exe" if os.name == "nt" else "")))
+    arguments = [action, "--client=" + ("claude-code" if host == "claude" else host)]
+    hook: dict[str, Any] = {"type": "command", "timeout": 3 if action == "cleanup" else 5}
+    if host == "claude":
+        hook.update(command=binary, args=arguments)
+    else:
+        join = subprocess.list2cmdline if os.name == "nt" else shlex.join
+        hook["command"] = join([binary, *arguments])
+    return hook
+
+
+def configure_serena_hooks(host: str, *, dry_run: bool = False) -> str:
+    """Remind agents to use Serena; without hooks they rarely load its tools."""
+    if host not in SERENA_HOOKS:
+        return "not applicable"
+    path, _ = gitnexus_hook_paths(host)
+    data = json.loads(path.read_text(encoding="utf-8-sig")) if path.is_file() else {}
+    hooks = data.setdefault("hooks", {})
+    for event in list(hooks):
+        for group in hooks[event]:
+            group["hooks"] = [
+                hook
+                for hook in group.get("hooks", [])
+                if "serena-hooks" not in " ".join([hook.get("command", ""), *hook.get("args", [])])
+            ]
+        hooks[event] = [group for group in hooks[event] if group.get("hooks")]
+        if not hooks[event]:
+            del hooks[event]
+    for event, matcher, action in SERENA_HOOKS[host]:
+        group: dict[str, Any] = {"hooks": [serena_hook(host, action)]}
+        if matcher:
+            group = {"matcher": matcher, **group}
+        hooks.setdefault(event, []).append(group)
+    return update_file(path, json.dumps(data, indent=2) + "\n", dry_run=dry_run)
 
 
 def configure(target: str) -> dict[str, Any]:
@@ -1148,7 +1208,11 @@ def configure(target: str) -> dict[str, Any]:
         if installed_version(name) != spec["version"]
     ]
     if missing:
-        raise RuntimeError("Install pinned tools first: " + ", ".join(missing))
+        raise RuntimeError(
+            "Pinned tools are missing: "
+            + ", ".join(missing)
+            + ". Run ./bootstrap.sh tools:install first."
+        )
     serena = serena_configuration(apply=True)
     home = Path.home()
     for host in selected_hosts(target):
@@ -1184,7 +1248,7 @@ def configure(target: str) -> dict[str, Any]:
                 ):
                     raise
                 limitations.append(
-                    f"Serena client setup unavailable; using documented manual MCP configuration: {error}"
+                    f"serena setup {client} failed, so this script wrote Serena's MCP entry itself: {error}"
                 )
         # Upstream installers own their skills and hooks but rewrite MCP server
         # entries; the managed merge below writes those.
@@ -1233,6 +1297,7 @@ def configure(target: str) -> dict[str, Any]:
             limitations.append(
                 "cq's Claude plugin installation requires Claude CLI; rerun agents:configure after installing that client"
             )
+        hooks_action = configure_serena_hooks(host)
         selected = host_servers(host) if host != "pi" else {}
         if host == "codex":
             path = host_config(host)
@@ -1273,6 +1338,7 @@ def configure(target: str) -> dict[str, Any]:
                 "host": host,
                 "config": str(path),
                 "action": action,
+                "serena_hooks": hooks_action,
                 "client_available": bool(shutil.which(host)),
                 "upstream_installers": bool(upstream),
                 "limitations": limitations,
@@ -1292,6 +1358,99 @@ def configure(target: str) -> dict[str, Any]:
     }
 
 
+def host_problems(host: str) -> list[str]:
+    """Name each way a host's managed configuration differs from what configure writes."""
+    home = Path.home()
+    path = host_config(host)
+    if host == "codex" and not standard_codex_profile():
+        return [f"CODEX_HOME is {path.parent}; agents:configure supports only ~/.codex"]
+    if not path.is_file():
+        return [f"{path} not found"]
+    reasons: list[str] = []
+    if host == "pi":
+        text = path.read_text(encoding="utf-8")
+        settings_path = home / ".pi/agent/settings.json"
+        settings = (
+            json.loads(settings_path.read_text(encoding="utf-8"))
+            if settings_path.exists()
+            else {}
+        )
+        cq_block = re.search(r"<!-- cq:start -->(.*?)<!-- cq:end -->", text, re.S)
+        if not (
+            cq_block
+            and f"The cq binary is: `{tool_command('cq')[0]}`." in cq_block.group(1)
+        ):
+            reasons.append(f"cq instructions in {path} are missing or point elsewhere")
+        if not settings.get("shellCommandPrefix", "").rstrip().endswith("export CQ_ADDR='';"):
+            reasons.append(f"{settings_path} does not keep cq local (CQ_ADDR)")
+        return reasons
+    if host == "codex":
+        container = tomllib.loads(path.read_text(encoding="utf-8")).get("mcp_servers", {})
+    else:
+        data = read_host_json(path)
+        container = data.get("mcpServers", {}) if host == "claude" else data.get("mcp", {})
+        container = container.get("servers", container)
+    expected = host_servers(host)
+    for name, wanted in expected.items():
+        actual = container.get(name)
+        if actual is None:
+            reasons.append(f"{name} server missing from {path}")
+            continue
+        if any(key in actual for key in REMOTE_SERVER_FIELDS):
+            reasons.append(f"{name} server in {path} has remote connection fields")
+        if (host == "opencode" and actual.get("type") != "local") or (
+            host != "opencode" and actual.get("type") not in {None, "stdio"}
+        ):
+            reasons.append(f"{name} server in {path} is not a local command")
+        wanted_command = (
+            [wanted["command"], *wanted["args"]] if host == "opencode" else wanted["command"]
+        )
+        if actual.get("command") != wanted_command or (
+            host != "opencode" and actual.get("args") != wanted["args"]
+        ):
+            reasons.append(f"{name} server in {path} runs a different command")
+        if actual.get("enabled") is False or actual.get("disabled") is True:
+            reasons.append(f"{name} server in {path} is turned off")
+        environment = actual.get("environment" if host == "opencode" else "env", {})
+        if any(
+            environment.get(key) != value
+            for key, value in wanted.get("env", {}).items()
+            if key != "PATH"
+        ):
+            reasons.append(f"{name} server in {path} has different environment values")
+        actual_paths = {
+            os.path.normcase(os.path.normpath(value))
+            for value in environment.get("PATH", "").split(os.pathsep)
+            if value
+        }
+        if not required_tool_paths().issubset(actual_paths):
+            reasons.append(f"{name} server PATH in {path} lacks the pinned tool folders")
+    if host in SERENA_HOOKS and configure_serena_hooks(host, dry_run=True) != "unchanged":
+        reasons.append(f"Serena hooks in {gitnexus_hook_paths(host)[0]} are missing or stale")
+    if "gitnexus" in expected and host in {"codex", "claude"}:
+        hooks_path, hook_script = gitnexus_hook_paths(host)
+        hook_data = (
+            json.loads(hooks_path.read_text(encoding="utf-8-sig"))
+            if hooks_path.is_file()
+            else {}
+        )
+        owned = gitnexus_owned_hooks(hook_data, host)
+        launch = gitnexus_hook_launch(host)
+        if (
+            not hook_script.is_file()
+            or not owned
+            or any(any(hook.get(k) != v for k, v in launch.items()) for hook in owned)
+        ):
+            reasons.append(f"GitNexus hooks in {hooks_path} are missing or stale")
+    if host == "claude" and claude_plugin_enabled():
+        settings = json.loads((home / ".claude/settings.json").read_text(encoding="utf-8"))
+        if "cq" in container:
+            reasons.append(f"an old cq server entry in {path} duplicates the cq plugin")
+        if settings.get("env", {}).get("CQ_ADDR") != "":
+            reasons.append("CQ_ADDR in ~/.claude/settings.json is not empty, so cq may sync remotely")
+    return reasons
+
+
 def doctor(target: str) -> dict[str, Any]:
     tools = [
         {
@@ -1302,7 +1461,8 @@ def doctor(target: str) -> dict[str, Any]:
         for name, spec in manifest()["tools"].items()
     ]
     problems = [
-        f"{t['tool']} version mismatch"
+        f"{t['tool']}: installed {t['installed'] or 'none'}, expected {t['expected']}; "
+        "run ./bootstrap.sh tools:install"
         for t in tools
         if t["installed"] != t["expected"]
     ]
@@ -1310,120 +1470,21 @@ def doctor(target: str) -> dict[str, Any]:
         "dependency_overrides", {}
     ):
         problems.append(
-            "Serena security dependency versions do not match the reviewed overrides"
+            "Serena's pinned security patches (dependency_overrides in "
+            "agent-dependencies.json) are not installed; run ./bootstrap.sh tools:install"
         )
     hosts = []
     for host in selected_hosts(target):
-        home = Path.home()
-        path = host_config(host)
-        configured = path.is_file()
-        container = {}
-        if configured and host == "codex":
-            container = tomllib.loads(path.read_text(encoding="utf-8")).get(
-                "mcp_servers", {}
-            )
-        elif configured and host in {"claude", "opencode"}:
-            data = read_host_json(path)
-            container = (
-                data.get("mcpServers", {}) if host == "claude" else data.get("mcp", {})
-            )
-            container = container.get("servers", container)
-        if configured and host != "pi":
-            expected = host_servers(host)
-            for name, wanted in expected.items():
-                actual = container.get(name, {})
-                if any(key in actual for key in REMOTE_SERVER_FIELDS):
-                    configured = False
-                if (host == "opencode" and actual.get("type") != "local") or (
-                    host != "opencode" and actual.get("type") not in {None, "stdio"}
-                ):
-                    configured = False
-                command = actual.get("command")
-                wanted_command = (
-                    [wanted["command"], *wanted["args"]]
-                    if host == "opencode"
-                    else wanted["command"]
-                )
-                if (
-                    command != wanted_command
-                    or actual.get("enabled") is False
-                    or actual.get("disabled") is True
-                ):
-                    configured = False
-                if host != "opencode" and actual.get("args") != wanted["args"]:
-                    configured = False
-                environment = actual.get(
-                    "environment" if host == "opencode" else "env", {}
-                )
-                if any(
-                    environment.get(key) != value
-                    for key, value in wanted.get("env", {}).items()
-                    if key != "PATH"
-                ):
-                    configured = False
-                actual_paths = {
-                    os.path.normcase(os.path.normpath(value))
-                    for value in environment.get("PATH", "").split(os.pathsep)
-                    if value
-                }
-                if not required_tool_paths().issubset(actual_paths):
-                    configured = False
-            if (
-                "gitnexus" in expected
-                and host in {"codex", "claude"}
-                and (host != "codex" or standard_codex_profile())
-            ):
-                hooks_path, hook_script = gitnexus_hook_paths(host)
-                hook_data = (
-                    json.loads(hooks_path.read_text(encoding="utf-8-sig"))
-                    if hooks_path.is_file()
-                    else {}
-                )
-                owned = gitnexus_owned_hooks(hook_data, host)
-                if (
-                    not hook_script.is_file()
-                    or not owned
-                    or any(
-                        any(
-                            hook.get(key) != value
-                            for key, value in gitnexus_hook_launch(host).items()
-                        )
-                        for hook in owned
-                    )
-                ):
-                    configured = False
-            if host == "claude" and claude_plugin_enabled():
-                settings = json.loads(
-                    (home / ".claude/settings.json").read_text(encoding="utf-8")
-                )
-                if "cq" in container or settings.get("env", {}).get("CQ_ADDR") != "":
-                    configured = False
-        elif configured:
-            text = path.read_text(encoding="utf-8")
-            settings_path = home / ".pi/agent/settings.json"
-            settings = (
-                json.loads(settings_path.read_text(encoding="utf-8"))
-                if settings_path.exists()
-                else {}
-            )
-            cq_block = re.search(r"<!-- cq:start -->(.*?)<!-- cq:end -->", text, re.S)
-            configured = bool(
-                cq_block
-                and f"The cq binary is: `{tool_command('cq')[0]}`." in cq_block.group(1)
-            ) and settings.get("shellCommandPrefix", "").rstrip().endswith(
-                "export CQ_ADDR='';"
-            )
-        if host == "codex" and not standard_codex_profile():
-            configured = False
-            problems.append(
-                "Managed Codex integrations require the standard ~/.codex profile"
-            )
-        if not configured:
-            problems.append(f"{host} integration not configured")
+        reasons = host_problems(host)
+        problems.extend(
+            f"{host}: {reason}; run ./bootstrap.sh agents:configure TARGET={host}"
+            for reason in reasons
+        )
         hosts.append(
             {
                 "host": host,
-                "configured": configured,
+                "configured": not reasons,
+                "reasons": reasons,
                 "client_available": bool(shutil.which(host)),
                 "connection_verified": False,
             }
@@ -1432,7 +1493,10 @@ def doctor(target: str) -> dict[str, Any]:
     problems.extend(skills["problems"])
     serena = serena_configuration()
     if not serena["configured"]:
-        problems.append("Serena dashboard preferences do not match managed settings")
+        problems.append(
+            "Serena dashboard settings differ from agent-dependencies.json; "
+            "run ./bootstrap.sh agents:configure"
+        )
     return {
         "tools": tools,
         "serena": serena,
@@ -1445,7 +1509,8 @@ def doctor(target: str) -> dict[str, Any]:
             for name, spec in manifest()["tools"].items()
             if spec.get("integration_enabled") is False
         ],
-        "note": "Configuration checks do not establish live host connections or trusted hooks.",
+        "note": "doctor only reads files. Restart each agent, approve new hooks if asked, "
+        "and try a query to confirm the tools connect.",
     }
 
 
@@ -1473,14 +1538,15 @@ def emit(result: dict[str, Any], output: str) -> None:
         if isinstance(host, str):
             print(f"host: {host}")
         else:
-            state = host.get("action", f"configured={host.get('configured')}")
+            state = host.get(
+                "action", "configured" if host.get("configured") else "NOT configured"
+            )
             print(f"{host['host']}: {state}")
             for limitation in host.get("limitations", []):
-                print(f"  {limitation}")
+                print(f"  skipped (needs follow-up): {limitation}")
     for host in result.get("skills", {}).get("hosts", []):
-        print(
-            f"{host['host']} skills: {host['expected_count']} expected; digest_verified={host['digest_verified']}"
-        )
+        state = "all up to date" if host["digest_verified"] else "some missing or changed"
+        print(f"{host['host']} skills: {host['expected_count']} expected, {state}")
     for problem in result.get("problems", []):
         print(f"problem: {problem}")
     if result.get("disabled_integrations"):
@@ -1517,10 +1583,13 @@ def main(argv: list[str] | None = None) -> int:
             spec = manifest()["tools"][args.tool]
             if spec.get("integration_enabled") is False:
                 raise RuntimeError(
-                    f"{args.tool} is installed but disabled pending license suitability; see {spec.get('license_url')}"
+                    f"{args.tool} is turned off (integration_enabled: false in agent-dependencies.json); "
+                    f"its license is at {spec.get('license_url')}"
                 )
             if installed_version(args.tool) != spec["version"]:
-                raise RuntimeError(f"Install the pinned {args.tool} first")
+                raise RuntimeError(
+                    f"The pinned {args.tool} is not installed. Run ./bootstrap.sh tools:install first."
+                )
             arguments = (
                 args.arguments[1:] if args.arguments[:1] == ["--"] else args.arguments
             )

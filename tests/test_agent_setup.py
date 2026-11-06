@@ -64,7 +64,10 @@ class AgentSetupTests(unittest.TestCase):
             self.assertEqual(
                 [host["host"] for host in result["hosts"]], ["claude", "pi", "opencode"]
             )
-            self.assertEqual(len(result["hosts"][0]["limitations"]), 2)
+            limitations = result["hosts"][0]["limitations"]
+            self.assertEqual(len(limitations), 2)
+            self.assertIn("serena setup claude-code failed", limitations[0])
+            self.assertIn("cq plugin setup unavailable", limitations[1])
             config = json.loads((home / ".claude.json").read_text())
             self.assertEqual(
                 config["mcpServers"]["serena"]["command"], "/managed/serena"
@@ -207,4 +210,109 @@ class ConfigWriteTests(unittest.TestCase):
         self.assertEqual(
             json.loads(settings.read_text())["env"],
             {"PATH": "/usr/bin", "KEEP": "1", "CQ_ADDR": ""},
+        )
+
+
+class HookTests(unittest.TestCase):
+    """Managed hooks replace their own entries and leave the owner's alone."""
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.home = Path(temp.name)
+        (self.home / ".claude").mkdir()
+        self.settings = self.home / ".claude/settings.json"
+        for patcher in (
+            patch.object(Path, "home", return_value=self.home),
+            patch.object(setup, "TOOLS", self.home / "tools"),
+            patch.object(setup, "node_command", return_value="/managed/node"),
+            patch.object(
+                setup, "tool_command", side_effect=lambda name: ["/managed/node", f"/managed/{name}.js"]
+            ),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def events(self):
+        hooks = json.loads(self.settings.read_text())["hooks"]
+        return {
+            event: [
+                (group.get("matcher"), hook.get("args", [hook["command"]])[0])
+                for group in groups
+                for hook in group["hooks"]
+            ]
+            for event, groups in hooks.items()
+        }
+
+    def test_serena_hooks_are_added_once_beside_owner_hooks(self):
+        owner = {"type": "command", "command": "/home/me/sync.sh"}
+        self.settings.write_text(
+            json.dumps({"hooks": {"PreToolUse": [{"matcher": "Edit", "hooks": [owner]}]}})
+        )
+
+        self.assertEqual(setup.configure_serena_hooks("claude"), "updated")
+        self.assertEqual(setup.configure_serena_hooks("claude"), "unchanged")
+
+        self.assertEqual(
+            self.events(),
+            {
+                "PreToolUse": [("Edit", "/home/me/sync.sh"), (None, "remind")],
+                "SessionStart": [("startup|resume|clear|compact", "activate")],
+                "SessionEnd": [(None, "cleanup")],
+            },
+        )
+
+    def test_gitnexus_search_hook_is_dropped_and_commit_hook_kept_once(self):
+        script = (self.home / ".claude/hooks/gitnexus/gitnexus-hook.cjs").as_posix()
+        shell_form = {"type": "command", "command": f"node {script}"}
+        exec_form = {"type": "command", "command": "node", "args": [script]}
+        self.settings.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "PreToolUse": [{"matcher": "Grep|Glob|Bash", "hooks": [shell_form]}],
+                        "PostToolUse": [
+                            {"matcher": "Bash", "hooks": [shell_form, exec_form]}
+                        ],
+                    }
+                }
+            )
+        )
+
+        setup.configure_gitnexus_hooks("claude")
+
+        hooks = json.loads(self.settings.read_text())["hooks"]
+        self.assertEqual(hooks["PreToolUse"], [])
+        [post] = hooks["PostToolUse"]
+        self.assertEqual(len(post["hooks"]), 1)
+        self.assertEqual(post["hooks"][0]["command"], "/managed/node")
+
+
+class DoctorTests(unittest.TestCase):
+    def test_host_problems_name_the_server_and_file(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            config = home / ".claude.json"
+            config.write_text(
+                json.dumps({"mcpServers": {"serena": {"command": "/old/serena", "args": []}}})
+            )
+            servers = {
+                "serena": {"command": "/managed/serena", "args": []},
+                "cq": {"command": "/managed/cq", "args": []},
+            }
+            with (
+                patch.object(Path, "home", return_value=home),
+                patch.object(setup, "TOOLS", home / "tools"),
+                patch.object(setup, "host_servers", return_value=servers),
+                patch.object(setup, "required_tool_paths", return_value=set()),
+                patch.object(setup, "claude_plugin_enabled", return_value=False),
+                patch.object(setup, "configure_serena_hooks", return_value="unchanged"),
+            ):
+                reasons = setup.host_problems("claude")
+        self.assertEqual(
+            reasons,
+            [
+                f"serena server in {config} runs a different command",
+                f"cq server missing from {config}",
+            ],
         )
