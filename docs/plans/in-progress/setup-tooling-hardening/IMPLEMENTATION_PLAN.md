@@ -135,7 +135,40 @@ Hosted Windows CI is not selected (the owner chose not now).
 - Exit criterion: every P2 requirement's check passes on `main`.
 - Rollback or fallback: revert; generated `task.cmd` files are rewritten on
   the next bootstrap.
-- Evidence:
+- Evidence (code commits 8de5d17, 9dcb7d9 and fac3ed2; the checks ran on fac3ed2):
+  - Separate mise configuration: `lint/mise.toml` pins shellcheck 0.11.0 and PowerShell 7.6.7;
+    `lint/mise.lock` has all six `mise.lock` platforms (windows-arm64 shellcheck uses the x64 zip).
+    Task runs mise with `lint/` as the working directory (`mise -C lint ...`); mise then reads
+    `lint/mise.toml` and, above it, the root `mise.toml`, and `mise lock` there wrote only
+    `lint/mise.lock`. `git diff 1164802 -- mise.toml mise.lock piw/` is empty.
+  - Known failures, run in a scratch worktree of the commit: a `.ps1` using `??` → `lint:powershell`
+    exit 201, "Error PSUseCompatibleSyntax: The null-coalescing operator syntax '$x ?? $y' is not
+    available by default in PowerShell versions 3,4,5,6"; a `.ps1` with `Get-Content -AsByteStream`
+    → "Warning PSUseCompatibleCommands: The parameter 'AsByteStream' is not available for command
+    'Get-Content' by default in PowerShell version '5.1.17763.316'"; `echo $mise_bin` in
+    `bootstrap.sh` → `lint:shell` fails with SC2086; a wrong Pester expectation → `test:powershell`
+    fails (21 passed, 1 failed); removing the dot-source guard → all Pester tests fail; writing
+    `task.cmd` with LF → two Pester tests fail.
+  - Downloads: a wrong SHA-256 in `lint/powershell-modules.json` → "Pester 6.2.0: SHA-256 mismatch,
+    expected 000… but the download is e6ac74…", exit 1, nothing unpacked; a wrong checksum in a
+    copy of `lint/mise.lock` → `mise install --locked` fails with "Expected: sha256:000…
+    Actual: sha256:8c3be1…" for shellcheck.
+  - REQ-007 to REQ-010: `./bootstrap.sh deps:dev-tools`, `lint:shell`, `lint:powershell` (6 files,
+    No findings), `test:powershell` (22 passed) all exit 0. The `PSAvoidUsingWriteHost` warning is
+    fixed by `Write-Information -InformationAction Continue`. `PSUseCompatibleCommands` applies to
+    the scripts that run on Windows PowerShell 5.1 and not to `tests/powershell/*.Tests.ps1` or
+    `lint/*.ps1`, which run on PowerShell 7 and call Pester and PSScriptAnalyzer.
+  - REQ-010 note: a Pester `Mock` of `Invoke-Bootstrap` is replaced when `bootstrap.ps1`
+    defines the function, so it would count 0 calls whether or not the guard works (checked with
+    the guard removed). The test instead dot-sources the file and asserts no error (run
+    directly on Linux, the bootstrap throws at its Windows check), and a second test runs the
+    script directly and checks it stops with that message.
+  - REQ-011, REQ-012: `./bootstrap.sh test:tooling` (33 OK, including 7 in
+    `tests/test_windows_branches.py`) and `test:agent-launchers` (5 pass, 0 skipped) with the
+    FIX-007 paths; `pwsh` parses the encoded script and the Node reminder command back to the exact
+    paths, including U+2019.
+  - Also exit 0: `lint:python`, `./bootstrap.sh test`, `./bootstrap.sh check`, `./bootstrap.sh ci`.
+  - REQ-013: `docs/setup.md` "Windows setup: what Linux checks cannot prove".
 
 ### P3: End-to-end configure test
 
