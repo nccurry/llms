@@ -121,7 +121,7 @@ Hosted Windows CI is not selected (the owner chose not now).
   2. Pin the tools and modules; add the three tasks.
   3. Refactor `bootstrap.ps1` into functions with a dot-source guard
      (`if ($MyInvocation.InvocationName -ne '.') { <main> }`); add Pester
-     tests that mock the main function.
+     tests that dot-source it and that run it directly (REQ-010).
   4. Fix the `task.cmd` line endings and comparison.
   5. Fix single-quote escaping in `run_gitnexus_hook.mjs` and
      `gitnexus_hook_launch`; add Python and Node tests with FIX-007.
@@ -130,8 +130,8 @@ Hosted Windows CI is not selected (the owner chose not now).
   7. Add the Windows section to `docs/setup.md`.
 - Validation: `./bootstrap.sh lint:shell`, `lint:powershell`,
   `test:powershell`, `test:tooling`, `test:agent-launchers` → all pass;
-  known-failure runs from step 1 recorded; `pwsh -NoProfile -File bootstrap.ps1`
-  is not run (it downloads).
+  known-failure runs from step 1 recorded; running `bootstrap.ps1` directly on
+  Linux stops at its Windows check, before any download.
 - Exit criterion: every P2 requirement's check passes on `main`.
 - Rollback or fallback: revert; generated `task.cmd` files are rewritten on
   the next bootstrap.
