@@ -10,7 +10,6 @@ vars:
   PYTHON: '{{.UV}} run --isolated --no-project --python "{{.PYTHON_VERSION}}" --with-requirements "{{.ROOT_DIR}}/agent-runtime.txt" python'
   TARGET: '{{default "all" .TARGET}}'
   OUTPUT: '{{default "text" .OUTPUT}}'
-  INHERITED_PATH: '{{default (env "PATH") (env "LLMS_ORIGINAL_PATH")}}'
 
 env:
   MISE_DATA_DIR: '{{.ROOT_DIR}}/.tools/mise/data'
@@ -23,8 +22,9 @@ env:
   UV_PYTHON_INSTALL_DIR: '{{.ROOT_DIR}}/.tools/python'
   UV_CACHE_DIR: '{{.ROOT_DIR}}/.tools/uv-cache'
   LLMS_CALLER_CWD: '{{default .USER_WORKING_DIR .LLMS_CALLER_CWD}}'
-  LLMS_ORIGINAL_PATH: '{{.INHERITED_PATH}}'
-  PATH: '{{.ROOT_DIR}}/.tools/bin{{if eq OS "windows"}};{{else}}:{{end}}{{.ROOT_DIR}}/.tools/mise/data/shims{{if eq OS "windows"}};{{default "C:/Windows" .SystemRoot}}/System32;{{default "C:/Windows" .SystemRoot}}/System32/WindowsPowerShell/v1.0;{{else}}:{{end}}{{.INHERITED_PATH}}'
+  # Read the caller's PATH inline: a shared var resolved here to an empty PATH.
+  LLMS_ORIGINAL_PATH: '{{default (env "PATH") (env "LLMS_ORIGINAL_PATH")}}'
+  PATH: '{{.ROOT_DIR}}/.tools/bin{{if eq OS "windows"}};{{else}}:{{end}}{{.ROOT_DIR}}/.tools/mise/data/shims{{if eq OS "windows"}};{{default "C:/Windows" .SystemRoot}}/System32;{{default "C:/Windows" .SystemRoot}}/System32/WindowsPowerShell/v1.0;{{else}}:{{end}}{{default (env "PATH") (env "LLMS_ORIGINAL_PATH")}}'
 
 includes:
   piw:
@@ -55,7 +55,9 @@ tasks:
         msg: Run bootstrap.sh or bootstrap.ps1 to prepare project-local mise and Task.
     cmds:
       - '{{.MISE}} install --locked --yes'
-      - '{{.MISE}} reshim'
+      # Shims link to the checkout that wrote them; a worktree sharing this
+      # data directory must not repoint them at a checkout that may be deleted.
+      - '[ -L "{{.ROOT_DIR}}/.tools/mise/data" ] || {{.MISE}} reshim'
 
   deps:verify:
     desc: Show resolved native development tools.

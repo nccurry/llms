@@ -1,7 +1,12 @@
-min_version = "2026.10.3"
-
 [vars]
 mise_version = "2026.10.3"
+# Bootstrap verifies the downloaded mise against these, not the release's own list.
+mise_sha256_linux_x64 = "8d48bc510b7d844fad0bc7156c0855c2a1e7230c51e498a7f6b63b021f8b57c5"
+mise_sha256_linux_arm64 = "357260e28904569a6e7124d33b65cef6d043846c07bb8f4906ddf22cc353d61d"
+mise_sha256_macos_x64 = "38cdd1d904b25e66ec2fff3b5c88930853ab929b63e72c70e77198f82d6ac144"
+mise_sha256_macos_arm64 = "0999bd4943523ccdbd149b5ad4080281536801b3f6406ac4495699bd0310969c"
+mise_sha256_windows_x64 = "af5cad4d381c4e06e9c488af86ad3d3159474ffa7a18e061436a408f7262f23a"
+mise_sha256_windows_arm64 = "378cad931510d02a840ece40bde9c7a69fc8d59f6902a24579e75a55bd19f279"
 
 [settings]
 auto_install = false
@@ -10,5 +15,5 @@ auto_install = false
 
 [tools]
 task = "3.54.0"
-uv = "0.12.3"
-node = "24.21.0"
+uv = "0.13.7"
+node = "24.22.2"

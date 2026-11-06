@@ -44,6 +44,12 @@ if [ -z "$mise_version" ]; then
     printf '%s\n' 'mise.toml must pin vars.mise_version to an exact release.' >&2
     exit 1
 fi
+checksum_key=$(printf 'mise_sha256_%s' "$platform" | tr '-' '_')
+mise_checksum=$(sed -n "s/^$checksum_key = \"\([0-9a-f]\{64\}\)\"$/\1/p" mise.toml)
+if [ -z "$mise_checksum" ]; then
+    printf 'mise.toml must pin vars.%s for this platform.\n' "$checksum_key" >&2
+    exit 1
+fi
 mise_bin="$bin_dir/mise"
 
 download() {
@@ -85,13 +91,7 @@ if [ "$installed_version" != "$mise_version" ]; then
     release="https://github.com/jdx/mise/releases/download/v$mise_version"
     printf 'Installing project-local mise %s\n' "$mise_version"
     download "$release/$asset" "$temporary_dir/mise"
-    download "$release/SHASUMS256.txt" "$temporary_dir/checksums"
-    checksum=$(awk -v asset="./$asset" '$2 == asset { print $1 }' "$temporary_dir/checksums")
-    if [ -z "$checksum" ]; then
-        printf 'No release checksum for %s\n' "$asset" >&2
-        exit 1
-    fi
-    check_checksum "$temporary_dir/mise" "$checksum"
+    check_checksum "$temporary_dir/mise" "$mise_checksum"
     chmod +x "$temporary_dir/mise"
     mv "$temporary_dir/mise" "$mise_bin"
     rm -rf "$temporary_dir"
@@ -102,14 +102,13 @@ fi
 "$mise_bin" install task --locked --quiet
 
 # This optional PATH entry forwards ordinary Task calls through the pinned runtime.
-if [ ! -f "$bin_dir/task" ]; then
-    cat > "$bin_dir/task" <<'TASK_COMMAND'
-#!/usr/bin/env sh
+task_command='#!/usr/bin/env sh
 set -eu
-repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
+repo_root=$(CDPATH='"''"' cd -- "$(dirname -- "$0")/../.." && pwd)
 if [ "$#" -eq 0 ]; then set -- default; fi
-exec "$repo_root/bootstrap.sh" "$@"
-TASK_COMMAND
+exec "$repo_root/bootstrap.sh" "$@"'
+if [ ! -f "$bin_dir/task" ] || [ "$(cat "$bin_dir/task")" != "$task_command" ]; then
+    printf '%s\n' "$task_command" > "$bin_dir/task"
     chmod +x "$bin_dir/task"
 fi
 

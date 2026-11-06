@@ -77,6 +77,9 @@ try {
     $configuration = [IO.File]::ReadAllText((Join-Path $repoRoot 'mise.toml'))
     $miseVersion = [regex]::Match($configuration, '(?m)^mise_version = "([0-9.]+)"\r?$').Groups[1].Value
     if (-not $miseVersion) { throw 'mise.toml must pin vars.mise_version to an exact release.' }
+    $checksumKey = 'mise_sha256_' + ($platform -replace '-', '_')
+    $miseChecksum = [regex]::Match($configuration, '(?m)^' + $checksumKey + ' = "([0-9a-f]{64})"\r?$').Groups[1].Value
+    if (-not $miseChecksum) { throw "mise.toml must pin vars.$checksumKey for this platform." }
     $misePath = Join-Path $binDirectory 'mise.exe'
     $miseShimPath = Join-Path $binDirectory 'mise-shim.exe'
     $installedVersion = ''
@@ -92,13 +95,9 @@ try {
             $asset = "mise-v$miseVersion-$platform.zip"
             $release = "https://github.com/jdx/mise/releases/download/v$miseVersion"
             $archive = Join-Path $temporaryDirectory $asset
-            $checksums = Join-Path $temporaryDirectory 'checksums'
             Write-Host "Installing project-local mise $miseVersion"
             Invoke-WebRequest -UseBasicParsing -Uri "$release/$asset" -OutFile $archive
-            Invoke-WebRequest -UseBasicParsing -Uri "$release/SHASUMS256.txt" -OutFile $checksums
-            $pattern = '(?m)^([0-9a-f]{64})\s+\./' + [regex]::Escape($asset) + '\r?$'
-            $expectedHash = [regex]::Match([IO.File]::ReadAllText($checksums), $pattern).Groups[1].Value
-            if (-not $expectedHash -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $expectedHash) {
+            if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $miseChecksum) {
                 throw "Release checksum verification failed for $asset."
             }
             Expand-Archive -LiteralPath $archive -DestinationPath $temporaryDirectory
@@ -121,16 +120,20 @@ try {
         $installResult = Invoke-Mise -Arguments @('install', 'task', '--locked', '--quiet')
         if ($installResult.ExitCode -ne 0) { exit $installResult.ExitCode }
 
+        # A bare "powershell" would resolve from the caller's current directory first.
         $taskCommand = Join-Path $binDirectory 'task.cmd'
-        if (-not (Test-Path -LiteralPath $taskCommand)) {
-            @'
+        $taskText = @'
 @echo off
+set "LLMS_POWERSHELL=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
 if "%~1"=="" (
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\..\bootstrap.ps1" default
+    "%LLMS_POWERSHELL%" -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\..\bootstrap.ps1" default
 ) else (
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\..\bootstrap.ps1" %*
+    "%LLMS_POWERSHELL%" -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\..\bootstrap.ps1" %*
 )
-'@ | Set-Content -LiteralPath $taskCommand -Encoding Ascii
+'@
+        $currentText = if (Test-Path -LiteralPath $taskCommand) { [IO.File]::ReadAllText($taskCommand) } else { '' }
+        if ($currentText.Trim() -ne $taskText.Trim()) {
+            $taskText | Set-Content -LiteralPath $taskCommand -Encoding Ascii
         }
 
         if ($TaskArguments.Count -eq 0) { $TaskArguments = @('deps:install') }
