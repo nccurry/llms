@@ -372,10 +372,10 @@ Hosted Windows CI is not selected (the owner chose not now).
 - Rollback or fallback: revert the phase; the manifest fields are ignored by
   the P4 code.
 - Evidence:
-  - Audit repair, code at `7edb164` (first delivery `bde06f1`):
-    `./bootstrap.sh test:tooling REQUIRE_PINNED_TOOLS=1` → 142 OK (83 before P5,
-    plus 59 in `tests/test_tool_installers.py`); `./bootstrap.sh test` → piw 185
-    passed, setup-script tests 142 OK, launcher tests 6 pass;
+  - Audit repair, code at the commit `fix(setup): tie the release URL to the source and tighten manifest checks` after `7edb164` (first delivery `bde06f1`); it ties `release` to `source`, uses `fullmatch` so a trailing newline fails every check, and rejects `entry` parts of only dots or spaces:
+    `./bootstrap.sh test:tooling REQUIRE_PINNED_TOOLS=1` → 143 OK (83 before P5,
+    plus 60 in `tests/test_tool_installers.py`); `./bootstrap.sh test` → piw 185
+    passed, setup-script tests 143 OK, launcher tests 6 pass;
     `./bootstrap.sh lint:python` → ruff and format clean, pyright 0 errors with
     C901 at 10 and strict on `scripts/manage_agent_tools.py`;
     `./bootstrap.sh check` → exit 0.
