@@ -3,7 +3,7 @@
   "tools": {
     "serena": {
       "package": "serena-agent",
-      "version": "1.7.0",
+      "version": "2.1.0",
       "python": "3.13",
       "installer": "uv",
       "bin": "serena",
@@ -19,14 +19,12 @@
       },
       "dependency_overrides": {
         "filelock": "4.2.9",
-        "mcp": "1.30.0",
-        "urllib3": "2.8.0",
         "werkzeug": "3.1.9"
       }
     },
     "ast-grep": {
       "package": "@ast-grep/cli",
-      "version": "0.50.0",
+      "version": "0.51.1",
       "installer": "npm",
       "bin": "ast-grep",
       "runs_with": "native",
@@ -45,17 +43,17 @@
       "integration_enabled": true
     },
     "cq": {
-      "version": "0.18.0",
+      "version": "0.19.2",
       "installer": "github-release",
       "bin": "cq",
-      "release": "https://github.com/mozilla-ai/cq/releases/download/cli/v0.18.0",
+      "release": "https://github.com/mozilla-ai/cq/releases/download/cli/v0.19.2",
       "checksums": {
-        "cq_Darwin_arm64.tar.gz": "865dc6d33a71328b27cd25c165d09b07edab5959bdc01f82b8e151bcfae97a66",
-        "cq_Darwin_x86_64.tar.gz": "8c25bbe46f7f14d5d618ac7830a2065b36270a98036391e076d56695b710365b",
-        "cq_Linux_arm64.tar.gz": "bcff3c53a0307adf402a3526658fbdd300c4277f6f98fe10753fe169db60c85f",
-        "cq_Linux_x86_64.tar.gz": "27787adbe5ac2ab8daab833033f1c37ea3b0e8fa3b8a8b39db15e9a2aba3dc2c",
-        "cq_Windows_arm64.zip": "e50b09c4c1aba75bb250208ee4b922fff7d67f7de407d8c5f2d2ab2f9035da07",
-        "cq_Windows_x86_64.zip": "1ff1b7e97b5a0ec4656e8df14b3cec6fbb5198458caec2bd98eace8a9e7017ee"
+        "cq_Darwin_arm64.tar.gz": "c944318663621264c04dd9b074aa5faa4af760aa04fcac7f6e65111efe31175a",
+        "cq_Darwin_x86_64.tar.gz": "4a96632738028ab89dfcc380872144eb80c9802bb770a6972495f68396227180",
+        "cq_Linux_arm64.tar.gz": "1040ace9da3fc2a40053f5c9036706a1b5080475931b3fa037c92a95405fc0ec",
+        "cq_Linux_x86_64.tar.gz": "ed3d19f3bb24277a295b0f0765776ab3cbdb9eebe8584ec08ea3705f8d9d211b",
+        "cq_Windows_arm64.zip": "50ef86a1cec84b44b4b976892fc2f5b09fddc725966145894219241746f37406",
+        "cq_Windows_x86_64.zip": "122970d1a54d8c5d6497c80e4c42a87734965a700baa048dc401ee915dc81ec7"
       },
       "source": "https://github.com/mozilla-ai/cq"
     }

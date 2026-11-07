@@ -21,7 +21,7 @@ Keep native tool versions in mise and agent package and external skill versions 
 npm tool versions, run `task tools:lock` and review the lockfile before installing.
 
 Reviewed Serena security overrides also live in `agent-dependencies.json`. uv applies
-these with `--overrides` because Serena 1.7.0 pins older urllib3 and Werkzeug versions.
+these with `--overrides` because Serena 2.1.0 pins older filelock and Werkzeug versions.
 `uv pip check` still reports those two version conflicts. Check the reviewed versions
 and language-server behavior; record the conflicts when reporting the result.
 
