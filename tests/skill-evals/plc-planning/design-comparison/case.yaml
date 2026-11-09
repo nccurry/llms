@@ -1,0 +1,14 @@
+schema_version: 1
+skill: plc-planning
+description: A design explains alternatives and flow without duplicating the behavior contract.
+setup: python ../readable_fixture.py design-comparison <dest>
+working_directory: <dest>/harbor
+prompt: |
+  Plan the configuration reload change described in brief.md. Save the PLC in
+  docs/plans/planned/. Explain the in-memory versus temporary-file choice and
+  the reader/reload flow, including invalid input. Use the form that explains
+  each best; avoid padding. Do not implement it. Owner: @alex.
+max_turns: 30
+check: python ../check_readable.py <dest>
+graders:
+  - ../readability.md

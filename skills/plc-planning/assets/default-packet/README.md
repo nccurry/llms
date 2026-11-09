@@ -48,6 +48,10 @@ Delete this note. -->
 | --- | --- | --- | --- |
 | P1 | !<number> | Open | |
 
+<!-- Put any extra sections here, after the remaining shared sections above
+and before Log. In particular, keep Open questions before design notes.
+Delete this note. -->
+
 ## Log
 
 - <YYYY-MM-DD> Created.

@@ -1,0 +1,14 @@
+schema_version: 1
+skill: plc-checkpoint
+description: Record accumulating evidence in its owning section without changing acceptance.
+setup: python ../readable_fixture.py growing-evidence <dest>
+working_directory: <dest>/harbor
+prompt: |
+  Checkpoint the reload PLC using receipts.md. Reconcile those supplied results
+  into the plan so the next session can find what passed and what is still
+  unverified. Do not rerun the supplied checks or change application code.
+  I am @alex. Preserve the prior results and their limits.
+max_turns: 30
+check: python ../check_readable.py <dest>
+graders:
+  - ../readability.md

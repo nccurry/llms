@@ -28,6 +28,13 @@ assigning affected work.
 
 ## Scope changes and planning documents
 
+Preserve the document's readable structure when updating it. Put new results
+in their owning evidence section, retain prior facts and limits, and split
+growing explanations into descriptive subsections. Follow the shared
+[writing guidance](../plc-planning/references/writing.md); keep generic
+workflow instructions in skills rather than copying them into packets.
+
+
 Record the selected requirement IDs and exit criteria in the plan's Current
 Work (`Selected work`) before execution, with one concrete delivery endpoint.
 Before adding work, consider reuse, deletion, or a narrower deliverable that meets the approved
@@ -44,8 +51,8 @@ Keep planning documents coherent for the next agent. Update affected sections
 in place, preserve stable requirement IDs and decision rationale, and reconcile
 superseded or contradictory instructions across the packet. On every plan
 update, follow `plc-planning`'s
-[Growing a packet](../plc-planning/SKILL.md#growing-a-packet) rule: when a
-trigger in its [Adding files](../plc-planning/SKILL.md#adding-files) rule
+[Growing a packet](../plc-planning/references/packet-files.md#growing-a-packet) rule: when a
+trigger in its [Adding files](../plc-planning/references/packet-files.md#adding-files) rule
 holds for a file the plan lacks, including for what the update records, add
 that file instead of piling the information into Log lines or notes. When
 the update adds, changes or drops approved scope, run `plc-planning`'s
@@ -58,7 +65,7 @@ repeated handoffs, abandoned attempts, and session narration out of requirements
 design. A new reader must be able to identify approved scope, current design,
 and remaining work without reconstructing the conversation. Record a proposal
 that would add scope as an `Open question:` line, as `plc-planning`'s
-[Adding files](../plc-planning/SKILL.md#adding-files) rule says, and label any
+[Adding files](../plc-planning/references/packet-files.md#adding-files) rule says, and label any
 other pending proposal as unapproved; do not silently weaken or defer
 requirements to match delivered code. Update the plan's Current Work block,
 its `## Phases` rows, and its `## Log` with the rewrite rules in
@@ -95,7 +102,7 @@ case and a known failure.
 
 Keep a completion map: for each selected requirement and named design goal,
 its existing PLC ID, owner, proving check or review, and the phase state word
-from `plc-planning`'s [word list](../plc-planning/SKILL.md#words) for the
+from `plc-planning`'s [word list](../plc-planning/references/shared-format.md#words) for the
 phase that delivers it. The map lives in the README's `## Phases` table and
 Current Work block, or the repository's equivalent work list; do not create
 a second durable plan. Update it after each child merge, at phase close, and
@@ -129,7 +136,7 @@ whether final delivery is local or remote before selecting its cleanup proof ref
   applies, including its review, comment-resolution, and CI gates. When you
   open an MR for a phase, consider adding its row and the description's
   `Plan:` line, as `plc-planning`'s
-  [Merge requests](../plc-planning/SKILL.md#merge-requests) rule suggests.
+  [Merge requests](../plc-planning/references/shared-format.md#merge-requests) rule suggests.
 
 Prefer a separate non-default integration branch/worktree for isolation. Use
 `main`, another default branch, or the source checkout only when the user chose
@@ -293,7 +300,7 @@ phases open. Record optional discoveries separately as outside-scope follow-ups;
 they do not extend this run or reopen completed work without user authorization.
 New evidence that an existing requirement fails does reopen its acceptance
 while the plan is open; for a completed plan, `plc-planning`'s
-[Ending a packet](../plc-planning/SKILL.md#ending-a-packet) rule applies.
+[Ending a packet](../plc-planning/references/shared-format.md#ending-a-packet) rule applies.
 If a genuine acceptance blocker needs significant extra scope, report the
 blocker and request a decision; keep that requirement open while waiting.
 

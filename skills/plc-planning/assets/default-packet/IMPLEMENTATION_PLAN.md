@@ -1,99 +1,66 @@
 # <Feature> Implementation Plan
 
 Phase state lives in the README's [Phases](README.md#phases) table. This file
-holds what each phase changes, how it is checked, and its evidence. It has no
-state table of its own.
+holds the steps, checks and evidence that need more detail.
 
 ## Selected Delivery
 
-Name the authorized requirements and the concrete endpoint for this delivery.
-Explain the order and the smallest useful result. Future feature cohorts do
-not extend this delivery automatically.
+<Authorized outcome and requirement IDs, the smallest useful endpoint and why the phases have this order.>
 
-Before expanding the work, check whether narrowing the deliverable, reusing an
-existing owner, or deleting a competing path achieves the approved outcome.
-Discoveries do not add scope. Significant expansion beyond existing authority
-needs user approval; routine choices and repairs within scope can proceed.
-Keep pending proposals separate from accepted work.
+<!-- Keep only sections that apply. Use paragraphs for explanations, numbered
+steps for sequences and tables for comparisons or short repeated records.
+Use deeper headings under each ### P<n> boundary. When duplicate headings are
+ disallowed, qualify them with the phase or topic. Remove all authoring notes.
+Generic execution/review policy stays in skills; name only this work's required
+checks, constraints and exceptions here. -->
 
 ## Phase Details
 
-Give each row of the README `## Phases` table one heading here, with the same
-ID, and link the row to it. A dropped phase keeps its heading.
-
 ### P1: <name>
 
-- Requirements: <REQ IDs>
-- Change: <behavior, interfaces, and relevant code areas>
-- Out of scope: <explicit deferrals>
-- Prerequisite: <the exact capability or phase needed and how to check it is available, or None>
-- Validation: <exact commands or procedures, relevant environment, expected results>
-- Exit criterion: <objective result for the requirements and delivery>
-- Rollback or fallback: <how to unwind a failed change>
-- Evidence:
-  - <YYYY-MM-DD> <REQ IDs>: `<command or procedure>` → <actual result> @ `<short commit>`; <dependencies, platform, uncommitted changes tested, and limits, when they matter>
+<Scope paragraph: behavior, affected interfaces and code areas.>
 
-Record each result once, here or in the repository's existing evidence store,
-and link to it from elsewhere. Keep raw logs outside the plan. A required
-check that was skipped or could not run stays open.
+Requirements: <REQ IDs>. Out of scope: <explicit deferrals, when relevant>.
 
-For difficult hardware, performance, or platform acceptance, prove the checking
-method early: run a small representative case, detect a known failure, and
-confirm the result is interpretable before relying on that method for delivery.
-Do not add a separate qualification phase for ordinary checks that already work.
+#### P1 Prerequisites
+
+<Required capability, owner, availability check and work it blocks. Delete when unnecessary.>
+
+#### P1 Steps
+
+1. <First action and its observable result.>
+2. <Next action, including the relevant tests and docs.>
+
+#### P1 Validation
+
+| Check | Expected result |
+| --- | --- |
+| `<command or procedure>` | <pass/fail outcome and relevant conditions> |
+
+Exit criterion: <result that proves the phase's requirements>.
+
+#### P1 Evidence
+
+<!-- Add actual results only after checks run, or clearly attribute supplied
+results. Use a short table or headed records according to the context needed.
+Record a result once and link to it elsewhere. Unrun required checks stay open.
+Keep raw logs outside the packet. Delete this section until results exist. -->
+
+##### <YYYY-MM-DD> — <check or requirement IDs>
+
+Source: `<revision and relevant uncommitted changes>`. Environment: <relevant conditions>.
+Method: `<exact command or procedure>`. Expected: <result>.
+Actual: <observed result>. Limits: <what this result does not establish>.
+
+#### P1 Rollback Or Fallback
+
+<Action to unwind a failed change, when one is needed.>
 
 ## Shared Acceptance Ownership
 
-Use this section only when work crosses packets or repositories. Assign each
-shared obligation one acceptance owner. Children prove their contributions;
-the parent owns the integrated outcome. Require the exact needed capability,
-not completion of every phase in a sibling packet. Name the authoritative
-contract and accepted decision or revision each consumer follows.
+<!-- Keep only for work across packets/repositories. Name the exact required
+capability and accepted contract, not every phase of a sibling packet. -->
 
 | Obligation | Acceptance owner | Contributors | Required capability or contract | Proving check |
 | --- | --- | --- | --- | --- |
-| <integrated outcome> | <one packet or role> | <children or repositories> | <exact prerequisite and contract reference> | <check owned here or linked> |
-
-## Review And Recheck Rules
-
-Name required review domains and acceptance standards for this work. Keep model
-choices, worker counts, and reviewer scheduling in the execution workflow.
-
-Run focused checks during implementation and broader checks at meaningful
-integration or delivery boundaries. Repeat a check or review when changed
-behavior, dependencies, environment, or a discovered defect invalidates its
-evidence. Name the affected evidence and reason. A new commit hash alone does
-not invalidate unchanged evidence; repository-required CI and post-merge checks
-still apply. Preserve unaffected evidence and the execution workflow's bounded
-audit limits. Failures keep dependent acceptance open; fix them before dependent
-work proceeds, while independent authorized work may continue.
-
-When only a required record is missing, first reconcile existing valid results
-into that record. Repeat execution only when evidence is missing, insufficient,
-or invalidated. Do not waive required reviews, checks, or records.
-
-## Readiness And Completion
-
-Before starting:
-
-- [ ] Every selected Must requirement has a phase, proving check, and exit criterion.
-- [ ] Prerequisites for the next runnable block are verified; later dependent
-      work stays blocked until its prerequisites pass. Open questions name the
-      work they block.
-- [ ] Required documentation changes are included in the relevant phase.
-
-Before closing selected work:
-
-- [ ] Every selected requirement has current acceptance evidence and required records.
-- [ ] Required audits have no supported actionable in-scope findings remaining,
-      including P3. Outside-scope follow-ups are identified separately.
-- [ ] Authorized delivery is verified. Cleanup is complete or each retained
-      checkout has an owner, reason, and release condition.
-- [ ] Current instructions agree on scope, design, results, and remaining work.
-      The README's Current Work is current, and its Log holds the history.
-
-Mark a phase Verified only when all its requirements and exit criteria pass;
-whole-PLC completion covers all required scope. Leave unselected phases open.
-Optional outside-scope work does not extend execution or reopen completed work
-without user authorization. Evidence that an existing requirement fails reopens
-its acceptance. Do not weaken requirements or invent deferrals to claim completion.
+| <integrated outcome> | <one packet or role> | <contributors> | <contract reference> | <check owned here or linked> |

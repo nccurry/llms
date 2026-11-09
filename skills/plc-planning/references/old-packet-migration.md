@@ -1,7 +1,7 @@
 # Converting an old-shape packet
 
 Use this when an active packet is not yet in the
-[shared template](../SKILL.md#shared-template). Signs of an older shape:
+[shared template](shared-format.md). Signs of an older shape:
 
 - no single `## Current Work` block directly after the summary;
 - status in a `## Lifecycle` or `## Status` section, or in more than one
@@ -87,8 +87,8 @@ beside the old one. "Convert" here means changing the format in place;
    README's Status is an owner case: leave it and list it.
 8. **M8. Done when.** When the README has no `## Done when` and the packet
    has SRD.md, add `## Done when` in the template's
-   [section order](../SKILL.md#order-and-format), holding only the line the
-   [requirements rules](../SKILL.md#requirements-and-checks) choose. When
+   [section order](shared-format.md#order-and-format), holding only the line the
+   [requirements rules](shared-format.md#requirements-and-checks) choose. When
    the README has no `## Done when` and the packet has no SRD.md, even if
    its requirements sit under another heading, list it as an owner case:
    add no `## Done when`, and don't write requirements for it.
@@ -116,7 +116,7 @@ E3 is not used.
 The older skill's Phase Status table has Implementation, Verification,
 Delivery and Evidence record columns, but no State or Status column. Add a
 State column at the end (E2), then move the table (M5). Find a row's parts
-in its phase section, as the [Words](../SKILL.md#words) list defines them.
+in its phase section, as the [Words](shared-format.md#words) list defines them.
 The row's word is the latest one its own cells support:
 
 - Live when Delivery records a release or deployment;
@@ -130,7 +130,7 @@ When the cells disagree, the row is an owner case.
 
 ## Check the result
 
-Run the [format check](../SKILL.md#format-check) on the packet, first in
+Run the [format check](shared-format.md#format-check) on the packet, first in
 default mode and then with `--strict`. Each finding left must be one of the
 owner cases you listed. Report those cases, and each line M1 or M7 deleted
 or M5, M8 or E6 added.

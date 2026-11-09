@@ -73,14 +73,14 @@ When a merged MR belongs to a plan, update the plan's Current Work and
 `## Phases` table with the rewrite rules in `plc-checkpoint`'s
 [Rewrite Current Work](../plc-checkpoint/SKILL.md#5-rewrite-current-work)
 step. The phase's note names the MR and the merge commit, and the phase
-gets its word from `plc-planning`'s [Words](../plc-planning/SKILL.md#words)
+gets its word from `plc-planning`'s [Words](../plc-planning/references/shared-format.md#words)
 rules: it is Merged only when all its parts are on the branch the work is
 delivered to, and a merge into another target, such as the next MR down a
 stack, leaves it Implemented. Leave Verified to the plan's checks on the
 merged code, as [plc-wrapup](../plc-wrapup/SKILL.md) step 5 or a later
 checkpoint runs them. Update the `## Merge requests` table, if the plan
 has one, as `plc-planning`'s
-[Merge requests](../plc-planning/SKILL.md#merge-requests) rule says.
+[Merge requests](../plc-planning/references/shared-format.md#merge-requests) rule says.
 With no plan, skip this step.
 
 ## 7. Report

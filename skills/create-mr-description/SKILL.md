@@ -77,7 +77,7 @@ change, omit empty sections, and keep necessary migration guidance visible.
   except one `Plan: <packet ID or slug> <phase>` line when the MR delivers a
   phase of a plan. With a plan, suggest adding that line and the phase's row
   in the plan's `## Merge requests` table; both are optional, as
-  `plc-planning`'s [Merge requests](../plc-planning/SKILL.md#merge-requests)
+  `plc-planning`'s [Merge requests](../plc-planning/references/shared-format.md#merge-requests)
   rule says. When the plan lives in another repository, write
   `Plan: <repo> <packet ID or slug> <phase>`. For a stacked MR, add one line,
   `Stacked on !N`, in the description; titles and commits stay as the

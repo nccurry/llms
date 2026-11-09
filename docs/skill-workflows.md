@@ -21,10 +21,20 @@ or the [compact plan](../skills/plc-planning/assets/compact-plan.md) for the sam
 README as a single file. Add SRD.md, SADD.md, or IMPLEMENTATION_PLAN.md only
 when the plan has information that belongs there, such as a new public
 contract for SRD.md. The planning skill's
-[Adding files](../skills/plc-planning/SKILL.md#adding-files) rule lists the
+[Adding files](../skills/plc-planning/references/packet-files.md#adding-files) rule lists the
 triggers, and its
-[Growing a packet](../skills/plc-planning/SKILL.md#growing-a-packet) rule
+[Growing a packet](../skills/plc-planning/references/packet-files.md#growing-a-packet) rule
 turns a one-file plan into a folder when one holds. The files of a packet:
+
+Keep the parsed fields exact and choose ordinary Markdown for the surrounding
+content: paragraphs explain, headings divide topics, tables compare short
+records, and numbered steps express order. Evidence may be a short table or
+headed records with provenance and limitations. The
+[writing guide](../skills/plc-planning/references/writing.md) and completed
+[compact](../skills/plc-planning/references/examples/compact.md) and
+[phase](../skills/plc-planning/references/examples/phase.md) examples show the
+choices. Maintenance updates the owning section and preserves its structure;
+it does not append another status block or copy generic skill policy.
 
 ![PLC packet: README.md holds the summary, Current Work, the Phases table, Done when, open questions, optional merge requests, and the Log. SRD.md defines requirements and their checks; SADD.md explains the design; IMPLEMENTATION_PLAN.md holds phase details and evidence. Add them only when needed. Optional FIXTURES.md holds stable examples and test cases.](images/plc-packet.svg)
 
@@ -71,12 +81,12 @@ and add a dated Log line for each change. A phase is Verified only when its
 check passed on the merged code. Record each result once and link to it. If a
 record is missing, check existing results before running checks again. The
 optional `## Merge requests` table follows the planning skill's
-[Merge requests](../skills/plc-planning/SKILL.md#merge-requests) rule. A
+[Merge requests](../skills/plc-planning/references/shared-format.md#merge-requests) rule. A
 diagram is welcome where it explains faster than prose, and never required;
-the [Visual aids](../skills/plc-planning/SKILL.md#visual-aids) rule says which
+the [Visual aids](../skills/plc-planning/references/writing.md#visual-aids) rule says which
 kind fits and where it goes. A finished plan moves to `completed/`; plans
 finished earlier into another folder stay where they are. The full rules and
-the format check are in [plc-planning](../skills/plc-planning/SKILL.md#shared-template).
+the format check are in [plc-planning](../skills/plc-planning/references/shared-format.md).
 
 ## Choose an execution model
 

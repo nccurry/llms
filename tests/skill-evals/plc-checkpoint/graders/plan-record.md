@@ -1,7 +1,7 @@
 # Grader: plan record rules
 
 These are the shared PLC template's rules for updating a plan, as
-[`plc-planning`](../../../../skills/plc-planning/SKILL.md#shared-template)
+[`plc-planning`](../../../../skills/plc-planning/references/shared-format.md)
 states them. The plc-checkpoint and plc-wrapup cases that may edit a plan
 use this grader. When a run edited no plan, record "not applicable".
 

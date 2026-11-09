@@ -16,7 +16,7 @@ the Current Work block.
 **Update, 2026-11-03:** the shared PLC template replaced this shape. Phase
 state lives in the README's `## Phases` table, history in its `## Log`, and
 finished plans move to `completed/`. See
-[plc-planning's shared template](../../skills/plc-planning/SKILL.md#shared-template).
+[plc-planning's shared template](../../skills/plc-planning/references/shared-format.md).
 
 ## Problems this fixes
 

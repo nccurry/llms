@@ -1148,11 +1148,11 @@ class TemplateTest(unittest.TestCase):
         encouraged, not required, which kind for which information, and where
         each lives.
         """
-        text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
-        self.assertEqual(text.count("#### Visual aids\n"), 1)
+        text = (SKILL / "references/writing.md").read_text(encoding="utf-8")
+        self.assertEqual(text.count("## Visual aids\n"), 1)
         self.assertEqual(" ".join(text.split()).count("never required"), 1)
-        rules = text.split("### Rules\n", 1)[1]
-        rule = " ".join(rules.split("#### Visual aids\n", 1)[1].split("\n#### ", 1)[0].split())
+        rules = text
+        rule = " ".join(rules.split("## Visual aids\n", 1)[1].split("\n### ", 1)[0].split())
         for phrase in (
             "encouraged",
             "never required",
@@ -1193,6 +1193,7 @@ class TemplateTest(unittest.TestCase):
 
         def uncomment(sadd):
             out = re.sub(r"<!--.*?\n\n(```mermaid.*?```)\n-->", r"\1", sadd, flags=re.DOTALL)
+            out = re.sub(r"<!--.*?-->", "", out, flags=re.DOTALL)
             self.assertEqual(out.count("<!--"), 0)
             return out
 
@@ -1219,11 +1220,11 @@ class TemplateTest(unittest.TestCase):
         """Every template in assets/ is in the skill's Fixed fields list, and
         holds the fields the list gives it, exactly.
         """
-        text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
-        rules = text.split("### Rules\n", 1)[1]
+        text = (SKILL / "references/shared-format.md").read_text(encoding="utf-8")
+        rules = text.split("## Rules\n", 1)[1]
 
         def rule(name):
-            return " ".join(rules.split(f"#### {name}\n", 1)[1].split("\n#### ", 1)[0].split())
+            return " ".join(rules.split(f"### {name}\n", 1)[1].split("\n### ", 1)[0].split())
 
         assets = SKILL / "assets"
         fields = {}
@@ -1271,7 +1272,7 @@ class TemplateTest(unittest.TestCase):
         skills that write or grow plans point there instead of restating it.
         """
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
-        rule = text.split("#### Independent review\n", 1)[1].split("\n#### ", 1)[0]
+        rule = text.split("## Independent review\n", 1)[1].split("\n### ", 1)[0]
         self.assertIn("../review-and-fix-plc/SKILL.md", rule)
         self.assertIn("(#independent-review)", text.split("## Shared template", 1)[0])
         for name in ("plc-checkpoint", "plc-execution"):
@@ -1281,8 +1282,8 @@ class TemplateTest(unittest.TestCase):
                 self.assertNotIn("../review-and-fix-plc/SKILL.md", other)
 
     def test_skill_word_list_matches_the_check(self):
-        text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
-        words = " ".join(text.split("### Words\n", 1)[1].split("\n### ", 1)[0].split())
+        text = (SKILL / "references/shared-format.md").read_text(encoding="utf-8")
+        words = " ".join(text.split("## Words\n", 1)[1].split("\n## ", 1)[0].split())
         packet = search(r"\*\*Packet status words:\*\* (.+?)\. - ", words)[1].split(", ")
         ladder = search(r"\*\*Phase state words, in order:\*\*(.+?)- \*\*Side states", words)[1]
         phases = re.findall(r"- ([A-Z][a-z]+(?: [a-z]+)?)[;:]", ladder)

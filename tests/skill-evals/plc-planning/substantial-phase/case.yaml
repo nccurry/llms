@@ -1,0 +1,13 @@
+schema_version: 1
+skill: plc-planning
+description: A substantial phase uses readable sections while preserving the PLC contract.
+setup: python ../readable_fixture.py substantial-phase <dest>
+working_directory: <dest>/harbor
+prompt: |
+  Read brief.md and write a durable PLC for the reload feature in docs/plans/planned/.
+  Include the requirements, design, delivery steps and proving checks the next
+  person needs. Keep it readable. Do not implement the feature. I am @alex.
+max_turns: 30
+check: python ../check_readable.py <dest>
+graders:
+  - ../readability.md

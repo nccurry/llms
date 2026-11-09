@@ -2,7 +2,7 @@
 
 ## Purpose
 
-State the user, developer, or business problem and the required outcome.
+<!-- State the user, developer, or business problem and the required outcome. -->
 
 ## Scope
 
@@ -12,23 +12,23 @@ State the user, developer, or business problem and the required outcome.
 
 ## Current System And Prerequisites
 
-Record the source revision inspected and link to relevant code, tests, and
+<!-- Record the source revision inspected and link to relevant code, tests, and
 existing contracts. Distinguish observed behavior from proposed changes.
 For each prerequisite, name the required capability, its owner, how to check
 that it is available, and the requirements it blocks. A planned or approved
 sibling document alone does not prove its implementation is available.
 For a moving upstream target, record the revision and date checked; do not
-silently turn that snapshot into a fixed product target.
+silently turn that snapshot into a fixed product target. -->
 
 ## Requirements
 
-Use one observable behavior or constraint per requirement. Each names a check
+<!-- Use one observable behavior or constraint per requirement. Each names a check
 that can be run: a command or test, and its expected result. EARS wording
-("WHEN … the system SHALL …") is optional.
+("WHEN … the system SHALL …") is optional. -->
 
-IDs are permanent: never renumber, reuse or rename them. A dropped requirement
+<!-- IDs are permanent: never renumber, reuse or rename them. A dropped requirement
 stays where it is, marked `Dropped — <reason>`, and a new one takes the next
-number.
+number. -->
 
 | ID | Priority | Requirement | Check |
 | --- | --- | --- | --- |
@@ -36,9 +36,9 @@ number.
 
 ## User Experience And Public Surface
 
-Summarize behavior a user, API consumer, operator, or integrator can observe.
+<!-- Summarize behavior a user, API consumer, operator, or integrator can observe.
 When this change has no public surface, delete this section and Expected
-Experience.
+Experience. -->
 
 | Surface | Action or input | Expected result | Compatibility |
 | --- | --- | --- | --- |
@@ -46,8 +46,8 @@ Experience.
 
 ## Expected Experience
 
-Add short examples for each changed public surface. Include error, empty, or
-permission behavior when it matters. Use only the headings that apply.
+<!-- Add short examples for each changed public surface. Include error, empty, or
+permission behavior when it matters. Use only the headings that apply. -->
 
 ### CLI
 
@@ -78,10 +78,10 @@ $ <command>
 
 ## Public Contracts
 
-Define changed APIs, commands, configuration, schemas, files, and observable
+<!-- Define changed APIs, commands, configuration, schemas, files, and observable
 state transitions, including invalid-input behavior. Link to an existing
 schema or contract when it already defines these details; do not maintain a
-second definition. Internal implementation choices belong in `SADD.md`.
+second definition. Internal implementation choices belong in `SADD.md`. -->
 
 ## Quality Attributes
 
@@ -91,8 +91,8 @@ second definition. Internal implementation choices belong in `SADD.md`.
 
 ## Traceability
 
-Phase state lives in the README `## Phases` table; phase details and evidence
-live in `IMPLEMENTATION_PLAN.md`.
+<!-- Phase state lives in the README `## Phases` table; phase details and evidence
+live in `IMPLEMENTATION_PLAN.md`. -->
 
 | Requirement | Design section | Phase |
 | --- | --- | --- |
@@ -100,9 +100,9 @@ live in `IMPLEMENTATION_PLAN.md`.
 
 ## Risks And Assumptions
 
-Open questions go in the README's `## Open questions` section, one
+<!-- Open questions go in the README's `## Open questions` section, one
 `Open question:` line each. Record adopted decisions in `SADD.md` and remove
-superseded instructions from current sections.
+superseded instructions from current sections. -->
 
 | Item | Type | Affected requirements or phases | Blocks work? | Owner | Resolution or permitted assumption |
 | --- | --- | --- | --- | --- | --- |

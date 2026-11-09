@@ -600,7 +600,18 @@ def eval_only_problems(packet: Path, owner: str | None = None) -> list[str]:
         problems.append("eval: placeholder text (N/A, TBD or <...>) left in the README")
     if plan:
         plan_lines = format_check().unfenced(plan.splitlines())
-        anchors = {heading_anchor(line[4:]) for line in plan_lines if line.startswith("### ")}
+        anchors: set[str] = set()
+        for line in plan_lines:
+            heading = re.match(r"^#{1,6}\s+(.+?)\s*#*\s*$", line)
+            if heading is None:
+                continue
+            base = heading_anchor(heading[1])
+            anchor = base
+            suffix = 0
+            while anchor in anchors:
+                suffix += 1
+                anchor = f"{base}-{suffix}"
+            anchors.add(anchor)
         for row in _phase_rows(readme)[2:]:
             problems.extend(
                 f"eval: phase row links to a missing plan heading: #{anchor}"

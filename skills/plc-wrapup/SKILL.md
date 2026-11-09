@@ -36,7 +36,7 @@ close out, and skip the plan steps below.
 
 When the user is dropping the work rather than landing it, merge nothing.
 Run step 1 and skip steps 2 to 5. Then the plan ends in `archived/` as
-`plc-planning`'s [Ending a packet](../plc-planning/SKILL.md#ending-a-packet)
+`plc-planning`'s [Ending a packet](../plc-planning/references/shared-format.md#ending-a-packet)
 rule says, delivered by step 6's rules, including its ticket call, and
 checked with `--strict`; if the plan exists only on a dropped branch, ask
 whether to keep it on `main`.
@@ -133,13 +133,21 @@ keep it Merged and name the check that is left.
 Do this for each plan in scope: its own Current Work and `## Phases`
 update, and, when it is finished, its own move to `completed/`.
 
+Preserve the document's readable structure when updating it. Put new results
+in their owning evidence section, retain prior facts and limits, and split
+growing explanations into descriptive subsections. Follow the shared
+[writing guidance](../plc-planning/references/writing.md); keep generic
+workflow instructions in skills rather than copying them into packets.
+Label supplied results as supplied and identify their source; distinguish them
+from checks run in this session, including in Current Work summaries.
+
 Rewrite Current Work and the README's `## Phases` table to the real end
 state, using the rewrite rules in `plc-checkpoint`'s
 [Rewrite Current Work](../plc-checkpoint/SKILL.md#5-rewrite-current-work)
 step. Its commit rules don't apply; this step's delivery rules below do.
 Update the `## Merge requests` table, if the plan has one, and add rows
 for the MRs this wrap-up opened, as `plc-planning`'s
-[Merge requests](../plc-planning/SKILL.md#merge-requests) rule says.
+[Merge requests](../plc-planning/references/shared-format.md#merge-requests) rule says.
 First decide, with step 7's rules, which checkouts and branches step 7 will
 remove and which it will keep. Record what it will keep now, so the plan is
 delivered once: in an open plan, as rows in Current Work's "Where the work
@@ -162,10 +170,10 @@ Then, in this order:
      disagrees with the evidence or a missing owner, stop and ask.
    - Fix any other finding and run the check again.
 2. Set Status to Complete and add the historical-record line that
-   `plc-planning`'s [Ending a packet](../plc-planning/SKILL.md#ending-a-packet)
+   `plc-planning`'s [Ending a packet](../plc-planning/references/shared-format.md#ending-a-packet)
    rule describes, naming the merge commit on the target.
 3. Move the packet to `<plans folder>/completed/` as `plc-planning`'s
-   [lifecycle folders](../plc-planning/SKILL.md#lifecycle-folders) rule says.
+   [lifecycle folders](../plc-planning/references/shared-format.md#lifecycle-folders) rule says.
    Plans that older versions of this skill finished into another folder stay
    there.
 4. Run the check on the moved packet with `--strict`. It must exit 0.
@@ -198,7 +206,7 @@ work that other sessions started is untouched. Step 6 already recorded what
 stays. If a removal step 6 planned fails, record what is left: in an open
 plan, as a row in "Where the work lives"; in a finished plan, as the one
 dated follow-up Log line that `plc-planning`'s
-[Ending a packet](../plc-planning/SKILL.md#ending-a-packet) rule allows.
+[Ending a packet](../plc-planning/references/shared-format.md#ending-a-packet) rule allows.
 With no plan, step 8's report is the record.
 
 - **Merged into `main`:** remove each worktree, including the `_merge`

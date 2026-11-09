@@ -103,7 +103,7 @@ Fetch first, then collect facts. Record the commit each fact applies to.
    with the plan as drift. Don't change tickets here.
 
 Find each phase's parts with the Parts rule in `plc-planning`'s
-[word list](../plc-planning/SKILL.md#words), and give each part a phase
+[word list](../plc-planning/references/shared-format.md#words), and give each part a phase
 state word from that list; when the plan uses a different word, quote the
 plan's word beside yours. Then choose each phase's word with the list's
 rule for a phase whose parts differ, including its steps for side states.
@@ -163,24 +163,31 @@ worktree while the campaign is open.
 
 ## 5. Rewrite Current Work
 
+Preserve the document's readable structure when updating it. Put new results
+in their owning evidence section, retain prior facts and limits, and split
+growing explanations into descriptive subsections. Follow the shared
+[writing guidance](../plc-planning/references/writing.md); keep generic
+workflow instructions in skills rather than copying them into packets.
+
+
 If the plan is an active packet in an older shape, convert it first with
 `plc-planning`'s [old-packet conversion](../plc-planning/references/old-packet-migration.md),
 then update it. Don't add a second status block beside the old one.
 
 Rewrite the plan's Current Work block in place with the keys of `plc-planning`'s
-[shared template](../plc-planning/SKILL.md#shared-template), in its order:
+[shared template](../plc-planning/references/shared-format.md), in its order:
 Status, Owner, "Last updated" (today, the branch, and its commit), then the
 other keys and where the work lives (after tidying). Keep Owner, Depends on,
 Priority, and any `Replaces:` or `Superseded by:` line unless the evidence or
 the user changes them. Replace the old content; history goes to the Log. When
 Status changes between Planned and In progress, follow `plc-planning`'s
-[lifecycle folders](../plc-planning/SKILL.md#lifecycle-folders) rule. Never
+[lifecycle folders](../plc-planning/references/shared-format.md#lifecycle-folders) rule. Never
 set Status to Complete or move the packet to `completed/`; finishing is
 `plc-wrapup`'s job. When the work looks finished, say so and offer it.
 
 Grow the plan first, following `plc-planning`'s
-[Growing a packet](../plc-planning/SKILL.md#growing-a-packet) rule: when a
-trigger in its [Adding files](../plc-planning/SKILL.md#adding-files) rule
+[Growing a packet](../plc-planning/references/packet-files.md#growing-a-packet) rule: when a
+trigger in its [Adding files](../plc-planning/references/packet-files.md#adding-files) rule
 holds for a file the plan lacks, including for what this update records as
 approved, such as a requirement for a new CLI flag, add that file now,
 turning a one-file plan into a folder. Don't leave that information in a
@@ -189,12 +196,12 @@ Log line or a README section instead.
 Then, in the plan's README:
 
 - Update the affected rows of the `## Phases` table under `plc-planning`'s
-  [Phases rules](../plc-planning/SKILL.md#phases). Each changed note names the
+  [Phases rules](../plc-planning/references/shared-format.md#phases). Each changed note names the
   merge request or commit. Mark a phase Verified or Live only with its
   evidence in the note; otherwise give it the word `plc-planning`'s
-  [Words](../plc-planning/SKILL.md#words) rules give.
+  [Words](../plc-planning/references/shared-format.md#words) rules give.
 - Update the `## Merge requests` table, if the plan has one, as
-  `plc-planning`'s [Merge requests](../plc-planning/SKILL.md#merge-requests)
+  `plc-planning`'s [Merge requests](../plc-planning/references/shared-format.md#merge-requests)
   rule says. Change only the plan, never the host.
 - Add one dated line to `## Log` for each state change, decision, or
   surprise since the last update. A gap (see below) that nobody had named
@@ -216,10 +223,10 @@ Then, in the plan's README:
   Never mark a requirement met without its evidence.
 - Record each decision the user approved in this conversation as a dated
   `Decision:` Log line, following `plc-planning`'s
-  [open questions](../plc-planning/SKILL.md#open-questions) rule. When it
+  [open questions](../plc-planning/references/shared-format.md#open-questions) rule. When it
   adds a requirement, add the requirement where the plan now keeps them,
   with the next ID and a check, as the
-  [requirements rules](../plc-planning/SKILL.md#requirements-and-checks)
+  [requirements rules](../plc-planning/references/shared-format.md#requirements-and-checks)
   say. Record an unapproved one as an `Open question:` line; it adds no
   requirement and no file. Remove blockers the evidence has cleared.
 
