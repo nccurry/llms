@@ -149,7 +149,8 @@ finding is Codex execution trial 2: the grader calls SRD creation unauthorized,
 but the skill's existing packet-growth rule requires that maintenance, and
 every behavior cited by the SRD already appears in the fixture's `brief.md`.
 REQ-001/REQ-002 and their checks move unchanged; no application code or new
-behavior is added. The raw grade and the separate review rationale are retained.
+behavior is added. The raw grade and separate review rationale were inspected;
+this record retains the finding, adjudication and counts.
 
 The three baseline failures omit explicit supplied-result attribution. Dates,
 counts and pending browser acceptance remain present; the failure is lost
@@ -164,7 +165,7 @@ Unchanged passing artifacts remain valid for unaffected scenarios.
 There were 54 revised trial executions: the initial 36, six after the template
 comment, and 12 after the final planning/wrapup instruction changes. The final
 comparison uses 24 unaffected initial outputs and all 12 final affected outputs.
-Older trials, including failures, remain in separate local archive folders.
+Older trials, including failures, were retained locally through acceptance.
 
 Two checker corrections apply equally to saved baseline and revised outputs:
 phase links accept deeper Markdown headings, and maintenance rejects a missing
@@ -179,14 +180,22 @@ disabled. They test authoring and maintenance, not feature implementation or
 real Git-host integration. Ambiguous early wrapup prompts were excluded and
 replaced before comparison; paired prompts now match within each host. This
 small sample does not prove a general improvement rate. Local prompts,
-transcripts, documents, model/skill metadata and checker/grade records are in
-`/tmp/plc035/`; raw session logs are not published in this repository.
+transcripts, documents, model/skill metadata and checker/grade records were held
+in `/tmp/plc035/` through acceptance. Wrapup removed that disposable output
+after remote delivery. Raw session logs are not published in this repository.
 
 The evaluated four-skill source manifest covers planning, checkpoint, execution
 and wrapup files, excluding Python caches. Its SHA-256 is
 `293749db695426005d9b25c25444643f9b8290e4e530c2af5b5b715a36be30d1`.
-The manifest is `/tmp/plc035/revised-source-manifest.json`; reviewed grades are
-separate from the raw model grades. All 72 compared trials confirm the intended
+The manifest was `/tmp/plc035/revised-source-manifest.json`; reviewed grades were
+separate from raw model grades. All 72 compared trials confirm the intended
 workflow skill loaded, and paired baseline/revised prompt bytes match per host.
 Wrapup removed one extra blank line at the end of each of `packet-files.md`
 and `writing.md`; their instructions are unchanged from the evaluated source.
+
+Delivery was verified on both remote main branches on 2026-11-09: skill code
+`4a6eb75`, board code `38ccfb9`, and completed packet `0ac16d1`. The exact board
+delivery tree passes its full check: 3,534 unit/component tests, 117 binary
+tests and 202 browser tests; all coverage measures exceed 96%. The temporary
+verification copy and eval artifacts are removed. Both primary repositories
+remain; unrelated in-flight board API work was excluded from this delivery.
