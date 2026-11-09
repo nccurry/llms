@@ -549,7 +549,17 @@ call for another review.
   `Closed — <reason>`.
 - When you open a merge request for a phase, add its row and a
   `Plan: <packet ID or slug> <phase>` line to its description, such as
-  `Plan: PLC-012 P2`. Both are optional.
+  `Plan: PLC-012 P2`. Both are optional. When the plan lives in another
+  repository than the code, name it: `Plan: <repo> PLC-012 P2`.
+- For a stacked merge request, the row's Note may say `stacked on !11`, so
+  the chain can be rebuilt after the host retargets on a merge.
+- Plan IDs stay out of merge request titles and commit messages. A tool that
+  reads the table treats a row as the most certain link, and any other clue
+  (the description, labels, the branch name, a ticket key) as a best-effort
+  guess. A merge request with none of them is simply untracked.
+- When the work has no PLC, skip all of this. If it follows another kind of
+  plan, such as a ticket or an issue checklist, record the same facts in that
+  plan's own place; when there is no plan, leave them out.
 - A status update refreshes each row's State from the host, and offers
   rows for merge requests it finds by their branch or their `Plan:` line.
 

@@ -85,7 +85,8 @@ Fetch first, then collect facts. Record the commit each fact applies to.
 
 3. **PRs/MRs** with `gh` or `glab`: state, target, merge commit, CI, review,
    for this work's branches and open MRs whose description has a `Plan:`
-   line for this plan.
+   line for this plan, or whose branch name carries its ID. With no plan,
+   use the work's own branches.
 4. **Checks.** For each part the plan calls verified, the check and the commit
    it ran on. A result from an older commit doesn't verify the current one.
    For a Merged phase with no result on the target commit yet, name its

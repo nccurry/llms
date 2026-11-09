@@ -19,7 +19,9 @@ Use the MRs the user names. Otherwise list the repository's open MRs with
 the host's tool (`glab mr list`, `gh pr list`) and pick the ones the user
 means, such as their own or one stack; ask when that is unclear. For a
 stack, where each MR targets the one below it, work from the bottom up, so
-each fix lands before the MRs that build on it.
+each fix lands before the MRs that build on it. An MR whose description says
+`Stacked on !N` or `Based on !N` is also part of a stack, even when every MR
+targets the default branch; keep that line true when you retarget or rebase.
 
 For each MR, note its source branch, target, head commit, CI state and open
 threads. Work in the checkout or worktree that already holds its branch;

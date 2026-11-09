@@ -62,7 +62,7 @@ git symbolic-ref --quiet --short refs/remotes/origin/HEAD
 
 1. Choose names.
    - Derive a short, lowercase hyphenated feature slug from the user's task.
-   - Choose a branch name from, in order: the user's requested branch name, a repository naming convention, or `<git-username>/<feature-slug>`.
+   - Choose a branch name from, in order: the user's requested branch name, a repository naming convention, or `<git-username>/<feature-slug>`. When the work belongs to a plan, put its ID and phase in the slug, such as `<git-username>/plc-12-p2-<feature-slug>`, so tools can match the branch to the plan; with no plan, use the slug alone.
    - For the fallback username namespace, use the configured Git or hosting username when available; otherwise use the local system username. Normalize only as needed for a valid branch name.
    - Use the repository's AGENTS.md worktree root when it defines one; otherwise use `<primary-worktree-parent>/<repo-name>-wt/<campaign>/<feature-slug>`, unless the user provided a path.
    - Rerun preflight with the intended target:

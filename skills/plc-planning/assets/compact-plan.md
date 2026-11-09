@@ -48,7 +48,8 @@ Where the work lives:
 when the first one opens. It is optional: one row per merge request or pull
 request for a phase, closed and replaced ones included; a phase may have
 several. Merge request is `!12`, `#34` or the full URL. State is `Open`,
-`Merged @ <commit>` or `Closed — <reason>`. Delete this note. -->
+`Merged @ <commit>` or `Closed — <reason>`. A Note may say `stacked on !11`.
+Delete this note. -->
 | Phase | Merge request | State | Note |
 | --- | --- | --- | --- |
 | P1 | !<number> | Open | |

@@ -78,7 +78,12 @@ change, omit empty sections, and keep necessary migration guidance visible.
   phase of a plan. With a plan, suggest adding that line and the phase's row
   in the plan's `## Merge requests` table; both are optional, as
   `plc-planning`'s [Merge requests](../plc-planning/SKILL.md#merge-requests)
-  rule says.
+  rule says. When the plan lives in another repository, write
+  `Plan: <repo> <packet ID or slug> <phase>`. For a stacked MR, add one line,
+  `Stacked on !N`, in the description; titles and commits stay as the
+  project writes them. With no plan, skip these lines; if the work follows
+  another kind of plan, such as a ticket or an issue checklist, link it in
+  the description instead.
   When this work has a ticket or the project uses tickets, run
   [manage-tickets](../manage-tickets/SKILL.md) to put its key in the title or
   body in the project's form.

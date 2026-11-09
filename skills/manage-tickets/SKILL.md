@@ -55,7 +55,9 @@ and tell the user about the contradiction.
 When there is a plan, put the key beside its phase (or in Current Work for
 a one-phase plan), and put the plan's path in the ticket. Before creating a
 ticket, search the tracker by key, by the plan's path and by title, and
-link the existing one when found.
+link the existing one when found. A key beside a phase also lets a tool
+match merge requests that carry the key to that phase. With no plan, keep the
+key in the ticket and the merge request as the project's rules say.
 
 ## 4. Act on the event
 
