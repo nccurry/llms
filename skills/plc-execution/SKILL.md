@@ -74,7 +74,10 @@ locations. Do not append successive checkpoints or keep superseded
 instructions as current directions.
 
 Useful implementation notes belong in the packet and must be committed
-with the work. Delete temporary notes when no longer useful. Keep raw receipts
+with the work. Group related code, tests, repairs, and records into logical
+commits; a child handoff or phase-state update does not require a separate
+record-only commit or push. Delete temporary notes when no longer useful.
+Keep raw receipts
 only while needed for current acceptance or recovery; after merge or checkout
 closure they may be discarded without an archive. Never use an ignored output
 directory as the only home for implementation decisions or remaining work.
@@ -133,7 +136,9 @@ whether final delivery is local or remote before selecting its cleanup proof ref
 - Direct integration: the parent merges child branches into the chosen target.
 - MR/PR integration: branches receive host review and CI. Read
   [the MR procedure](references/merge-request-integration.md) when this route
-  applies, including its review, comment-resolution, and CI gates. When you
+  applies, including its review, comment-resolution, and CI gates. Use
+  [merge policy](../plc-mr-review/references/merge-policy.md) to choose how
+  to merge and when to push. When you
   open an MR for a phase, consider adding its row and the description's
   `Plan:` line, as `plc-planning`'s
   [Merge requests](../plc-planning/references/shared-format.md#merge-requests) rule suggests.

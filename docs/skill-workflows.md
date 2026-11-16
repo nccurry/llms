@@ -126,6 +126,13 @@ handled, and to merge them only when you say so:
 $plc-mr-review Get these MRs ready for review. Merge them when green.
 ```
 
+MR review and wrap-up use the shared
+[merge policy](../skills/plc-mr-review/references/merge-policy.md): recommend
+squash for fixup commits on branches with no dependents, keep shared commits
+that dependent branches need, and push related repairs and records together.
+Large PLCs still ship as small, tested changes. Follow existing queues/trains
+and required checks; fewer commits do not by themselves mean fewer CI runs.
+
 When the project tracks work in tickets, `manage-tickets` keeps the ticket
 in step with the plan and the MRs: the planning, start, MR and wrap-up
 skills call it, and it does nothing in a project without tickets.

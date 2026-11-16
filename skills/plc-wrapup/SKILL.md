@@ -74,6 +74,10 @@ and integration branches, in the campaign folder or anywhere else
 Use the user's words, then the plan's recorded route, then the repo's
 `AGENTS.md` convention.
 
+Read [merge policy](../plc-mr-review/references/merge-policy.md) before
+choosing how to merge and when to push. Use it to account for dependent
+branches and CI cost without delaying small, useful changes.
+
 - **Direct:** merge in a checkout made for it, never in the user's primary
   checkout, which may be dirty, on another branch, or hold their own
   unpushed commits. Use the integration worktree when there is one;
@@ -187,10 +191,14 @@ Deliver the plan update with the code:
 - **Direct:** commit it in the merge checkout on top of the merge, push both
   together, then run step 5's `origin/main` check.
 - **Local only:** commit it on top of the merge on the local target.
-- **PR/MR:** an open plan's update travels in the PR/MR. Finishing the plan
-  waits for the merge. If it merged during this wrap-up, finish the plan now
-  as a follow-up commit by the repo's usual route; otherwise the next
-  wrap-up finishes it after the merge.
+- **PR/MR:** include all facts already known in the delivery PR/MR. Final
+  merge and post-merge acceptance facts wait for observation. Combine those
+  records for this wrap-up into one follow-up per owning repository, using
+  its usual route, rather than one commit or MR per phase or merge. When the
+  repository permits records to wait for its next checkpoint, update them in
+  place and report their unpublished state and next delivery; keep that
+  checkout until the records are delivered. Never mark an unobserved merge
+  or check complete, or create another commit just to verify this record.
 - A plan kept in another repo gets its own commit there, following that
   repo's rules.
 

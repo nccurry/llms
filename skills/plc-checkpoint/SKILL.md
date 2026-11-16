@@ -250,14 +250,18 @@ scope, such as a new requirement, run `plc-planning`'s
 - Skip a copy that has uncommitted changes you didn't make, or where another
   agent is working. Report what you would have changed. An uncommitted diff
   that touches only the Current Work block is usually an earlier checkpoint's
-  edit waiting for a commit decision: rewrite it in place and ask again.
-- Commit only the plan files, on their own, as
-  `docs(plan): update <plan> status`, after `git diff --check`.
+  edit waiting for delivery: rewrite it in place within existing authorization.
+- A checkpoint edits only plan files; it does not commit unrelated source.
+  Keep related records together for the next authorized delivery with the
+  work. If a standalone checkpoint commit is requested or required, batch
+  this checkpoint's plan files as `docs(plan): update <plan> status`, after
+  `git diff --check`. Do not create one commit per status or validation result.
 - On the default branch, commit only when the repo's `AGENTS.md` or the plan
-  says plan updates go straight there. Otherwise leave the edit uncommitted
-  and ask.
-- A plan in another repo gets its own commit there, following that repo's
-  rules. Push it only when that repo's instructions say to.
+  says plan updates go straight there, or the user authorized it. Otherwise
+  leave the edit uncommitted and report where its next delivery belongs.
+- A plan in another repo is delivered there, following that repo's rules;
+  combine related records for the checkpoint rather than each product MR.
+  Push it only when that repo's instructions or the user authorize it.
 - Ad-hoc work with no plan: update the session's task list instead.
 
 ## 6. Report

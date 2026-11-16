@@ -23,8 +23,9 @@ Wait for pending required checks and reviews, then read their actual results.
 
 Recheck comments and CI after each update. Before merging, the parent reads the
 current diff, validates delivery evidence, confirms strict audit PASS, all
-required CI green at the final revision, and no unresolved actionable in-scope
-review comment. A route authorizing review does not alone authorize final merge.
+required CI green for the current source and required combined result, and no
+unresolved actionable in-scope review comment. A route authorizing review does
+not alone authorize final merge.
 
 When the host is Codex desktop, attach every created PR to the current task
 using attach_artifact. Use the equivalent host capability when available.
