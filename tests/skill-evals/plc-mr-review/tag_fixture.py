@@ -20,7 +20,7 @@ Read metadata and filter plans.
 - Status: Planned
 - Owner: @alex
 - Last updated: 2026-11-16
-- Tags: release: 1.0.0; kind: feature
+- Tags: release: 1.0.0; kind: feature; plc: PLC-999; phase: 9
 
 ## Phases
 
@@ -50,7 +50,16 @@ def build(dest: Path, host: str, scoped: bool = False) -> None:
     """MR21 misses area; MR22 conflicts; MR23 spans phases; MR24 denies writes."""
     dest.mkdir(parents=True, exist_ok=True)
     build_app(dest, {PLAN: TEXT, "AGENTS.md": "Reuse existing plan-tag labels; create none.\n"})
-    labels = ["release::1.0.0", "release::0.9.0", "kind::feature", "area::web", "keep"]
+    labels = [
+        "release::1.0.0",
+        "release::0.9.0",
+        "kind::feature",
+        "area::web",
+        "keep",
+        "plc::PLC-100",
+        "plc::PLC-999",
+        "phase::9",
+    ]
     mrs = []
     for number in range(21, 26):
         phases = {21: " P2", 22: " P2", 23: " P2 P3", 24: " P2", 25: ""}[number]
@@ -67,6 +76,8 @@ def build(dest: Path, host: str, scoped: bool = False) -> None:
                 "labels": ["keep"] + (["release::0.9.0"] if number == 22 else []),
             }
         )
+    # An existing identity clue stays intact, despite the different generic plc tag.
+    mrs[-1]["labels"].append("plc::PLC-100")
     # MR21's phase uses area reader, whose label is absent. Other MRs use P2.
     mrs[0]["body"] = "Plan: PLC-100 P1"
     install_host(
@@ -86,7 +97,7 @@ def build(dest: Path, host: str, scoped: bool = False) -> None:
         "22": ["keep", "release::0.9.0", "kind::feature", "area::web"],
         "23": ["keep", "kind::feature", "area::web"],
         "24": ["keep"],
-        "25": ["keep", "release::1.0.0", "kind::feature"],
+        "25": ["keep", "plc::PLC-100", "release::1.0.0", "kind::feature"],
     }
     (dest / "_tag_expect.json").write_text(json.dumps(expected), encoding="utf-8")
     snapshot(dest, [dest / "app"])

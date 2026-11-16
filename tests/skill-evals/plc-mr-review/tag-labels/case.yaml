@@ -10,7 +10,8 @@ prompt: |
   MR 21 delivers P1; MR 22 delivers P2; MR 23 delivers P2 and P3 together;
   MR 24 delivers P2; MR 25 links only PLC-100. Do not merge or push anything.
   Use the fake host in ../bin. Explain missing labels, conflicts and write
-  failures in your final response.
+  failures in your final response, including any skipped identity-namespace
+  collisions from the custom plc and phase metadata tags.
 max_turns: 40
 check: python ../check_tag_labels.py <dest>
 graders:

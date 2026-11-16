@@ -13,7 +13,7 @@ from pathlib import Path
 EVALS = Path(__file__).resolve().parent / "skill-evals"
 CASES = EVALS / "plc-mr-review"
 sys.path.insert(0, str(EVALS))
-from fixture_lib import GIT_ENV, configure, git  # noqa: E402 - sys.path is set above
+from fixture_lib import GIT_ENV, configure, format_check, git  # noqa: E402 - sys.path is set above
 from host_fixture import BRANCH, host_command, host_state  # noqa: E402 - sys.path is set above
 
 
@@ -158,6 +158,10 @@ class TagLabelFixtureTest(unittest.TestCase):
             with self.subTest(host=host, scoped=scoped), tempfile.TemporaryDirectory() as tmp:
                 dest = Path(tmp) / "fixture"
                 tag_fixture.build(dest, host, scoped)
+                plan_path = dest / "app" / tag_fixture.PLAN
+                plan_before = plan_path.read_text(encoding="utf-8")
+                self.assertIn("; plc: PLC-999; phase: 9", plan_before)
+                self.assertEqual(format_check().check_packet(plan_path, strict=True), [])
                 self.assertTrue(check_tag_labels.problems(dest))
                 tool = "gh" if host == "github" else "glab"
                 listing = (
@@ -215,7 +219,29 @@ class TagLabelFixtureTest(unittest.TestCase):
                     if number == 24:
                         self.assertIn("label write denied", result.stderr)
                 self.assertEqual(check_tag_labels.problems(dest), [])
+                self.assertEqual(plan_path.read_text(encoding="utf-8"), plan_before)
                 state_path = dest / "_host/state.json"
+                saved = state_path.read_text(encoding="utf-8")
+                # The host permits these labels; the workflow must skip identity collisions.
+                identity_args = (
+                    ["pr", "edit", "21", "--add-label"]
+                    if host == "github"
+                    else ["mr", "update", "21", "--label"]
+                )
+                for label in ("plc::PLC-999", "phase::9"):
+                    subprocess.run(
+                        [*host_command(dest, tool), *identity_args, label],
+                        capture_output=True,
+                        env=GIT_ENV,
+                        check=True,
+                    )
+                    self.assertIn("MR 21 labels differ", check_tag_labels.problems(dest)[0])
+                    state_path.write_text(saved, encoding="utf-8")
+                state = host_state(dest)
+                state["mrs"][-1]["labels"].remove("plc::PLC-100")
+                state_path.write_text(json.dumps(state), encoding="utf-8")
+                self.assertIn("MR 25 labels differ", check_tag_labels.problems(dest)[0])
+                state_path.write_text(saved, encoding="utf-8")
                 state = host_state(dest)
                 state["mrs"][2]["labels"].append("release::1.0.0")
                 state_path.write_text(json.dumps(state), encoding="utf-8")

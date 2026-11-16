@@ -216,9 +216,15 @@ using the existing host workflow. Report denied, unavailable or failed writes
 truthfully, without undoing the MR operation or changing the PLC. Do not
 claim labels were added until the host confirms it. Run no background sync.
 
-Keep linkage in the existing Plan line and Merge requests table; labels do
-not establish a plan link. Do not copy a tag list into MR description prose
-as a second source of truth.
+Keep linkage in the existing Plan line and Merge requests table. Generic
+metadata labels do not establish a plan link, but existing `plc::` and
+`phase::` host labels are explicit identity clues. Never derive labels in
+those two namespaces from generic tags: skip `plc` and `phase` pairs during
+automatic metadata label reuse and report the identity-namespace collision.
+Keep existing identity labels unchanged. These keys remain valid PLC/phase
+tags for inheritance and filtering; this restriction applies only to label
+reuse. Do not copy a tag list into MR description prose as a second source
+of truth.
 
 ### Requirements and checks
 

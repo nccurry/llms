@@ -23,7 +23,16 @@ def problems(dest: Path) -> list[str]:
             found.append(f"MR {mr['number']} description was not updated")
         if mr["state"] != "opened" or mr["auto_merge"]:
             found.append(f"MR {mr['number']} was merged or set to merge")
-    available = ["release::1.0.0", "release::0.9.0", "kind::feature", "area::web", "keep"]
+    available = [
+        "release::1.0.0",
+        "release::0.9.0",
+        "kind::feature",
+        "area::web",
+        "keep",
+        "plc::PLC-100",
+        "plc::PLC-999",
+        "phase::9",
+    ]
     if state["labels"] != available:
         found.append("repository labels changed")
     phases = {21: " P1", 22: " P2", 23: " P2 P3", 24: " P2", 25: ""}
