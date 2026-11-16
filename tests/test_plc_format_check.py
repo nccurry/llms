@@ -237,6 +237,67 @@ class PacketRulesTest(unittest.TestCase):
         found = fc.check_packet(packet, people, strict=True, lifecycle=lifecycle)
         return [line.removeprefix(prefix) for line in found]
 
+    def test_optional_tags_in_folder_and_compact_plans(self):
+        for value in ("", " ", "release: 1.0.0; component: storage", "area: web, cli:100% Ω"):
+            with self.subTest(value=value):
+                tagged = edit("- Blocker: None", f"- Tags: {value}\n- Blocker: None")
+                tagged = edit(
+                    TABLE,
+                    TABLE.replace("State |", "State | Tags |")
+                    .replace("| --- | --- | --- | --- |", "| --- | --- | --- | --- | --- |")
+                    .replace("Planned |", "Planned | release: 1.1.0 |"),
+                    tagged,
+                )
+                self.assertEqual(self.check(tagged), [])
+                compact = self.root / "planned/plc-tagged.md"
+                compact.write_text(tagged, encoding="utf-8")
+                self.assertEqual(fc.check_packet(compact, strict=True), [])
+
+    def test_tag_causes_and_source_locations(self):
+        cases = {
+            "release:": "empty value for release",
+            "release: 1; release: 2": "duplicate key: release",
+            "Area: web": "invalid key: Area",
+            "bad_key: web": "invalid key: bad_key",
+            ": web": "invalid key: (empty)",
+            "area web": "entry has no colon",
+            "area: web;": "empty entry or trailing separator",
+            "area: web;;kind: fix": "empty entry or trailing separator",
+            "area: web|cli": "values cannot contain a pipe or line break",
+            "area: web\n  cli": "values cannot contain a pipe or line break",
+        }
+        for value, cause in cases.items():
+            with self.subTest(value=value):
+                tagged = edit("- Blocker: None", f"- Tags: {value}\n- Blocker: None")
+                self.assertEqual(self.check(tagged), [f"{R}:10: Current Work: Tags: {cause}"])
+                self.assertEqual(fc.tag_error(value), cause)
+        self.assertEqual(
+            self.check(edit("- Blocker: None", "- Tags: area: web\n- Tags: kind: fix")),
+            [f"{R}:11: Current Work: Tags: duplicate Tags field"],
+        )
+        table = (
+            "| Phase | Name | Owner | State | Tags |\n"
+            "| --- | --- | --- | --- | --- |\n"
+            "| P1 | Cap retries | | Planned | release: |"
+        )
+        self.assertEqual(
+            self.check(edit(TABLE, table)), [f"{R}:16: Phases: Tags: empty value for release"]
+        )
+
+    def test_tag_utf16_boundary_and_key_budget(self):
+        for value in ("x" * 498, "😀" * 249):
+            self.assertIsNone(fc.tag_error(f"a:{value}"))
+            self.assertEqual(
+                fc.tag_error(f"a:{value}x"), "pair for a exceeds 500 UTF-16 code units"
+            )
+        metadata = "\n".join(f"- Extra {chr(65 + i)}: value" for i in range(7))
+        tagged = edit("- Blocker: None", f"- Blocker: None\n{metadata}\n- Tags: component: storage")
+        self.assertEqual(self.check(tagged), [])
+        self.assertEqual(
+            self.check(edit("- Tags:", "- More: value\n- Tags:", tagged)),
+            [f"{R}:5: Current Work: 13 keys; at most 12 are allowed"],
+        )
+
     def test_valid_packet(self):
         self.assertEqual(self.check(), [])
 

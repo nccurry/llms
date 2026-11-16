@@ -11,6 +11,9 @@ does not authorize creating a review, pushing code, or merging it. An authorized
 create/update workflow includes maintaining its description; respect draft-only
 and read-only requests.
 
+Follow the shared [tag rules](../plc-planning/references/shared-format.md#tags) when writing or maintaining plans.
+For authorized MR writes, follow [MR label reuse](../plc-planning/references/shared-format.md#mr-label-reuse).
+
 ## Gather the current facts
 
 Read repository instructions, its description template, the existing description,

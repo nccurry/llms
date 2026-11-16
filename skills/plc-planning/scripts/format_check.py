@@ -121,6 +121,7 @@ OUTSIDE = "Phases: phase state outside the README ## Phases table"
 ACTIVE_FOLDERS = ("planned", "in-progress")
 FIRST_KEYS = ["status", "owner", "last updated"]
 MAX_KEYS = 12
+MAX_TAG_PAIR_UNITS = 500
 STATE_KEYS = {"status", "state"}
 # Key lines that give status outside the README, by key, with the words that
 # make them status. A Status line such as "Approved; ..." is not status.
@@ -442,6 +443,32 @@ def current_work_keys(lines, block):
     return keys
 
 
+def tag_error(text):
+    """The first invalid tag entry's cause, or None for a valid/blank field."""
+    if not text.strip():
+        return None
+    if "|" in text or "\n" in text or "\r" in text:
+        return "values cannot contain a pipe or line break"
+    seen = set()
+    for entry in text.split(";"):
+        if not entry.strip():
+            return "empty entry or trailing separator"
+        key, colon, value = entry.partition(":")
+        key, value = key.strip(), value.strip()
+        if not colon:
+            return "entry has no colon"
+        if not re.fullmatch(r"[a-z][a-z0-9-]*", key):
+            return f"invalid key: {key or '(empty)'}"
+        if not value:
+            return f"empty value for {key}"
+        if key in seen:
+            return f"duplicate key: {key}"
+        if len(f"{key}:{value}".encode("utf-16-le")) // 2 > MAX_TAG_PAIR_UNITS:
+            return f"pair for {key} exceeds 500 UTF-16 code units"
+        seen.add(key)
+    return None
+
+
 def check_current_work(readme, lines, parts, people, *, strict, lifecycle):
     blocks = named(parts, "current work")
     found = []
@@ -474,6 +501,17 @@ def check_current_work(readme, lines, parts, people, *, strict, lifecycle):
     first = {}
     for key in keys:
         first.setdefault(key.name, key)
+
+    tag_fields = [key for key in keys if key.name == "tags"]
+    for index, field in enumerate(tag_fields):
+        value = field.value
+        following = field.line
+        while following < blocks[0].end and lines[following].startswith(("  ", "\t")):
+            value += "\n" + lines[following]
+            following += 1
+        cause = "duplicate Tags field" if index else tag_error(value)
+        if cause:
+            found.append(finding(readme, field.line, f"Current Work: Tags: {cause}"))
 
     status = first.get("status")
     status_word = lookup_word(PACKET_WORDS, status.value) if status else None
@@ -533,6 +571,14 @@ def check_current_work(readme, lines, parts, people, *, strict, lifecycle):
 def check_phase_rows(readme, table, lifecycle, strict):
     found = []
     column = state_column(table)
+    heads = [head.lower() for head in table.header]
+    tag_columns = [i for i, head in enumerate(heads) if head == "tags"]
+    if tag_columns and (
+        len(tag_columns) != 1 or tag_columns[0] != len(heads) - 1 or tag_columns[0] != column + 1
+    ):
+        found.append(
+            finding(readme, table.line, "Phases: Tags must be one final column after State")
+        )
     for line, row in table.rows:
         if row[0] in ("", "—", "-"):
             continue  # a note row
@@ -540,6 +586,10 @@ def check_phase_rows(readme, table, lifecycle, strict):
             message = f"Phases: row has {len(row)} cells, but the header has {len(table.header)}"
             found.append(finding(readme, line, message))
             continue
+        if tag_columns:
+            cause = tag_error(row[tag_columns[0]])
+            if cause:
+                found.append(finding(readme, line, f"Phases: Tags: {cause}"))
         cell = row[column]
         state = lookup_word(PHASE_WORDS, cell)
         if state is None:

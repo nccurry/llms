@@ -30,6 +30,8 @@ Use a different skill when the request is something else:
 - "Does the code match the plan?" as a review: `plc-alignment-audit`.
 - One narrow fact, such as whether a command finished: answer directly.
 
+Follow the shared [tag rules](../plc-planning/references/shared-format.md#tags) when writing or maintaining plans.
+
 ## 1. Find the work and its plan
 
 Use the argument, the conversation, then the current branch. Otherwise look in

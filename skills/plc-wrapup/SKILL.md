@@ -23,6 +23,9 @@ touched for its records, such as a checkpoint's Log line, and every branch
 or worktree they made. Ask only when that is unclear. Each plan in scope
 gets its own pass through the plan steps below.
 
+Follow the shared [tag rules](../plc-planning/references/shared-format.md#tags) when writing or maintaining plans.
+For authorized MR writes, follow [MR label reuse](../plc-planning/references/shared-format.md#mr-label-reuse).
+
 ## Reuse the owning workflow
 
 For PLC execution work, read `plc-execution`'s procedures for integration

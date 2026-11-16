@@ -5,6 +5,8 @@ description: Drafts and maintains change plans, specs, and PLC packets with requ
 
 # PLC Planning
 
+Follow the shared [tag rules](references/shared-format.md#tags) when writing or maintaining plans.
+
 ## Overview
 
 Use this skill to create or update a planning package. "Plan-Led Change" is

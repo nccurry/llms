@@ -87,7 +87,8 @@ made from one, keeps them as written here:
 - `README.md` and `compact-plan.md`: the section headings in
   [Order and format](shared-format.md#order-and-format) and the `- Key:` lines in
   [Current Work](shared-format.md#current-work), spelled as they are there, the
-  `## Phases` table header `| Phase | Name | Owner | State |`, and the
+  `## Phases` table header `| Phase | Name | Owner | State |` (with an
+  optional final `Tags` column), and the
   `## Merge requests` table header `| Phase | Merge request | State | Note |`.
 - `SRD.md`: the requirements table header
   `| ID | Priority | Requirement | Check |`. The format check reads the IDs
@@ -121,7 +122,7 @@ made from one, keeps them as written here:
 - Last updated starts with the date, as `YYYY-MM-DD`.
 - Priority, when present, starts with a priority word; a note may follow
   ` — `. Leave it out for the default, Medium. Boards sort by it.
-- Optional keys: `Priority`, `Selected work`, and, when packets replace one
+- Optional keys: `Priority`, `Tags`, `Selected work`, and, when packets replace one
   another, `Replaces: <path>` on the new packet and `Superseded by: <path>` on
   the old one.
 - At most 12 keys, each kept to one or two lines. History goes to the Log.
@@ -148,6 +149,76 @@ made from one, keeps them as written here:
   the table, one record per result naming the phase ID:
   `- P1: task test → 112 passed @ abc1234, 2026-11-03`. A packet with
   IMPLEMENTATION_PLAN.md keeps it under the phase's heading there.
+
+### Tags
+
+Tags are optional. After Current Work's first three keys, a PLC may declare:
+
+```markdown
+- Tags: release: 1.0.0; kind: feature
+```
+
+A phase may declare tags in one optional final `Tags` column after `State`:
+
+```markdown
+| Phase | Name | Owner | State | Tags |
+| --- | --- | --- | --- | --- |
+| P1 | Read metadata | @alex | Planned | area: reader |
+| P2 | Later polish | @sam | Planned | release: 1.1.0; area: web |
+```
+
+- Omit the line and column when unused; blank fields declare no tags. Tags
+  count as one of Current Work's existing 12 keys. Report a budget overflow;
+  do not raise the limit or silently delete metadata.
+- Split entries on semicolons, then on each entry's first colon. Trim keys
+  and values. A key matches `[a-z][a-z0-9-]*`; a value is nonempty plain text,
+  preserves case and compares exactly. Later colons, commas, percent signs
+  and Unicode are allowed; semicolons, pipes and line breaks are not. There
+  is no quoting or escaping. Each normalized `key:value` pair is at most
+  500 UTF-16 code units (a supplementary Unicode character counts as two).
+- A nonblank invalid entry, empty value, duplicate key or trailing separator
+  invalidates the whole field. Repeating the PLC Tags line is invalid too.
+  Report the source and cause; never keep only the valid entries. Ordinary
+  browsing retains the packet and problem. Tag filters exclude an invalid
+  local phase, or the whole PLC and its phases if PLC defaults are invalid.
+- A phase inherits valid PLC defaults, overlaid by its own valid declarations
+  for the same keys. Blank phase cells inherit. There is no removal marker;
+  put a tag only on relevant phases when it does not apply to every phase.
+  Tags never propagate upward or between phases.
+- Suggest `release` (intended version), `area` (component), `kind` (feature,
+  fix, maintenance or docs), and optionally `initiative` (shared effort).
+  These are suggestions, never reserved keys or required values. Reuse the
+  repository's existing vocabulary, such as `component` instead of `area`.
+  Usually one to three tags suffice; that is not a checker limit.
+- Preserve PLC declarations and every phase's declarations during planning,
+  phase edits, checkpoint, wrap-up, compact/folder conversion and lifecycle
+  moves. Do not fill template examples automatically or change tags without
+  requested scope. Tags do not set status, priority, ownership or progress.
+  A release tag expresses intent, never evidence that work is Live. Scope
+  release filters by repo/project; equal versions in unrelated repos do not
+  establish a common release.
+
+### MR label reuse
+
+During an already-authorized MR creation/update, and only when repository
+policy allows it, reuse exact existing host labels spelled `key::value`
+(split on the first double colon). GitHub treats this as plain text; GitLab
+may enforce scoped exclusivity. Detect conflicts yourself on both hosts.
+
+Use effective tags for the delivering phase. For multiple delivering phases,
+use only identical pairs common to all their effective maps; with no phase
+link use only PLC declarations. Invalid applicable fields supply no labels.
+Read existing repository labels and the MR's current labels first. Skip
+missing labels without creating them. An existing different value for a key
+is a conflict: preserve it, skip the competing pair and report the difference.
+Retain unrelated labels; remove none. Add only eligible missing exact labels
+using the existing host workflow. Report denied, unavailable or failed writes
+truthfully, without undoing the MR operation or changing the PLC. Do not
+claim labels were added until the host confirms it. Run no background sync.
+
+Keep linkage in the existing Plan line and Merge requests table; labels do
+not establish a plan link. Do not copy a tag list into MR description prose
+as a second source of truth.
 
 ### Requirements and checks
 

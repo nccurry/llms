@@ -18,6 +18,9 @@ files, push, or merge.
 Load [plain-english](../plain-english/SKILL.md) and
 [verify-before-claiming](../verify-before-claiming/SKILL.md) first.
 
+Follow the shared [tag rules](../plc-planning/references/shared-format.md#tags) when writing or maintaining plans.
+For authorized MR writes, follow [MR label reuse](../plc-planning/references/shared-format.md#mr-label-reuse).
+
 ## 1. Find the MRs
 
 Use the MRs the user names. Otherwise list the repository's open MRs with

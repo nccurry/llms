@@ -20,6 +20,10 @@ boards show this.>
 - Current state: <one or two lines: what is done, merged, verified or waiting>
 - Resume check: <the first command to run and its expected result>
 
+<!-- Optional tags, only when requested or useful in the repository's vocabulary:
+- Tags: release: 1.0.0; kind: feature
+Omit the line when unused. -->
+
 Where the work lives:
 
 | Checkout | Branch | Owner | State |
@@ -31,6 +35,12 @@ Where the work lives:
 | Phase | Name | Owner | State |
 | --- | --- | --- | --- |
 | P1 | <name> | @<handle> | Planned |
+
+<!-- Optional phase tags: replace the table above only when used.
+| Phase | Name | Owner | State | Tags |
+| --- | --- | --- | --- | --- |
+| P1 | Read metadata | @alex | Planned | area: reader |
+Blank cells inherit PLC defaults. Omit the column when unused. -->
 
 ## Done when
 
