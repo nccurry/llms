@@ -71,6 +71,7 @@ from fixture_lib import (
     section_lines,
     section_names,
     status_paths,
+    tag_problems,
     worktree_paths,
 )
 
@@ -232,6 +233,7 @@ def packet_content_problems(
         for text in content.get("plan_lacks", [])
         if text in plan
     ]
+    problems += tag_problems(readme, content.get("tags", {}))
     if "done_when" in content:
         problems.append(done_when_problem(readme, content["done_when"]))
     if content.get("lists_no_removed_checkouts"):

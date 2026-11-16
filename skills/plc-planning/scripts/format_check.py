@@ -574,7 +574,10 @@ def check_phase_rows(readme, table, lifecycle, strict):
     heads = [head.lower() for head in table.header]
     tag_columns = [i for i, head in enumerate(heads) if head == "tags"]
     if tag_columns and (
-        len(tag_columns) != 1 or tag_columns[0] != len(heads) - 1 or tag_columns[0] != column + 1
+        len(tag_columns) != 1
+        or column is None
+        or tag_columns[0] != len(heads) - 1
+        or tag_columns[0] != column + 1
     ):
         found.append(
             finding(readme, table.line, "Phases: Tags must be one final column after State")

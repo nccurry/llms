@@ -199,3 +199,5 @@ delivery tree passes its full check: 3,534 unit/component tests, 117 binary
 tests and 202 browser tests; all coverage measures exceed 96%. The temporary
 verification copy and eval artifacts are removed. Both primary repositories
 remain; unrelated in-flight board API work was excluded from this delivery.
+
+The tag case covers optional PLC declarations and phase-specific intent. `requested-tags` requests release and custom component tags; the original small-change case remains untagged.

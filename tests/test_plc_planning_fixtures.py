@@ -133,6 +133,28 @@ class SmallChangeFixtureTest(unittest.TestCase):
             check=False,
         )
 
+    def test_requested_tags_fixture_records_custom_vocabulary(self):
+        dest = Path(self.tmp.name) / "tagged"
+        build("requested-tags", dest)
+        expected = json.loads((dest / "_tag_expect.json").read_text())
+        self.assertEqual(expected, {"plc": {"release": "1.0.0", "component": "storage"}, "P1": {}})
+
+    def test_requested_tags_and_untagged_generation(self):
+        self.write_good_plan()
+        expected = {"plc": {}, "P1": {}}
+        marker = self.dest / "_tag_expect.json"
+        marker.write_text(json.dumps(expected), encoding="utf-8")
+        self.assertTrue(check(self.dest)["ok"])
+        expected["plc"] = {"release": "1.0.0", "component": "storage"}
+        marker.write_text(json.dumps(expected), encoding="utf-8")
+        self.assertFalse(check(self.dest)["ok"])
+        path = self.app / PLAN_PATH
+        text = path.read_text(encoding="utf-8").replace(
+            "- Blocker: None", "- Tags: release: 1.0.0; component: storage\n- Blocker: None"
+        )
+        path.write_text(text, encoding="utf-8")
+        self.assertTrue(check(self.dest)["ok"])
+
     def test_fixture_has_the_bug_and_no_plan(self):
         tests = self.run_in_app("-m", "unittest")
         self.assertEqual(tests.returncode, 0, tests.stderr)

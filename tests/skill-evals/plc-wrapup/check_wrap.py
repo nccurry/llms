@@ -58,6 +58,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import fixture_lib
 from fixture_lib import (
     GIT_ENV,
     is_ancestor,
@@ -295,6 +296,10 @@ class Checker:
             for problem in packet_shape_problems(packet, owner=plan.get("owner")):
                 self.failures.append(f"{label}: {problem.replace(prefix, '')}")
             readme = (packet / "README.md").read_text(encoding="utf-8")
+        self.failures += [
+            f"{label}: {problem}"
+            for problem in fixture_lib.tag_problems(readme, plan.get("tags", {}))
+        ]
         status = packet_status(readme)
         if status not in plan.get("statuses", [status]):
             expected = " or ".join(plan["statuses"])

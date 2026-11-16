@@ -1,0 +1,11 @@
+schema_version: 1
+skill: plc-planning
+description: Preserve requested PLC tags and phase declarations through the existing workflow.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/harbor
+prompt: |
+  Write a compact plan for the existing harbor limit bug, owned by @alex. Tag the PLC release: 1.0.0 and component: storage. Keep the repository vocabulary; no phase-specific tags are needed. Do not change code.
+max_turns: 40
+check: python ../check_plan.py <dest>
+graders:
+  - graders/outcome.md

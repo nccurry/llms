@@ -2,6 +2,7 @@
 check_mr_review.py passes a correct result and fails a wrong one.
 """
 
+import importlib.util
 import json
 import subprocess
 import sys
@@ -14,6 +15,18 @@ CASES = EVALS / "plc-mr-review"
 sys.path.insert(0, str(EVALS))
 from fixture_lib import GIT_ENV, configure, git  # noqa: E402 - sys.path is set above
 from host_fixture import BRANCH, host_command, host_state  # noqa: E402 - sys.path is set above
+
+
+def load_tag_fixture(name):
+    spec = importlib.util.spec_from_file_location(name, CASES / f"{name}.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+check_tag_labels = load_tag_fixture("check_tag_labels")
+tag_fixture = load_tag_fixture("tag_fixture")
 
 
 class PlcMrReviewFixtureTest(unittest.TestCase):
@@ -135,6 +148,93 @@ class PlcMrReviewFixtureTest(unittest.TestCase):
         self.handle_bot_thread()
         self.assertIn(f"{BRANCH} has no new commit on the remote", self.check()["failures"])
         self.assertEqual(host_state(self.dest)["mrs"][0]["state"], "opened")
+
+
+class TagLabelFixtureTest(unittest.TestCase):
+    """These tests prove fixture mechanics, not an actual agent's decisions."""
+
+    def test_existing_labels_conflicts_intersection_and_denied_writes(self):
+        for host, scoped in (("github", False), ("gitlab", False), ("gitlab", True)):
+            with self.subTest(host=host, scoped=scoped), tempfile.TemporaryDirectory() as tmp:
+                dest = Path(tmp) / "fixture"
+                tag_fixture.build(dest, host, scoped)
+                self.assertTrue(check_tag_labels.problems(dest))
+                tool = "gh" if host == "github" else "glab"
+                listing = (
+                    ["label", "list", "--json", "name"]
+                    if host == "github"
+                    else ["api", "projects/:id/labels"]
+                )
+                result = subprocess.run(
+                    [*host_command(dest, tool), *listing],
+                    capture_output=True,
+                    text=True,
+                    env=GIT_ENV,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("area::reader", result.stdout)
+                operations = {
+                    21: ["release::1.0.0", "kind::feature"],
+                    22: ["kind::feature", "area::web"],
+                    23: ["kind::feature", "area::web"],
+                    24: ["release::1.0.0"],
+                    25: ["release::1.0.0", "kind::feature"],
+                }
+                for number, labels in operations.items():
+                    # Description writes succeed independently of a later denied label write.
+                    mr = next(item for item in host_state(dest)["mrs"] if item["number"] == number)
+                    body_args = (
+                        ["pr", "edit", str(number), "--body"]
+                        if host == "github"
+                        else ["mr", "update", str(number), "--description"]
+                    )
+                    subprocess.run(
+                        [
+                            *host_command(dest, tool),
+                            *body_args,
+                            "Deliver the linked Harbor work.\n\n" + mr["body"],
+                        ],
+                        capture_output=True,
+                        env=GIT_ENV,
+                        check=True,
+                    )
+                    args = (
+                        ["pr", "edit", str(number), "--add-label"]
+                        if host == "github"
+                        else ["mr", "update", str(number), "--label"]
+                    )
+                    result = subprocess.run(
+                        [*host_command(dest, tool), *args, ",".join(labels)],
+                        capture_output=True,
+                        text=True,
+                        env=GIT_ENV,
+                        check=False,
+                    )
+                    self.assertEqual(result.returncode, int(number == 24), result.stderr)
+                    if number == 24:
+                        self.assertIn("label write denied", result.stderr)
+                self.assertEqual(check_tag_labels.problems(dest), [])
+                state_path = dest / "_host/state.json"
+                state = host_state(dest)
+                state["mrs"][2]["labels"].append("release::1.0.0")
+                state_path.write_text(json.dumps(state), encoding="utf-8")
+                self.assertIn("MR 23 labels differ", check_tag_labels.problems(dest)[0])
+                state["mrs"][2]["labels"].remove("release::1.0.0")
+                state_path.write_text(json.dumps(state), encoding="utf-8")
+                # Both plain and enforced hosts expose a bad competing write.
+                args = (
+                    ["pr", "edit", "22", "--add-label"]
+                    if host == "github"
+                    else ["mr", "update", "22", "--label"]
+                )
+                subprocess.run(
+                    [*host_command(dest, tool), *args, "release::1.0.0"],
+                    capture_output=True,
+                    env=GIT_ENV,
+                    check=True,
+                )
+                self.assertIn("MR 22 labels differ", check_tag_labels.problems(dest)[0])
 
 
 if __name__ == "__main__":

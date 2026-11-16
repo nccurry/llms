@@ -1,0 +1,17 @@
+schema_version: 1
+skill: plc-mr-review
+description: Reuse exact existing labels from linked plan tags during authorized MR updates; preserve conflicts and multiple-phase intersections, and report a denied write.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/app
+prompt: |
+  Update the descriptions of open MRs 21 through 25 to reflect their linked
+  Harbor plan work. Their current Plan lines identify what they deliver;
+  preserve those links and reuse appropriate existing plan-tag labels.
+  MR 21 delivers P1; MR 22 delivers P2; MR 23 delivers P2 and P3 together;
+  MR 24 delivers P2; MR 25 links only PLC-100. Do not merge or push anything.
+  Use the fake host in ../bin. Explain missing labels, conflicts and write
+  failures in your final response.
+max_turns: 40
+check: python ../check_tag_labels.py <dest>
+graders:
+  - graders/outcome.md

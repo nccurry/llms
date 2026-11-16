@@ -30,6 +30,7 @@ from fixture_lib import (
     is_ancestor,
     packet_shape_problems,
     status_paths,
+    tag_problems,
 )
 
 REPO = "harbor"
@@ -70,6 +71,11 @@ def check(dest: Path) -> dict:
             problem.replace(f"{app.as_posix()}/", "")
             for problem in packet_shape_problems(app / plans[0], owner="@alex")
         ]
+
+    expected_path = dest / "_tag_expect.json"
+    if len(plans) == 1 and expected_path.is_file():
+        expected = json.loads(expected_path.read_text(encoding="utf-8"))
+        problems += tag_problems((app / plans[0]).read_text(encoding="utf-8"), expected)
 
     return {
         "ok": not problems,

@@ -1,0 +1,1 @@
+Follow the original small-change case outcome. Preserve declared tags exactly, including custom component vocabulary and phase overrides. Do not fill unused tag fields. Changes to status or lifecycle must not change release intent. The executable checker verifies the expected declarations.

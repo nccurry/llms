@@ -1,0 +1,11 @@
+schema_version: 1
+skill: plc-wrapup
+description: Preserve requested PLC tags and phase declarations through the existing workflow.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/notify
+prompt: |
+  Wrap up the completed digest work according to this fixture repository policy. Preserve the PLC tags and the P1 release override as the packet moves to completed.
+max_turns: 40
+check: python ../check_wrap.py <dest>
+graders:
+  - graders/outcome.md

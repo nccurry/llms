@@ -199,6 +199,7 @@ def mr_json(mr: dict, gitlab: bool) -> dict:
             "sha": sha,
             "merge_when_pipeline_succeeds": mr["auto_merge"],
             "web_url": f"https://gitlab.example.com/example/app/-/merge_requests/{mr['number']}",
+            "labels": mr.get("labels", []),
             "head_pipeline": {"id": ci["id"], "status": ci["status"], "sha": sha},
         }
     checks = "SUCCESS" if ci["status"] == "success" else "FAILURE"
@@ -212,6 +213,7 @@ def mr_json(mr: dict, gitlab: bool) -> dict:
         "headRefOid": sha,
         "autoMergeRequest": {"enabledBy": {"login": USER}} if mr["auto_merge"] else None,
         "url": f"https://github.example.com/example/app/pull/{mr['number']}",
+        "labels": [{"name": label} for label in mr.get("labels", [])],
         "statusCheckRollup": [{"name": "test", "conclusion": checks}],
         "comments": [
             {"author": {"login": note["author"]}, "body": note["body"]}
@@ -281,7 +283,27 @@ def create_mr(state: dict, args: list[str], gitlab: bool) -> None:
     print(mr_json(mr, gitlab)["web_url" if gitlab else "url"])
 
 
+def add_labels(state: dict, mr: dict, labels: list[str]) -> None:
+    """Model exact existing-label writes, with optional scoped host enforcement."""
+    if mr["number"] in state.get("deny_label_writes", []):
+        fail("label write denied")
+    available = state.get("labels", [])
+    if any(label not in available for label in labels):
+        fail("label does not exist")
+    current = list(mr.get("labels", []))
+    for label in labels:
+        if state.get("scoped_labels") and "::" in label:
+            key = label.split("::", 1)[0]
+            current = [old for old in current if old.split("::", 1)[0] != key]
+        if label not in current:
+            current.append(label)
+    mr["labels"] = current
+
+
 def update_mr(state: dict, mr: dict, args: list[str], gitlab: bool) -> None:
+    additions = option(args, "--label" if gitlab else "--add-label")
+    if additions is not None:
+        add_labels(state, mr, additions.split(","))
     title = option(args, "--title", "-t")
     body = body_option(args, gitlab)
     if title is not None:
@@ -356,6 +378,8 @@ def glab_api(state: dict, args: list[str]) -> None:
     if method == "GET" and fields and not query and option(args, "-X", "--method") is None:
         method = "POST"
     route = re.sub(r"^/?(api/v4/)?projects/[^/]+/", "", parsed.path)
+    if route == "labels" and method == "GET":
+        return print(json.dumps([{"name": label} for label in state.get("labels", [])]))
     mr_match = re.match(r"merge_requests/(\d+)(/.*)?$", route)
     if mr_match:
         mr = find_mr(state, mr_match[1])
@@ -363,6 +387,8 @@ def glab_api(state: dict, args: list[str]) -> None:
         if rest == "" and method == "GET":
             return print(json.dumps(mr_json(mr, True)))
         if rest == "" and method == "PUT":
+            if "add_labels" in fields:
+                add_labels(state, mr, fields["add_labels"].split(","))
             if "title" in fields:
                 mr["title"] = fields["title"]
             if "description" in fields:
@@ -542,6 +568,8 @@ def gh(args: list[str]) -> None:
             "defaultBranchRef": {"name": state["default_branch"]},
         }
         return print(json.dumps(data) if json_wanted(rest) else "example/app")
+    if group == "label" and sub == "list":
+        return print(json.dumps([{"name": label} for label in state.get("labels", [])]))
     if group == "issue":
         return issues(state, args[1:], False)
     if group == "pr":

@@ -623,6 +623,44 @@ def eval_only_problems(packet: Path, owner: str | None = None) -> list[str]:
     return problems
 
 
+def tag_problems(readme: str, expected: dict) -> list[str]:
+    """Compare declared PLC/phase tags, including intentionally untagged fields."""
+    fc = format_check()
+    lines = fc.uncommented(fc.unfenced(readme.splitlines()))
+    parts = fc.sections(lines)
+    blocks = fc.named(parts, "current work")
+    fields = fc.current_work_keys(lines, blocks[0]) if blocks else []
+    declarations = [field.value for field in fields if field.name == "tags"]
+    plc = declarations[0] if declarations else ""
+    phases = fc.named(parts, "phases")
+    tables = fc.tables(lines, phases[0].start + 1, phases[0].end) if phases else []
+    actual: dict[str, str | None] = {"plc": plc if len(declarations) <= 1 else None}
+    for table in tables:
+        if not fc.is_phase_table(table):
+            continue
+        heads = [head.lower() for head in table.header]
+        column = heads.index("tags") if "tags" in heads else None
+        for _, row in table.rows:
+            actual[fc.phase_id(row[0])] = (
+                "" if column is None else row[column] if column < len(row) else None
+            )
+    found = []
+    for scope, wanted in expected.items():
+        text = actual.get(scope)
+        if text is None or fc.tag_error(text):
+            found.append(f"{scope} tags missing or invalid")
+            continue
+        pairs = dict(
+            (key.strip(), value.strip())
+            for entry in text.split(";")
+            if entry.strip()
+            for key, _, value in [entry.partition(":")]
+        )
+        if pairs != wanted:
+            found.append(f"{scope} declared tags differ: expected {wanted}")
+    return found
+
+
 def packet_shape_problems(
     packet: Path, lifecycle: str | None = None, owner: str | None = None
 ) -> list[str]:

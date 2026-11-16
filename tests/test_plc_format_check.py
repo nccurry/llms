@@ -284,6 +284,37 @@ class PacketRulesTest(unittest.TestCase):
             self.check(edit(TABLE, table)), [f"{R}:16: Phases: Tags: empty value for release"]
         )
 
+    def test_tag_column_placement_and_pipe_diagnostics(self):
+        for header, divider, row in (
+            ("| Phase | Tags | State |", "| --- | --- | --- |", "| P1 | area: web | Planned |"),
+            (
+                "| Phase | State | Tags | Note |",
+                "| --- | --- | --- | --- |",
+                "| P1 | Planned | area: web | |",
+            ),
+            (
+                "| Phase | State | Tags | Tags |",
+                "| --- | --- | --- | --- |",
+                "| P1 | Planned | area: web | |",
+            ),
+        ):
+            with self.subTest(header=header):
+                table = "\n".join((header, divider, row))
+                self.assertEqual(
+                    self.check(edit(TABLE, table)),
+                    [f"{R}:14: Phases: Tags must be one final column after State"],
+                )
+        table = "| Phase | State | Tags |\n| --- | --- | --- |\n| P1 | Planned | area: web|cli |"
+        self.assertEqual(
+            self.check(edit(TABLE, table)),
+            [f"{R}:16: Phases: row has 4 cells, but the header has 3"],
+        )
+        table = table.replace("web|cli", "web\\|cli")
+        self.assertEqual(
+            self.check(edit(TABLE, table)),
+            [f"{R}:16: Phases: Tags: values cannot contain a pipe or line break"],
+        )
+
     def test_tag_utf16_boundary_and_key_budget(self):
         for value in ("x" * 498, "😀" * 249):
             self.assertIsNone(fc.tag_error(f"a:{value}"))

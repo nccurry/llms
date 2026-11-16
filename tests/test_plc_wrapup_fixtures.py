@@ -436,6 +436,47 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         state = "Verified — run_tests.py → 3 passed @ `{p2}`; channel posting moved to P3"
         self.assertEqual(self.check_with_channel_posting_moved(state), OK)
 
+    def test_tagged_wrapup_fixture_has_custom_and_override_tags(self):
+        self.build("preserve-tags")
+        expected = json.loads((self.dest / "_expect.json").read_text())["plans"][0]["tags"]
+        readme = (self.app / PLAN / "README.md").read_text()
+        from_tags = format_check().tag_error
+        self.assertIsNone(from_tags("component: storage; release: 1.0.0"))
+        self.assertIn("release: 1.1.0", readme)
+        self.assertEqual(expected["P1"], {"release": "1.1.0"})
+
+    def test_wrapup_preserves_tags_through_completed_move(self):
+        self.build("complete-moves-plan")
+        merge = self.finish_p1()
+        self.edit_readme(
+            "- Blocker: None", "- Tags: component: storage; release: 1.0.0\n- Blocker: None"
+        )
+        self.rewrite_readme(
+            lambda text: text.replace(
+                "## Phases\n\n| Phase | Name | Owner | State |\n| --- | --- | --- | --- |",
+                "## Phases\n\n| Phase | Name | Owner | State | Tags |\n"
+                "| --- | --- | --- | --- | --- |",
+            ).replace("| In progress |", "| In progress | release: 1.1.0 |")
+        )
+        expect_path = self.dest / "_expect.json"
+        expected = json.loads(expect_path.read_text(encoding="utf-8"))
+        expected["plans"][0]["tags"] = {
+            "plc": {"component": "storage", "release": "1.0.0"},
+            "P1": {"release": "1.1.0"},
+        }
+        expect_path.write_text(json.dumps(expected), encoding="utf-8")
+        self.complete_the_plan(merge)
+        self.close_merge_checkout()
+        self.assertEqual(check(self.dest), OK)
+        path = self.app / COMPLETED / "README.md"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(text.replace("release: 1.1.0", ""), encoding="utf-8")
+        git(self.app, "commit", "-qam", "Lose a phase tag")
+        git(self.app, "push", "-q", "origin", "main")
+        self.assertTrue(
+            any("P1 declared tags differ" in failure for failure in check(self.dest)["failures"])
+        )
+
     def test_correct_wrap_up_passes(self):
         self.build("complete-moves-plan")
         self.complete_the_plan(self.finish_p1())

@@ -288,3 +288,5 @@ point 10.
   a bad value; run 2: no argparse usage line, while also asking about it).
   `plc-planning`'s "Approved" rule already says such additions are open
   questions.
+
+The tag case covers optional PLC declarations and phase-specific intent. `preserve-tags` checks that lifecycle/state edits retain PLC defaults and declared overrides.

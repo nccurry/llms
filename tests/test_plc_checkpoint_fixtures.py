@@ -1045,6 +1045,47 @@ class CheckStateTest(unittest.TestCase):
         )
 
 
+class TagPreservationTest(unittest.TestCase):
+    def test_tagged_checkpoint_fixture_keeps_inherited_and_overridden_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "fixture"
+            build("preserve-tags", dest)
+            expected = json.loads((dest / "_expect.json").read_text())["packet_content"]
+            self.assertEqual(check_state.packet_content_problems(dest, expected, [], set()), [])
+
+    def test_phase_edits_and_compact_conversion_keep_declarations(self):
+        text = GROWN_README.format(
+            head="abc1234",
+            merge="abc1234",
+            done_when="The requirements and their checks are in [SRD.md](SRD.md).",
+        ).replace("- Blocker: None", "- Tags: component: storage; release: 1.0.0\n- Blocker: None")
+        text = text.replace("| State |", "| State | Tags |")
+        text = text.replace("| --- | --- | --- | --- |", "| --- | --- | --- | --- | --- |")
+        text = text.replace("@ `abc1234` |", "@ `abc1234` | |")
+        text = text.replace("| Planned |", "| Planned | release: 1.1.0 |")
+        expected = {
+            "plc": {"component": "storage", "release": "1.0.0"},
+            "P1": {},
+            "P2": {"release": "1.1.0"},
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp)
+            packet = dest / "packet"
+            packet.mkdir()
+            path = packet / "README.md"
+            path.write_text(text, encoding="utf-8")
+            content = {"path": "packet", "tags": expected}
+            self.assertEqual(check_state.packet_content_problems(dest, content, [], set()), [])
+            path.write_text(text.replace("release: 1.1.0", ""), encoding="utf-8")
+            problems = check_state.packet_content_problems(dest, content, [], set())
+            self.assertTrue(any("P2 declared tags differ" in problem for problem in problems))
+            compact = dest / "plc-harbor.md"
+            compact.write_text(text, encoding="utf-8")
+            self.assertEqual(fixture_lib.tag_problems(compact.read_text(), expected), [])
+            compact.replace(path)
+            self.assertEqual(check_state.packet_content_problems(dest, content, [], set()), [])
+
+
 class SideFileRequirementsTest(unittest.TestCase):
     """A one-file plan's -srd.md side file holds requirements too, also once
     it moves into the packet as SRD.md.

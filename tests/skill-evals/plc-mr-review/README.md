@@ -54,3 +54,5 @@ graders.
 - Runs 1 and 3 left an empty note: the fake `glab mr note --help` posted
   one instead of printing help. The fake now prints help for `--help`
   anywhere and refuses an empty note.
+
+The tag case covers optional PLC declarations and phase-specific intent. `tag-labels` uses fake GitHub and GitLab (plain/scoped) labels. Run its builder with `gitlab` or `gitlab --scoped` for those variants. The tests validate fixture mechanics; the outcome grader judges truthful reporting and skill decisions.

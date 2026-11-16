@@ -126,3 +126,5 @@ check, which blocked `git push --delete` in some runs and allowed it in
 `complete-moves-plan`. Each agent stopped and asked rather than working
 around it. In your own sessions, allow `git push origin --delete` for these
 skills, or expect them to ask.
+
+The tag case covers optional PLC declarations and phase-specific intent. `preserve-tags` checks that lifecycle/state edits retain PLC defaults and declared overrides.

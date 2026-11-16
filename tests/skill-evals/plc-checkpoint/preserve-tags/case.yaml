@@ -1,0 +1,11 @@
+schema_version: 1
+skill: plc-checkpoint
+description: Preserve requested PLC tags and phase declarations through the existing workflow.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/ledger
+prompt: |
+  Catch up the reconcile plan with what merged and tidy the finished worktree. Keep its PLC tags, blank P1 declaration and P2 release override while editing phase state. Keep working; do not merge unfinished work.
+max_turns: 40
+check: python ../check_state.py <dest>
+graders:
+  - graders/outcome.md
