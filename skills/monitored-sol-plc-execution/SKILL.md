@@ -1,6 +1,6 @@
 ---
 name: monitored-sol-plc-execution
-description: "Run selected PLC work with GPT-6.1 Sol medium child agents and parent review of delivered code. Use when the user requests monitored Sol PLC execution."
+description: "Run selected PLC work with GPT-6.2 Sol medium child agents and parent review of delivered code. Use when the user requests monitored Sol PLC execution."
 ---
 
 # Monitored Sol PLC Execution
@@ -26,7 +26,7 @@ integration. A reported PASS or passing CI does not replace that review.
 ## Choose child models
 
 The parent keeps its current model and owns review/integration. Use
-`gpt-6.1-sol` with reasoning effort `medium` for implementation and repairs.
+`gpt-6.2-sol` with reasoning effort `medium` for implementation and repairs.
 Preserve these settings across phases and compaction unless the user changes
 them. Serious defects receive evidence-based repair and renewed parent review
 under the same model; do not invent an automatic model tier.
