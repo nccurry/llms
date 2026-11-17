@@ -46,7 +46,13 @@ can hide a different staged version. Handle unresolved merge stages explicitly.
 Respect primary/current/shared checkouts, protected branches, active writers and
 processes, locks, and user keep instructions. Release a task-owned checkout and
 run removal from outside it. A worktree lock is a hold: honor it and report its
-reason; never bypass it or an access failure. A hold stated only in a plan or
+reason; never bypass it or an access failure. Within the authorized cleanup
+scope, review its owner, protected state, current use and release condition.
+Release a hold only when its condition is met or verified replacement work
+removes the need for it. First account for local changes and confirm current
+users have released the checkout. An ended owner session does not make a hold
+permanent, and age alone does not release it. Keep active or unresolved holds
+and honor current user keep requests. A hold stated only in a plan or
 handoff does not protect a clean checkout, because removing that checkout keeps
 its branch. Checkout layout, holds, and output locations follow
 [worktree layout](../plc-feature-start/references/worktree-layout.md).

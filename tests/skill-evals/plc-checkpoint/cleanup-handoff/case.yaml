@@ -1,0 +1,11 @@
+schema_version: 1
+skill: plc-checkpoint
+description: Released child checkouts have old-session holds; integration still needs its shared cache and another checkout holds a unique ignored patch.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/exporter
+prompt: Catch me up on the render PLC and clean up its finished local checkouts, including holds left by ended sessions. Keep all branch refs, the integration checkout and its shared cache, and the pending patch for my review. Do not merge or push.
+max_turns: 40
+graders:
+  - graders/outcome.md
+  - ../graders/plan-record.md
+  - ../graders/state.md

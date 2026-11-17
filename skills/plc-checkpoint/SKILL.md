@@ -1,6 +1,6 @@
 ---
 name: plc-checkpoint
-description: Use when the user wants an update on planned or ad-hoc implementation work they will keep working on - "where are we", "catch me up", "what's left", "checkpoint", "is the plan up to date", "tidy up what's done". Reads the plan's Current Work block, checks what changed since in git and PRs, rewrites it where the plan is tracked (including another repo), and removes worktrees and branches already merged. Leaves in-progress work in place and never merges; to merge everything and finish, use plc-wrapup.
+description: Use when the user wants an update on planned or ad-hoc implementation work they will keep working on - "where are we", "catch me up", "what's left", "checkpoint", "is the plan up to date", "tidy up what's done". Reads the plan's Current Work block, checks what changed since in git and PRs, rewrites it where the plan is tracked (including another repo), and cleans up finished task checkouts and eligible branches. Keeps unfinished source and active checkouts and never merges; to merge everything and finish, use plc-wrapup.
 ---
 
 # PLC Checkpoint
@@ -117,51 +117,25 @@ so under blind spots. Don't guess its state.
 
 ## 4. Tidy what is finished
 
-First review this task's locks against their release conditions and current
-users. Unlock holds owned by this session or its children when those conditions
-are verified as met. Keep other owners' and unresolved holds; do not expire
-them by age.
+Follow [clean-stale-worktrees](../clean-stale-worktrees/SKILL.md) for hold
+review, source checks, removal and verification within this task's scope.
+Decide checkout removal, local-branch deletion and remote-branch deletion
+separately. Remove eligible checkouts while keeping branches whose deletion
+checks have not passed. A plan row saying "in progress" does not establish
+that the checkout is still needed; correct stale rows in step 5.
 
-Remove only what is finished, so the next session sees only live work. A
-worktree is finished when **all** of these hold:
+An accepted child contribution can close its checkout before the campaign
+reaches main. Confirm the child has released it, retain needed source and
+notes, and check which tests or processes still need it. Keep the branch when
+needed to preserve committed work. Preserve active assignments, including a new checkout
+that has no commits yet; do not infer closure from ancestry alone.
 
-- Its branch has work of its own that reached the target. A branch just
-  created from `main` is also an ancestor of `main`, but it is not started,
-  not finished: keep it. Count it as finished when its commits are in `main`
-  (`origin/main` after the fetch, or local `main` with no remote) or in the
-  campaign's integration branch and `git reflog <branch>` shows commits after
-  its creation, or when its PR/MR is merged and the branch has no commits
-  after the merged head. Use `git merge-base --is-ancestor <branch> <target>`
-  for the containment check. Squash and rebase merges fail it, so use the
-  PR/MR state for those.
-- `git status --short --untracked-files=all --ignored` shows nothing that
-  isn't disposable output. Untracked or ignored files may be notes, `.env`
-  files, or local config that exist nowhere else, and `git worktree remove`
-  deletes ignored files without asking. Keep the worktree, name the files,
-  and suggest moving anything useful into the plan.
-- It is not locked and not the current checkout. A worktree lock is the hold
-  signal. A plan row that still says "in progress" doesn't keep a branch
-  git proves is merged; the plan is what step 5 corrects.
-
-Then, for each finished worktree, one at a time, following
-[clean-stale-worktrees](../clean-stale-worktrees/SKILL.md)' removal and
-verification rules:
-
-1. `git worktree remove <path>`, run from outside it, without `--force`. If
-   it refuses, stop for that worktree and report why.
-2. Confirm the folder and its `git worktree list` entry are both gone.
-3. Delete its local branch with `git branch -D <branch>`, only after the
-   merge check above passed for that exact commit. (`git branch -d` compares
-   with the current branch, not the target, so it can't be the check.)
-4. If the branch was merged into `main` and also exists on the remote, delete
-   it there, only if the remote still points at the commit you checked:
-   `git push --force-with-lease=<branch>:<checked-sha> <remote> --delete <branch>`.
-   If the lease fails, someone pushed more work; keep it and report it. A
-   branch merged only into the integration branch keeps its remote copy
-   until wrap-up.
-
-A local branch for this work with no worktree is finished when the same merge
-check passes: delete it, and its remote copy when merged into `main`.
+For this task's branches proven merged into fetched remote main, remove the
+remote branch only if it still points at the checked commit:
+`git push --force-with-lease=<branch>:<checked-sha> <remote> --delete <branch>`.
+If the lease fails, keep it and report the new work. A branch merged only
+into integration keeps its remote copy until wrap-up. Local branches without
+checkouts follow the same source and deletion checks.
 
 Also remove review and verification copies no longer in use, and output
 folders (`<campaign>/_output/`, build folders) that no running check needs,

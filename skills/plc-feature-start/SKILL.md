@@ -18,7 +18,7 @@ Treat this as the safe beginning of a git worktree workflow. The goal is: a loca
 - Never stash, reset, delete, overwrite, or switch away from user work to force progress.
 - Do not treat a dirty current worktree as a blocker when the workflow can create the new worktree without mutating it. Report it so the user knows it remains untouched.
 - Do not pull or fast-forward a dirty main worktree. Prefer using an updated remote main ref after `git fetch` when a remote exists.
-- Do not reuse an existing branch or directory unless the user explicitly asked for that exact branch or path, or is resuming a plan whose Current Work block names it (see Resume Existing Work). When resuming, skip preflight's `--branch` check, which treats an existing branch as a blocker.
+- Honor explicit requests for a new checkout. Otherwise inspect this task's existing checkouts first and continue in one assigned to the same task and branch when available and safe (see Resume Existing Work). Create another for a concrete isolation need; record that need and what happens to the older checkout. Never repurpose another task's checkout or reuse a directory for another branch. When resuming, skip preflight's `--branch` check, which treats an existing branch as a blocker.
 - Do not push, create a remote branch, or open a pull request unless the user explicitly asks.
 - Place the worktree under its campaign folder as described in [worktree layout](references/worktree-layout.md). Read that file before choosing a path.
 - After creating the worktree, continue implementation commands from the new worktree path.
@@ -114,9 +114,9 @@ git worktree list
 
 ## Resume Existing Work
 
-Use this when the user picks up a backlog plan or asks to continue an existing branch.
+Use this when continuing an established task or branch, including a backlog plan.
 
-1. Find the plan and read its Current Work block: where the work lives, the next action, and blockers. Without a plan, use the branch the user named. If Current Work names no branch that still exists (a wrap-up for now deletes merged branches), start a new branch from main with the normal workflow above.
+1. Find the plan and read its Current Work block: where the work lives, the next action, and blockers. Without a plan, use the branch named by the user or established for this task in the conversation and Git state. If that does not establish an existing assignment, start a new branch from main with the normal workflow above. Do not adopt a similarly named branch as proof of task ownership.
 2. Use `git worktree list --porcelain` to see whether the branch already has a worktree. If it does, continue from that path. If not, create one in the campaign folder without `-b`:
 
 ```powershell
@@ -138,7 +138,7 @@ If the branch's base is ambiguous, report that before making changes.
 
 Stop and report clearly if:
 
-- The requested branch already exists and the user did not ask to reuse it.
+- A requested new branch already exists. For an established task being resumed, use Resume Existing Work instead.
 - The target directory already exists and is not an empty directory intended for this worktree.
 - The target path is inside an existing worktree.
 - No main, master, or remote default branch can be found.

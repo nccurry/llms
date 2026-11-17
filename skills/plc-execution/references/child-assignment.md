@@ -59,9 +59,13 @@ Only PASS satisfies strict audit acceptance.
 A child may commit its branch but cannot merge/rebase shared branches. Push
 or open an MR only as authorized by the assigned integration route. Before
 release, report its final commit, needed modified/untracked/ignored files, and
-running processes. Stop its own processes and release the checkout when the
-parent confirms they are no longer needed. The parent verifies delivery and
-removes the worktree and branch; the child does not delete its own checkout.
+running processes. When the parent accepts the contribution into a retained
+branch, obtain the child's release and account for needed local source and
+notes. The child stops its own writers; the parent closes the checkout during
+that handoff unless a named check or recovery step still needs it. Keep the
+branch until its separate deletion checks pass. Pending campaign or final-target
+acceptance alone does not keep the donor checkout. The child does not delete
+its own checkout.
 Do not require preservation of every checkout, executable, or receipt when
 handing off to a successor. A fresh checkout does not renew an expired hold.
 

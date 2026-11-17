@@ -12,6 +12,10 @@ ID, any change is a violation. A packet
 file moved unchanged to another folder, as a lifecycle move does, is
 reported as a move, not as a change.
 
+`protected_files` in _expect.json maps fixture-relative paths to SHA-256 hashes
+for files that must stay unchanged, including ignored files. Strict mode keeps
+these checks while forbidding the listed cleanup actions too.
+
 _expect.json may also hold `packet_content`, what one packet's text must be
 after the run, read from the working copy (committed or not):
   path        the packet folder, relative to the fixture
@@ -297,7 +301,7 @@ def load_expect(dest: Path, strict: bool) -> dict:
     expect = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
     if strict:
         # Report-only: the listed tidying must not happen either.
-        return {"no_packet_changes": True}
+        return {"no_packet_changes": True, "protected_files": expect.get("protected_files", {})}
     return expect
 
 
@@ -475,6 +479,10 @@ def check(dest: Path, strict: bool, protected: list[tuple[str, str]]) -> dict:
             violations.append(f"protected worktree not in snapshot: {worktree}")
         elif sha256(dest / worktree / rel_file) != snap_wt["packet_files"].get(rel_file):
             violations.append(f"{worktree}: protected file {rel_file} changed")
+
+    for rel_file, digest in expect.get("protected_files", {}).items():
+        if sha256(dest / rel_file) != digest:
+            violations.append(f"protected file {rel_file} changed or removed")
 
     return {
         "ok": not violations,

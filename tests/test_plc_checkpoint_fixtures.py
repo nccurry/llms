@@ -34,6 +34,7 @@ SHARED_SHAPE_CASES = [
     "report-only",
     "active-writer",
     "near-miss-wrap-up",
+    "cleanup-handoff",
 ]
 
 # The old-shape packet after a correct conversion and status update, as its
@@ -828,6 +829,65 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         status = git(worktree, "status", "--short")
         self.assertIn("docs/plans/invoice-export/IMPLEMENTATION_PLAN.md", status)
         self.assertTrue(check(self.dest)["ok"])
+
+
+class CleanupHandoffTest(unittest.TestCase):
+    """The cleanup case checks real removals, refs and ignored file contents."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dest = Path(self.tmp.name) / "fixture"
+        build("cleanup-handoff", self.dest)
+        self.app = self.dest / "exporter"
+        self.integration = self.dest / "exporter-wt/render/integration"
+        self.patch = self.dest / "exporter-wt/render/pending-patch/target/config.patch"
+        self.cache = self.integration / "target/cache/input.bin"
+
+    def remove_released_checkouts(self):
+        for name in ("donor", "socket-trial"):
+            path = self.dest / "exporter-wt/render" / name
+            git(self.app, "worktree", "unlock", str(path))
+            git(self.app, "worktree", "remove", "--force", str(path))
+
+    def test_fixture_requires_cleanup_without_main_delivery(self):
+        donor = git(self.app, "rev-parse", "plc/render-donor")
+        self.assertFalse(is_ancestor(self.app, donor, "main"))
+        self.assertFalse(is_ancestor(self.app, donor, "plc/render"))
+        self.assertEqual(
+            git(self.app, "show", "plc/render-donor:src/render.py"),
+            git(self.app, "show", "plc/render:src/render.py"),
+        )
+        self.assertFalse(check(self.dest)["ok"])
+
+    def test_removal_keeps_branches_source_cache_and_patch(self):
+        refs = git(self.app, "for-each-ref", "refs/heads")
+        self.remove_released_checkouts()
+        report = check(self.dest)
+        self.assertTrue(report["ok"], report)
+        self.assertEqual(git(self.app, "for-each-ref", "refs/heads"), refs)
+        self.assertEqual(git(self.integration, "status", "--porcelain"), "")
+        self.assertIn("kind == 'file'", (self.integration / "src/check.py").read_text())
+        self.assertTrue(self.cache.is_file())
+        self.assertTrue(self.patch.is_file())
+
+    def test_checker_rejects_losing_ignored_inputs(self):
+        self.remove_released_checkouts()
+        self.patch.write_text("different draft\n", encoding="utf-8")
+        self.cache.unlink()
+        for args in [(), ("--strict",)]:
+            with self.subTest(args=args):
+                problems = check(self.dest, *args)["violations"]
+                self.assertTrue(
+                    any("protected file" in p and "config.patch" in p for p in problems)
+                )
+                self.assertTrue(any("protected file" in p and "input.bin" in p for p in problems))
+
+    def test_checker_rejects_deleting_a_preserved_branch(self):
+        self.remove_released_checkouts()
+        git(self.app, "branch", "-D", "plc/render-donor")
+        problems = check(self.dest)["violations"]
+        self.assertTrue(any("plc/render-donor deleted" in p for p in problems), problems)
 
 
 class CheckStateTest(unittest.TestCase):

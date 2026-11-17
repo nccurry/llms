@@ -95,10 +95,10 @@ blocked archive through manual deletion. Detached work whose source disposition
 remains unresolved stays retained.
 
 After each delivery, at phase close, and before finishing, revisit pending entries.
-On resume, recheck pending merges and task-owned hold conditions against current
-evidence and current users. Release your own satisfied holds before filtering
-removal candidates; age alone never releases a hold. Keep other owners' or
-unresolved holds intact.
+On resume, recheck pending merges and holds against current evidence and users.
+Apply the cleanup skill's hold-review rules within the authorized scope before
+filtering removal candidates. An ended owner session does not make a hold
+permanent. Keep active or unresolved holds and honor current user keep requests.
 Remove clean, unlocked, idle checkouts and keep their branches; this needs no
 delivery proof. Record verified removals or the specific reason, owner, and
 condition for retaining each checkout. Include current integration checkouts that

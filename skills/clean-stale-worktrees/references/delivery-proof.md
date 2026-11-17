@@ -73,9 +73,16 @@ silently abandoning unique source or publishing missing notes.
 
 Confirm agents and processes have released the exact checkout. Check write and
 search access to directories, ownership, nested repositories, and symlinks;
-read-only build directories can block removal even when source is delivered.
-Read-only files alone do not prevent unlinking. Do not change permissions or
-use elevated deletion merely to force a cleanup result.
+read-only files alone do not prevent unlinking. Before removal, identify caches
+that need tool-managed cleanup. For an identified, unused task-owned cache, use
+the build or package tool's scoped cleanup command, then recheck the checkout.
+Examples include `go clean -modcache` with `GOMODCACHE` set to the verified private
+cache, or `bazel clean --expunge` with the verified output base. These commands
+may clear read-only generated files as part of their normal cleanup. Do not
+apply blanket permission changes, elevate deletion, or clean shared caches.
+Inspect nested repositories independently before classifying them as disposable
+output; a downloaded source cache and a repository holding unique work need
+different treatment.
 
 Recheck source, target, local states, registration, locks, and ownership just
 before acting. Concurrent changes invalidate an earlier decision. Remove from

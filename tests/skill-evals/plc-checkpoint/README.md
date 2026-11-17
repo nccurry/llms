@@ -1,6 +1,6 @@
 # plc-checkpoint eval cases
 
-Thirteen runnable cases for [`plc-checkpoint`](../../../skills/plc-checkpoint/SKILL.md),
+Runnable cases for [`plc-checkpoint`](../../../skills/plc-checkpoint/SKILL.md),
 modeled on the case shape in trailofbits/skills: each case folder has a
 `case.yaml`, a `fixture/build.py` that creates its git repositories, and
 Markdown graders. They live here, not in the skill folder, because the
@@ -12,6 +12,7 @@ installer copies the whole skill folder into each agent.
 | [packet-drift](packet-drift/case.yaml) | `main`'s packet says nothing has started; the worktree's copy and commits show P1 implemented |
 | [origin-ahead](origin-ahead/case.yaml) | P1 merged on `origin/main`; local `main` is behind. Tidy the merged worktree and branches |
 | [dirty-finished](dirty-finished/case.yaml) | P1 merged, but its worktree has untracked notes: keep it |
+| [cleanup-handoff](cleanup-handoff/case.yaml) | Release satisfied ended-session holds, remove accepted donor and rejected experiment checkouts while keeping their branches, and preserve the shared cache and unique ignored patch |
 | [chat-decision](chat-decision/case.yaml) | Two scope calls made in the conversation are missing from the packet, and the merged code no longer meets SHOP-001: record the gap, never tick it |
 | [cross-repo-wait](cross-repo-wait/case.yaml) | The plan waits on another repo whose `origin/main` already has the work: unblock P2 and keep the Depends on line |
 | [plan-in-other-repo](plan-in-other-repo/case.yaml) | The plan lives in a separate plans repo: commit Current Work there, push nothing |
@@ -22,10 +23,19 @@ installer copies the whole skill folder into each agent.
 | [grow-plan](grow-plan/case.yaml) | The user approved a new `--max-age` CLI flag for an in-progress one-file plan. The flag is a public contract, so the plan becomes a `tide-cache/` folder whose `SRD.md` holds TIDE-001, moved unchanged, and the new flag's requirements with their checks, `## Done when` keeps only the pointer line, and a dated Log line names `SRD.md` |
 | [near-miss-wrap-up](near-miss-wrap-up/case.yaml) | "Wrap this up" must go to `plc-wrapup` |
 
+The cleanup-handoff case was run with independent agents using `f26de98` and
+the revised cleanup rules. The earlier version removed the clean donor but
+kept the rejected dirty trial because checkpoint step 4 forbade `--force`.
+The revised version removed both released checkouts; the state checker found
+all branch refs, the shared cache and the ignored patch preserved. This is
+one before/after regression check, not a benchmark across models.
+
 `check_state.py` compares a fixture with the `_snapshot.json` and
 `_expect.json` its build script wrote:
 - **Required:** removing each finished worktree, local branch, and remote
   branch listed in `_expect.json`.
+- **Protected files:** files listed in `_expect.json` must keep their bytes,
+  including ignored source and shared-cache inputs. This also applies in strict mode.
 - **Allowed:** plan record edits under `docs/plans/`, and commits that touch
   only those files. A packet file moved unchanged, as a lifecycle move does,
   is reported as a move.

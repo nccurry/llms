@@ -219,12 +219,14 @@ def expect(
     deleted_remote_branches: dict[str, list[str]] | None = None,
     no_packet_changes: bool = False,
     packet_content: dict | None = None,
+    protected_files: Sequence[str] = (),
 ) -> None:
     """Record the tidying a run must do. Anything removed beyond this fails.
 
     Paths are relative to `dest`; branches are short names such as `plc/x-p1`.
     `packet_content` is what check_state.py requires of one packet's text
-    after the run; its docstring lists the keys.
+    after the run; its docstring lists the keys. `protected_files` names files
+    that must keep their bytes, including ignored source and shared caches.
     """
     data = {
         "removed_worktrees": list(removed_worktrees),
@@ -234,6 +236,10 @@ def expect(
     }
     if packet_content is not None:
         data["packet_content"] = packet_content
+    if protected_files:
+        data["protected_files"] = {
+            name: hashlib.sha256((dest / name).read_bytes()).hexdigest() for name in protected_files
+        }
     (dest / "_expect.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
