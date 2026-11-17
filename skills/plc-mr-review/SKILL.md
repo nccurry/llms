@@ -1,6 +1,6 @@
 ---
 name: plc-mr-review
-description: "Prepares open merge requests and pull requests for review, or recommends how to merge them. Use for CI failures, review feedback, stacked changes, or merge advice. Use plc-wrapup for final delivery and cleanup."
+description: "Prepares open merge requests and pull requests for review, or recommends how to merge them. Use for CI failures, review feedback, stacked changes, or merge advice. Use plc-wrapup to land a session's remaining work."
 ---
 
 # PLC MR Review
@@ -99,7 +99,20 @@ Batch these records for the delivery using the checkpoint's commit rules;
 do not open a separate completion MR after each merge. With no plan, skip
 this step.
 
-## 7. Report
+## 7. Clean up task checkouts
+
+After a merge, follow the shared
+[cleanup procedure](../plc-execution/references/worktree-cleanup.md) for this
+task's checkouts and output. This workflow includes their eligible cleanup;
+it does not authorize touching unrelated work or merging more branches.
+Release satisfied task-owned holds and remove temporary review/check copies
+when their use ends, even if the MR stays open. Keep useful unmerged source
+and anything an active check still needs.
+
+If a merge will happen later, record cleanup as pending with the MR and owner;
+recheck it when this work resumes. Do not claim the checkout was removed.
+
+## 8. Report
 
 One row per MR: its link, CI state for the source and required combined
 result, threads fixed, answered and left open, whether the description changed,
@@ -107,3 +120,5 @@ and whether it is ready, blocked (with why), merged (with the merge commit),
 or set to merge when green. Give the recommended or chosen merge method
 and its reason when it affects dependent branches, history, or CI cost.
 Name pending checks on the merged result and unpublished plan updates.
+Include verified checkout removals and any retained task checkout's owner,
+reason, and release condition.

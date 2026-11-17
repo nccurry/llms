@@ -47,6 +47,9 @@ git worktree unlock <path>
 
 Lock only checkouts whose local state must survive cleanup, such as uncommitted
 source or output a named check still needs. Unlock when the condition is met.
+Identify the owner by session or task ID, not just "parent" or "root". Name
+the source or output still needed and its consumer; an open campaign alone
+does not justify keeping every checkout or all its output.
 An unlocked checkout with no local changes may be removed once idle; its branch
 is kept.
 

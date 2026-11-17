@@ -5,12 +5,14 @@ The parent owns this work; children release checkouts and supply evidence.
 
 ## Record ownership and the destination
 
-Record each temporary checkout in the plan's "Where the work lives" table:
+Record each temporary checkout in the plan's "Where the work lives" table,
+or the existing task work list when there is no plan:
 its absolute path under Checkout, its branch and source commit under Branch,
 its owner under Owner, and under State its `plc-planning` state, then its
 purpose and final target ref/hash after ` — `.
 Include planning, child, integration, repair, replaced-child, review, and
-verification checkouts. Record the source of any user keep instruction.
+verification checkouts, including private experiments. Record the source of
+any user keep instruction.
 Create them under the PLC's campaign folder per
 [worktree layout](../../plc-feature-start/references/worktree-layout.md).
 Useful implementation notes and concise validation outcomes belong in the
@@ -51,6 +53,16 @@ source, useful notes, and active users before removing selected output. Keep
 only output needed for a named active check or recovery step, with its owner
 and release condition; verify source changes remain intact.
 
+After a check is accepted or superseded, delete its expired per-attempt output
+even if the wider campaign remains open. Reuse an immutable build only while
+its source, inputs, and build conditions match; avoid copying the same large
+executable into each attempt's folder.
+
+Treat failed or superseded experiments separately from deliverable work.
+Account for useful local changes or needed reproducers before retiring them;
+test-only edits do not have to be merged just to remove the checkout.
+Do not ship private fault-injection changes or preserve every failed attempt.
+
 ## Remove, verify, and revisit
 
 After delivery or another allowed source disposition is established, confirm
@@ -83,11 +95,18 @@ blocked archive through manual deletion. Detached work whose source disposition
 remains unresolved stays retained.
 
 After each delivery, at phase close, and before finishing, revisit pending entries.
+On resume, recheck pending merges and task-owned hold conditions against current
+evidence and current users. Release your own satisfied holds before filtering
+removal candidates; age alone never releases a hold. Keep other owners' or
+unresolved holds intact.
 Remove clean, unlocked, idle checkouts and keep their branches; this needs no
 delivery proof. Record verified removals or the specific reason, owner, and
 condition for retaining each checkout. Include current integration checkouts that
-cannot yet be removed. The parent performs eligible cleanup now rather than only
-suggesting it. Reconcile predecessor checkouts when preparing a successor. Do
-not leave a blanket instruction to preserve every draft and receipt. A remaining
+cannot yet be removed. Perform eligible cleanup now; do not leave a blanket
+instruction to preserve every draft and receipt. A remaining
 hold is a worktree lock whose reason names the owner, what it protects, and
 when it ends; unlock it at that point.
+
+Before the final report, compare the task's recorded checkouts with the current
+Git registrations and disk paths. Every remaining checkout needs a current
+purpose, owner, and release condition; a child handoff is not cleanup evidence.

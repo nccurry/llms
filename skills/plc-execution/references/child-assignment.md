@@ -19,6 +19,9 @@ Every assignment includes:
 - The final cleanup target and the parent's cleanup ownership. Identify any
   unfinished source or running processes that must survive handoff, with their
   owner and the condition that ends retention.
+- Whether the checkout delivers source or is a disposable experiment/review
+  copy. For experiments, identify any useful changes or reproducers to keep
+  and when the parent can retire the copy, including after a failed attempt.
 
 Tell the child to read local instructions, source, PLC, goals, and prerequisites
 before editing and report which skill paths it loaded. It must use only its own

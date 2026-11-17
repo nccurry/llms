@@ -260,6 +260,10 @@ folder, and track each checkout in the Current Work block's "Where the work live
 table (or the existing work list) with its owner, path, branch/commit, and
 cleanup state across handoffs and compaction.
 
+On resume and before replacing a child or creating another checkout, reconcile
+this task's existing checkouts and holds first. Reuse a released checkout for
+the same assignment and branch when suitable; retire eligible predecessors.
+
 The parent cleans up after each verified delivery, at phase close, and before
 finishing, following the cleanup procedure. Remove review and verification
 copies in the step that created them. Express a hold only as a worktree lock

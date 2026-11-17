@@ -117,6 +117,11 @@ so under blind spots. Don't guess its state.
 
 ## 4. Tidy what is finished
 
+First review this task's locks against their release conditions and current
+users. Unlock holds owned by this session or its children when those conditions
+are verified as met. Keep other owners' and unresolved holds; do not expire
+them by age.
+
 Remove only what is finished, so the next session sees only live work. A
 worktree is finished when **all** of these hold:
 
