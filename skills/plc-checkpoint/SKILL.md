@@ -117,12 +117,12 @@ so under blind spots. Don't guess its state.
 
 ## 4. Tidy what is finished
 
-Follow [clean-stale-worktrees](../clean-stale-worktrees/SKILL.md) for hold
-review, source checks, removal and verification within this task's scope.
-Decide checkout removal, local-branch deletion and remote-branch deletion
-separately. Remove eligible checkouts while keeping branches whose deletion
-checks have not passed. A plan row saying "in progress" does not establish
-that the checkout is still needed; correct stale rows in step 5.
+Start with cleanup left pending in Current Work or the prior handoff. Refresh
+the status of each named MR and recheck each hold. Run the
+[cleanup check](../clean-stale-worktrees/references/cleanup-check.md) within
+this task's scope, including branch-only entries. Decide checkout, local
+branch, and remote branch removal separately. Correct stale rows in step 5
+and carry forward anything still pending.
 
 An accepted child contribution can close its checkout before the campaign
 reaches main. Confirm the child has released it, retain needed source and

@@ -94,8 +94,10 @@ do not make an extra archive of expired ignored artifacts. Do not bypass a
 blocked archive through manual deletion. Detached work whose source disposition
 remains unresolved stays retained.
 
-After each delivery, at phase close, and before finishing, revisit pending entries.
-On resume, recheck pending merges and holds against current evidence and users.
+After accepting a child contribution, after each delivery, at phase close,
+and before finishing, run the [cleanup check](../../clean-stale-worktrees/references/cleanup-check.md).
+On resume, start from the existing work record and recheck pending merges and
+holds against current evidence and users.
 Apply the cleanup skill's hold-review rules within the authorized scope before
 filtering removal candidates. An ended owner session does not make a hold
 permanent. Keep active or unresolved holds and honor current user keep requests.

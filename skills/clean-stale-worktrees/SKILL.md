@@ -170,7 +170,8 @@ proof of delivery. Remote branch deletion needs separate authorization, except
 that `plc-checkpoint` and `plc-wrapup` delete their own work's remote
 branches once proven merged into the remote's main.
 
-Finish by checking registrations, refs, and the original checkout's status.
-Report removals, verification, discarded artifacts, campaign-level unfinished
-work, and every retained checkout with its owner, concrete reason, and next
-action. A command's successful exit alone does not prove cleanup succeeded.
+Use the same [cleanup check](references/cleanup-check.md) after removing
+checkouts and branches, when handing off pending cleanup, and when resuming
+work with pending removals. Finish by checking the original checkout's status.
+Report verified removals, discarded output, unfinished campaign work, and each
+remaining checkout's owner, reason, and next action.

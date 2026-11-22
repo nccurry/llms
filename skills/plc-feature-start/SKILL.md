@@ -60,6 +60,13 @@ git symbolic-ref --quiet --short refs/remotes/origin/HEAD
 
 ## Workflow
 
+Before replacing a checkout for the same assignment, read its work record.
+If the branch and ownership still match and the checkout is safe to use,
+follow [Resume Existing Work](#resume-existing-work). Otherwise run the
+[cleanup check](../clean-stale-worktrees/references/cleanup-check.md) for
+the predecessor. Remove it only if cleanup is already authorized for this
+assignment. Record anything that must stay.
+
 1. Choose names.
    - Derive a short, lowercase hyphenated feature slug from the user's task.
    - Choose a branch name from, in order: the user's requested branch name, a repository naming convention, or `<git-username>/<feature-slug>`. When the work belongs to a plan, put its ID and phase in the slug, such as `<git-username>/plc-12-p2-<feature-slug>`, so tools can match the branch to the plan; with no plan, use the slug alone.
@@ -103,9 +110,11 @@ git worktree list
    - Report failures as already present on the base ref, with the failing test names, so they aren't later blamed on the new work. Don't fix them unless asked.
    - If there is no test command or it needs services that aren't available, say so and continue.
 
-6. Record the worktree in the plan.
+6. Record the checkout path, branch and current commit, owner, and purpose
+   in the existing work record or handoff. If it needs a hold, record the
+   release condition in the Git lock reason.
    - If the work has a plan with a Current Work block (see `plc-planning`), update it in the copy the new branch carries, with the rewrite rules in `plc-checkpoint`'s "Rewrite Current Work" step: add the checkout, its branch, and its state to "Where the work lives"; set Last updated and the next action; change Status from Planned to In progress, moving the packet as `plc-planning`'s lifecycle folders rule says; and add a dated Log line. Commit only the plan files, as `docs(plan): start <checkout>`.
-   - Skip this for work with no plan.
+   - With no plan, skip the plan update and keep the checkout details in the handoff.
 
 7. Continue from the new worktree.
    - Treat the new worktree path as the working directory for all implementation, testing, and git commands related to the feature.

@@ -101,16 +101,17 @@ this step.
 
 ## 7. Clean up task checkouts
 
-After a merge, follow the shared
-[cleanup procedure](../plc-execution/references/worktree-cleanup.md) for this
+After verifying the merge, run the
+[cleanup check](../clean-stale-worktrees/references/cleanup-check.md) for this
 task's checkouts and output. This workflow includes their eligible cleanup;
 it does not authorize touching unrelated work or merging more branches.
 Release satisfied task-owned holds and remove temporary review/check copies
 when their use ends, even if the MR stays open. Keep useful unmerged source
 and anything an active check still needs.
 
-If a merge will happen later, record cleanup as pending with the MR and owner;
-recheck it when this work resumes. Do not claim the checkout was removed.
+If a merge will happen later, record any pending cleanup with the MR, source
+revision, target, and owner in the existing work record or handoff. Recheck
+that entry when this work resumes.
 
 ## 8. Report
 

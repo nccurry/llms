@@ -211,10 +211,10 @@ ticket or comment on it.
 
 ## 7. Clean up this work
 
-Follow [clean-stale-worktrees](../clean-stale-worktrees/SKILL.md) for each
-removal and its verification. Only the checkouts and branches in scope;
-work that other sessions started is untouched. Step 6 already recorded what
-stays. If a removal step 6 planned fails, record what is left: in an open
+After checking the delivery result, run the
+[cleanup check](../clean-stale-worktrees/references/cleanup-check.md) for
+the checkouts and branches in scope. Step 6 already recorded what stays.
+If a removal step 6 planned fails, record what is left: in an open
 plan, as a row in "Where the work lives"; in a finished plan, as the one
 dated follow-up Log line that `plc-planning`'s
 [Ending a packet](../plc-planning/references/shared-format.md#ending-a-packet) rule allows.
@@ -230,8 +230,9 @@ With no plan, step 8's report is the record.
   and its `_output/` once it's empty of live work.
 - **Local only:** the same, except remote branches stay, pending.
 - **PR/MR left open:** remove the worktrees once the branch is pushed with no
-  local changes, and keep the branch until the PR/MR merges, pending on that
-  PR/MR.
+  local changes. Record local branch cleanup as pending with the PR/MR,
+  pushed source revision, target, and owner so a later checkpoint can verify
+  delivery and finish it.
 - **Skipped (another agent, failing checks):** keep the worktree and branch,
   pending, with the reason.
 

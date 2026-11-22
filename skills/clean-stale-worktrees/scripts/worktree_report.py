@@ -2,12 +2,13 @@
 # /// script
 # requires-python = ">=3.10"
 # ///
-"""Report facts about every registered worktree. Read-only; makes no decisions."""
+"""Report worktree facts or verify local removals. Makes no removal decisions."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -17,14 +18,21 @@ from pathlib import Path
 from typing import Any
 
 
-def git(cwd: str | Path, *args: str) -> subprocess.CompletedProcess[str]:
+def git_bytes(cwd: str | Path, *args: str) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(  # noqa: S603 - fixed git command with arguments from this script
         ["git", "-C", str(cwd), *args],  # noqa: S607 - git is a prerequisite found on PATH
         check=False,
         capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
+    )
+
+
+def git(cwd: str | Path, *args: str) -> subprocess.CompletedProcess[str]:
+    result = git_bytes(cwd, *args)
+    return subprocess.CompletedProcess(
+        result.args,
+        result.returncode,
+        result.stdout.decode("utf-8", errors="replace"),
+        result.stderr.decode("utf-8", errors="replace"),
     )
 
 
@@ -239,6 +247,53 @@ def table(report: dict) -> str:
     )
 
 
+def verify_removals(start: str, checkouts: list[str], branches: list[str]) -> dict:
+    """Check exact paths and local refs after cleanup."""
+    registry = git_bytes(start, "worktree", "list", "--porcelain", "-z")
+    refs = git_bytes(start, "for-each-ref", "--format=%(refname)", "refs/heads/")
+    for result in (registry, refs):
+        if result.returncode or result.stderr:
+            raise SystemExit(
+                os.fsdecode(result.stderr).strip() or "Could not read Git worktrees or refs."
+            )
+
+    registered = {
+        Path(os.fsdecode(field.removeprefix(b"worktree ")))
+        for field in registry.stdout.split(b"\0")
+        if field.startswith(b"worktree ")
+    }
+    checkout_checks = []
+    for path in map(Path, checkouts):
+        if not path.is_absolute():
+            raise SystemExit(f"Use an absolute checkout path: {path}")
+        try:
+            path.lstat()
+        except FileNotFoundError:
+            path_exists = False
+        except OSError as error:
+            raise SystemExit(f"Could not check checkout path {path}: {error}") from error
+        else:
+            path_exists = True
+        checkout_checks.append(
+            {"path": str(path), "pathExists": path_exists, "registered": path in registered}
+        )
+
+    local_refs = set(refs.stdout.split(b"\n"))
+    branch_checks = []
+    for branch in branches:
+        ref = f"refs/heads/{branch}"
+        if branch.startswith("refs/") or git(start, "check-ref-format", ref).returncode:
+            raise SystemExit(f"Use a valid short local branch name: {branch}")
+        branch_checks.append({"branch": branch, "refExists": os.fsencode(ref) in local_refs})
+
+    return {
+        "checkouts": checkout_checks,
+        "branches": branch_checks,
+        "verified": all(not row["pathExists"] and not row["registered"] for row in checkout_checks)
+        and all(not row["refExists"] for row in branch_checks),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--path", default=".")
@@ -247,10 +302,16 @@ def main() -> int:
     parser.add_argument("--fetch", action="store_true", help="fetch the remote first")
     parser.add_argument("--reviews", action="store_true", help="look up MRs/PRs with glab or gh")
     parser.add_argument("--format", choices=("json", "table"), default="json")
+    parser.add_argument("--removed-checkout", action="append", default=[], metavar="ABSOLUTE_PATH")
+    parser.add_argument("--removed-branch", action="append", default=[], metavar="LOCAL_BRANCH")
     args = parser.parse_args()
     if not shutil.which("git"):
         print("git was not found on PATH.", file=sys.stderr)
         return 1
+    if args.removed_checkout or args.removed_branch:
+        report = verify_removals(args.path, args.removed_checkout, args.removed_branch)
+        print(json.dumps(report, indent=2))
+        return 0 if report["verified"] else 1
     report = build_report(args.path, args.remote, args.target, args.fetch, args.reviews)
     if args.format == "table":
         print(table(report))

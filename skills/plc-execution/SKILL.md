@@ -264,12 +264,12 @@ On resume and before replacing a child or creating another checkout, reconcile
 this task's existing checkouts and holds first. Reuse a released checkout for
 the same assignment and branch when suitable; retire eligible predecessors.
 
-The parent cleans up after each verified delivery, at phase close, and before
-finishing, following the cleanup procedure. Remove review and verification
-copies in the step that created them. Express a hold only as a worktree lock
-whose reason names the owner and release condition; never leave a blanket
-instruction to preserve every checkout and receipt. Clean idle checkouts may be
-removed with their branches kept, so cleanup does not wait for delivery proof.
+The parent runs the [cleanup check](../clean-stale-worktrees/references/cleanup-check.md)
+after accepting a child contribution, after each verified delivery, at phase
+close, and before finishing. Remove review and verification copies in the step
+that created them. Record what was removed and carry unresolved entries into
+the existing work record. Track checkout and branch cleanup separately so a
+branch waiting for delivery does not keep a released checkout on disk.
 
 ## Resolve decisions without needless interruptions
 

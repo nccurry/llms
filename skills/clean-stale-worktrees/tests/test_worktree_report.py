@@ -1,4 +1,5 @@
 import importlib.util
+import os
 import subprocess
 import tempfile
 import unittest
@@ -89,6 +90,63 @@ class WorktreeReportTest(unittest.TestCase):
         text = worktree_report.table(data)
         self.assertIn("(detached)", text)
         self.assertIn("owner; keep until x", text)
+
+    def test_verification_tracks_checkout_and_branch_separately(self):
+        path = self.wt / "merged"
+        run(self.repo, "worktree", "remove", str(path))
+
+        report = worktree_report.verify_removals(str(self.repo), [str(path)], ["merged"])
+        self.assertEqual(
+            report["checkouts"], [{"path": str(path), "pathExists": False, "registered": False}]
+        )
+        self.assertEqual(report["branches"], [{"branch": "merged", "refExists": True}])
+        self.assertFalse(report["verified"])
+
+        run(self.repo, "branch", "-d", "merged")
+        self.assertTrue(
+            worktree_report.verify_removals(str(self.repo), [str(path)], ["merged"])["verified"]
+        )
+
+    def test_verification_detects_missing_directory_with_stale_registration(self):
+        path = self.wt / "merged"
+        path.rename(self.wt / "moved")
+        report = worktree_report.verify_removals(str(self.repo), [str(path)], [])
+        self.assertEqual(
+            report["checkouts"], [{"path": str(path), "pathExists": False, "registered": True}]
+        )
+        self.assertFalse(report["verified"])
+
+    def test_verification_detects_checkout_leftovers_after_unregistration(self):
+        path = self.wt / "merged"
+        run(self.repo, "worktree", "remove", str(path))
+        path.mkdir()
+        report = worktree_report.verify_removals(str(self.repo), [str(path)], [])
+        self.assertEqual(
+            report["checkouts"], [{"path": str(path), "pathExists": True, "registered": False}]
+        )
+        self.assertFalse(report["verified"])
+
+    @unittest.skipIf(os.name == "nt", "Windows paths cannot contain carriage returns")
+    def test_verification_matches_exact_registration_path(self):
+        path = self.wt / "with\rreturn"
+        run(self.repo, "worktree", "add", "-q", "--detach", str(path), "main")
+        path.rename(self.wt / "moved")
+        report = worktree_report.verify_removals(str(self.repo), [str(path)], [])
+        self.assertTrue(report["checkouts"][0]["registered"])
+        self.assertFalse(report["verified"])
+
+    def test_verification_stops_when_git_cannot_list_all_refs(self):
+        broken = self.repo / ".git" / "refs" / "heads" / "broken"
+        broken.write_text("invalid ref\n", encoding="utf-8")
+        with self.assertRaises(SystemExit):
+            worktree_report.verify_removals(str(self.repo), [], ["broken"])
+
+    def test_verification_matches_branch_with_unicode_line_separator(self):
+        branch = "with\u0085separator"
+        run(self.repo, "branch", branch)
+        report = worktree_report.verify_removals(str(self.repo), [], [branch])
+        self.assertTrue(report["branches"][0]["refExists"])
+        self.assertFalse(report["verified"])
 
 
 if __name__ == "__main__":
