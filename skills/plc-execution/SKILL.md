@@ -130,6 +130,9 @@ Required reviews, checks, and records cannot be waived by this rule.
 Choose and record the integration route, target branch, worktree, and base
 before dispatch. Follow the user's choice, then established repository/session
 conventions. Ask if a material integration choice remains unresolved.
+When starting a new integration from main, the parent runs
+[Sync main](../plc-feature-start/SKILL.md#sync-main) once before creating
+worktrees. Each child starts from its assigned integration commit.
 Distinguish temporary integration from the final delivery branch and record
 whether final delivery is local or remote before selecting its cleanup proof ref.
 

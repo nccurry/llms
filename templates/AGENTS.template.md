@@ -80,8 +80,14 @@ Several agents may work here at once.
 - Do your work in your own worktree:
   `../<repo-name>-wt/<campaign>/<checkout>`, where the campaign is the plan,
   ticket, or feature it belongs to. Never reuse a folder for another branch.
-- Never change the branch or files of the main checkout or of a worktree you
-  do not own. Never reset, stash, or clean them.
+- Before creating a worktree from main, fetch its upstream. Fast-forward local
+  main with `git merge --ff-only` if it is only behind and already checked out
+  in a clean, idle, unlocked worktree. Start from the fetched commit even if
+  you skip the local update. Report why you skipped it. If the fetch fails,
+  report it before choosing a fallback base.
+- Keep task changes in your own worktree. The fast-forward above is the only
+  change to the main checkout allowed by this worktree setup rule. Never switch
+  branches, reset, stash, or clean the main checkout or another agent's worktree.
 - Evidence: <committed under `docs/evidence/` | recorded in the plan, not in
   this repo>. Raw logs and output stay untracked in the campaign folder.
 - To keep a worktree from cleanup, lock it:
