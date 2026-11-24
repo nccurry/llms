@@ -109,7 +109,13 @@ git worktree list
 6. Record the checkout path, branch and current commit, owner, and purpose
    in the existing work record or handoff. If it needs a hold, record the
    release condition in the Git lock reason.
-   - If the work has a plan with a Current Work block (see `plc-planning`), update it in the copy the new branch carries, with the rewrite rules in `plc-checkpoint`'s "Rewrite Current Work" step: add the checkout, its branch, and its state to "Where the work lives"; set Last updated and the next action; change Status from Planned to In progress, moving the packet as `plc-planning`'s lifecycle folders rule says; and add a dated Log line. Commit only the plan files, as `docs(plan): start <checkout>`.
+   - If the plan has a Current Work block, update its copy in the new branch.
+     Follow `plc-checkpoint`'s rewrite rules: add the checkout, branch and
+     state to Where the work lives; set Last updated and Next action; change
+     Status from Planned to In progress and move the packet as `plc-planning`
+     says; then add a dated Log line. Keep any `## Code repositories`
+     section and its URLs unchanged. Commit only plan files as
+     `docs(plan): start <checkout>`.
    - With no plan, skip the plan update and keep the checkout details in the handoff.
 
 7. Continue from the new worktree.

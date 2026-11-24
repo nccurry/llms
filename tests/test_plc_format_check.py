@@ -332,6 +332,278 @@ class PacketRulesTest(unittest.TestCase):
     def test_valid_packet(self):
         self.assertEqual(self.check(), [])
 
+    def repository_section(self, body):
+        newline = chr(10)
+        return edit(
+            "## Log",
+            newline.join(("## Code repositories", "", body, "", "## Log")),
+        )
+
+    def test_code_repositories_are_optional_and_accept_root_urls(self):
+        self.assertEqual(self.check(), [])
+        section = self.repository_section(
+            chr(10).join(
+                (
+                    "- https://github.com/example/harbor-api",
+                    "- https://git.example.test:8443/platform/group/ledger.git/",
+                    "- http://localhost:8080/harbor",
+                    "- https://[2001:db8::1]/group/worker",
+                )
+            )
+        )
+        self.assertEqual(self.check(section), [])
+
+        compact = self.root / "planned" / "plc-harbor.md"
+        compact.parent.mkdir(parents=True, exist_ok=True)
+        compact.write_text(section, encoding="utf-8")
+        self.assertEqual(fc.check_packet(compact, strict=True), [])
+
+    def test_code_repositories_empty_duplicate_and_order_findings(self):
+        empty = self.repository_section("")
+        heading_line = next(
+            index
+            for index, line in enumerate(empty.splitlines(), 1)
+            if line == "## Code repositories"
+        )
+        self.assertEqual(
+            self.check(empty),
+            [f"{R}:{heading_line}: {fc.CODE_REPOSITORY_EMPTY}"],
+        )
+
+        duplicate = self.repository_section("- https://github.com/example/harbor")
+        duplicate = edit(
+            "## Log",
+            chr(10).join(
+                (
+                    "## Code repositories",
+                    "",
+                    "- https://github.com/example/harbor",
+                    "",
+                    "## Log",
+                )
+            ),
+            duplicate,
+        )
+        duplicate_line = [
+            index
+            for index, line in enumerate(duplicate.splitlines(), 1)
+            if line == "## Code repositories"
+        ][1]
+        self.assertEqual(
+            self.check(duplicate),
+            [f"{R}:{duplicate_line}: {fc.CODE_REPOSITORY_DUPLICATE}"],
+        )
+
+        after_log = (
+            VALID.rstrip()
+            + chr(10) * 2
+            + chr(10).join(
+                (
+                    "## Code repositories",
+                    "",
+                    "- https://github.com/example/harbor",
+                    "",
+                )
+            )
+        )
+        after_line = next(
+            index
+            for index, line in enumerate(after_log.splitlines(), 1)
+            if line == "## Code repositories"
+        )
+        self.assertEqual(
+            self.check(after_log),
+            [f"{R}:{after_line}: {fc.CODE_REPOSITORY_ORDER}"],
+        )
+
+    def test_code_repository_duplicate_headings_stop_at_the_second_heading(self):
+        readme = chr(10).join(
+            (
+                VALID.rstrip(),
+                "",
+                *("## Code repositories" for _ in range(2000)),
+                "- https://user:secret@bad_host/team/repo",
+            )
+        )
+        second_line = [
+            index
+            for index, line in enumerate(readme.splitlines(), 1)
+            if line == "## Code repositories"
+        ][1]
+        self.assertEqual(
+            self.check(readme),
+            [f"{R}:{second_line}: {fc.CODE_REPOSITORY_DUPLICATE}"],
+        )
+
+    def test_code_repositories_reject_malformed_urls_without_echoing_them(self):
+        invalid = (
+            "ftp://github.com/example/harbor",
+            "https://github.com",
+            "https://user:secret@example.com/team/repo",
+            "https://github.com/team/repo?token=secret",
+            "https://github.com/team/repo#section",
+            "https://bad_host/team/repo",
+            "https://999.999.999.999/team/repo",
+            "https://127.1/team/repo",
+            "https://2130706433/team/repo",
+            "https://0x7f.1/team/repo",
+            "https://example.123/team/repo",
+            "https://example.0x123/team/repo",
+            "https://github.com/team/../repo",
+            "https://github.com/team/%2e%2E/repo",
+            "https://github.com/team/%GG",
+            "https://github.com/team" + chr(92) + "repo",
+            "https://github.com/team" + chr(0) + "repo",
+            "https://github.com/team" + chr(127) + "repo",
+            "https://github.com:99999/team/repo",
+        )
+        for url in invalid:
+            with self.subTest(url=url):
+                text = self.repository_section(f"- {url}")
+                line = next(
+                    index for index, value in enumerate(text.splitlines(), 1) if value == f"- {url}"
+                )
+                findings = self.check(text)
+                self.assertEqual(findings, [f"{R}:{line}: {fc.CODE_REPOSITORY_ITEM}"])
+                self.assertNotIn("secret", chr(10).join(findings))
+
+    def test_code_repositories_require_one_bare_unordered_list(self):
+        for body, offending in (
+            ("- [ ] https://github.com/example/harbor", "- [ ]"),
+            ("- [Harbor](https://github.com/example/harbor)", "- [Harbor]"),
+            ("1. https://github.com/example/harbor", "1."),
+            (
+                chr(10).join(
+                    ("Choose the repositories:", "", "- https://github.com/example/harbor")
+                ),
+                "Choose the repositories:",
+            ),
+        ):
+            with self.subTest(body=body):
+                text = self.repository_section(body)
+                line = next(
+                    index
+                    for index, value in enumerate(text.splitlines(), 1)
+                    if value.startswith(offending)
+                )
+                self.assertEqual(
+                    self.check(text),
+                    [f"{R}:{line}: {fc.CODE_REPOSITORY_ITEM}"],
+                )
+
+    def test_code_repository_item_findings_follow_source_order(self):
+        bad_url = "- https://github.com/team/repo?token=secret"
+        text = self.repository_section(chr(10).join((bad_url, "extra prose", bad_url)))
+        expected_lines = [
+            index
+            for index, value in enumerate(text.splitlines(), 1)
+            if value in (bad_url, "extra prose")
+        ]
+        self.assertEqual(
+            self.check(text),
+            [f"{R}:{line}: {fc.CODE_REPOSITORY_ITEM}" for line in expected_lines],
+        )
+
+    def test_code_repository_item_findings_stop_after_one_thousand(self):
+        bad_url = "- https://github.com/team/repo?token=secret"
+        text = self.repository_section(chr(10).join([bad_url] * 1001))
+        item_lines = [index for index, value in enumerate(text.splitlines(), 1) if value == bad_url]
+        findings = self.check(text)
+        self.assertEqual(len(findings), 1000)
+        self.assertEqual(
+            findings[:999],
+            [f"{R}:{line}: {fc.CODE_REPOSITORY_ITEM}" for line in item_lines[:999]],
+        )
+        self.assertEqual(
+            findings[-1],
+            f"{R}:{item_lines[999]}: {fc.CODE_REPOSITORY_OMITTED}",
+        )
+        self.assertNotIn("secret", chr(10).join(findings))
+
+    def test_code_repositories_reject_disjoint_list_blocks(self):
+        text = self.repository_section(
+            chr(10).join(
+                (
+                    "- https://github.com/example/harbor",
+                    "* https://github.com/example/harbor-ui",
+                )
+            )
+        )
+        second_line = next(
+            index for index, value in enumerate(text.splitlines(), 1) if value.startswith("* ")
+        )
+        self.assertEqual(
+            self.check(text),
+            [f"{R}:{second_line}: {fc.CODE_REPOSITORY_ITEM}"],
+        )
+
+    def test_code_repository_examples_in_comments_and_fences_are_ignored(self):
+        text = self.repository_section(
+            chr(10).join(
+                (
+                    "<!--",
+                    "- https://user:secret@bad_host/team/repo",
+                    "## Code repositories",
+                    "-->",
+                    "",
+                    chr(96) * 3 + "text",
+                    "- ftp://bad.example/team/repo",
+                    chr(96) * 3,
+                    "",
+                    "- https://github.com/example/harbor/",
+                )
+            )
+        )
+        self.assertEqual(self.check(text), [])
+
+    def test_level_one_heading_ends_the_code_repositories_section(self):
+        text = self.repository_section("- https://github.com/example/harbor")
+        text = text.replace(
+            "## Log",
+            "# Another document section\n\n## Log",
+        )
+        self.assertEqual(self.check(text), [])
+
+    def test_code_repository_section_survives_start_checkpoint_and_wrapup(self):
+        readme = self.repository_section(
+            chr(10).join(
+                (
+                    "- https://git.example.test/platform/harbor-api",
+                    "- https://github.com/example/harbor-console",
+                )
+            )
+        )
+
+        def repository_block(text):
+            start = text.index("## Code repositories")
+            end = text.index("## Log", start)
+            return text[start:end].rstrip()
+
+        section = repository_block(readme)
+        started = readme.replace("- Status: Planned", "- Status: In progress", 1)
+        started = started.replace(
+            "| P1 | Cap retries | | Planned |",
+            "| P1 | Cap retries | | In progress |",
+        )
+        started = started.replace(
+            "- Last updated: 2026-11-03",
+            "- Last updated: 2026-11-24, branch at abc1234",
+            1,
+        )
+        self.assertEqual(repository_block(started), section)
+        self.assertEqual(self.check(started, folder="in-progress"), [])
+
+        completed = started.replace("- Status: In progress", "- Status: Complete", 1)
+        completed = completed.replace(
+            "| P1 | Cap retries | | In progress |",
+            "| P1 | Cap retries | | Verified — checks passed |",
+        )
+        self.assertEqual(repository_block(completed), section)
+        packet = self.root / "completed" / "sample"
+        packet.mkdir(parents=True)
+        (packet / "README.md").write_text(completed, encoding="utf-8")
+        self.assertEqual(fc.check_packet(packet, strict=True), [])
+
     def test_current_work_count(self):
         message = "Current Work: {} ## Current Work sections; a packet needs exactly one"
         self.assertEqual(
@@ -1339,7 +1611,7 @@ class TemplateTest(unittest.TestCase):
             rule("Current Work"),
         )
         keys = [*keys.groups()[:3], *re.split(r", | and ", keys[4])]
-        self.assertEqual(len(sections), 6)
+        self.assertEqual(len(sections), 7)
         self.assertEqual(len(keys), 8)
 
         for path, path_texts in fields.items():

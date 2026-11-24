@@ -81,8 +81,13 @@ OLD_COMPACT_PLAN = """# Limit check Plan
 
 
 def build(case: str, dest: Path) -> None:
+    script = CASES / case / "fixture" / "build.py"
+    args = []
+    if case == "multi-repository":
+        script = CASES / "small-change" / "fixture" / "build.py"
+        args = ["--multi-repo"]
     subprocess.run(
-        [sys.executable, str(CASES / case / "fixture" / "build.py"), str(dest)],
+        [sys.executable, str(script), str(dest), *args],
         check=True,
         capture_output=True,
         env=GIT_ENV,
@@ -138,6 +143,24 @@ class SmallChangeFixtureTest(unittest.TestCase):
         build("requested-tags", dest)
         expected = json.loads((dest / "_tag_expect.json").read_text())
         self.assertEqual(expected, {"plc": {"release": "1.0.0", "component": "storage"}, "P1": {}})
+
+    def test_multi_repository_plan_uses_known_urls(self):
+        dest = Path(self.tmp.name) / "multi-repository"
+        build("multi-repository", dest)
+        app = dest / "harbor"
+        head = git(app, "rev-parse", "--short", "HEAD")
+        plan = GOOD_PLAN.format(head=head).replace(
+            "## Log",
+            (
+                "## Code repositories\n\n"
+                "- https://git.example.test/harbor\n"
+                "- https://github.com/example/harbor-console\n\n"
+                "## Log"
+            ),
+        )
+        write(app, {PLAN_PATH: plan})
+        report = check(dest)
+        self.assertTrue(report["ok"], report)
 
     def test_requested_tags_and_untagged_generation(self):
         self.write_good_plan()
@@ -323,6 +346,7 @@ class PacketShapeTest(unittest.TestCase):
         return packet_shape_problems(self.packet, owner=owner)
 
     def test_good_plan_has_no_problems(self):
+        self.assertNotIn("## Code repositories", self.GOOD)
         self.assertEqual(self.problems(self.GOOD, owner=OWNER), [])
 
     def test_each_break_is_reported(self):

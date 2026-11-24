@@ -24,6 +24,10 @@ beside the old one. "Convert" here means changing the format in place;
   whoever owns that work. Such work is an open merge request's branch,
   another worktree's branch or commit, or uncommitted edits you did not
   make. The packet you are updating for its own work is yours to convert.
+- Preserve any existing top-level Code repositories section and its URL
+  bullets. Keep the whole section outside Current Work and before Log, moving
+  it only when needed to restore the shared order. Do not replace URLs with
+  aliases or guess new ones.
 - Don't reword text. The only edits are moving whole lines and the format
   edits below. Five steps change what the packet says: M1's duplicate rule
   deletes lines, M5 adds a pointer line where a moved table was (and

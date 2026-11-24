@@ -161,6 +161,10 @@ delivered once: in an open plan, as rows in Current Work's "Where the work
 lives" table, with the reason in the State cell; in a finished plan, as a
 dated Log line, written before step 2 below adds the historical-record line.
 
+Keep any Code repositories section and its URL bullets when rewriting Current
+Work or moving the packet. The section stays outside Current Work and before
+Log, including when a finished packet moves to completed/.
+
 The plan is finished only when every requirement has passed its acceptance.
 Then, in this order:
 

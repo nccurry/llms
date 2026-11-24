@@ -20,6 +20,7 @@ Prints a JSON report and exits 0 when the run passes, 1 otherwise.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -50,6 +51,43 @@ def is_plan_file(app: Path, path: str) -> bool:
     return format_check().is_packet(app / path)
 
 
+def code_repository_problems(readme: str, expected: list[str]) -> list[str]:
+    """Check that a multi-repository plan names the URLs in its source docs."""
+    checker = format_check()
+    lines = checker.uncommented(checker.unfenced(readme.splitlines()))
+    headings = []
+    for index, line in enumerate(lines):
+        match = re.fullmatch(r" {0,3}(#{1,6})[\t ]+(.*?)[\t ]*", line)
+        if match:
+            title = re.sub(r"[\t ]+#+[\t ]*$", "", match.group(2)).strip()
+            headings.append((index, len(match.group(1)), title))
+    sections = [
+        index
+        for index, level, title in headings
+        if level == 2 and title.casefold() == "code repositories"
+    ]
+    if not sections:
+        return ["Code repositories: missing expected declaration"]
+    if len(sections) > 1:
+        return []
+
+    start = sections[0]
+    end = next(
+        (index for index, level, _ in headings if index > start and level <= 2),
+        len(lines),
+    )
+    urls = []
+    for line in lines[start + 1 : end]:
+        match = re.fullmatch(r" {0,3}[-*+][\t ]+(https?://\S+)[\t ]*", line, re.IGNORECASE)
+        if match:
+            urls.append(match.group(1))
+    return (
+        []
+        if sorted(urls) == sorted(expected)
+        else ["Code repositories: listed URLs differ from fixture"]
+    )
+
+
 def check(dest: Path) -> dict:
     snap = json.loads((dest / "_snapshot.json").read_text(encoding="utf-8"))
     start = snap["checkouts"][REPO]["worktrees"][REPO]["head"]
@@ -71,6 +109,13 @@ def check(dest: Path) -> dict:
             problem.replace(f"{app.as_posix()}/", "")
             for problem in packet_shape_problems(app / plans[0], owner="@alex")
         ]
+        expected_urls_path = dest / "_code_repository_expect.json"
+        if expected_urls_path.is_file() and not any(
+            "Code repositories:" in problem for problem in problems
+        ):
+            expected_urls = json.loads(expected_urls_path.read_text(encoding="utf-8"))
+            readme = (app / plans[0]).read_text(encoding="utf-8")
+            problems += code_repository_problems(readme, expected_urls)
 
     expected_path = dest / "_tag_expect.json"
     if len(plans) == 1 and expected_path.is_file():

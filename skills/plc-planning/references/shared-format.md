@@ -73,7 +73,8 @@ README as one file. These rules are its contract. Other skills link here rather 
 
 - Sections go in this order: title, summary, `## Current Work`,
   `## Phases`, `## Done when`, `## Open questions`, `## Merge requests`
-  when the plan records them, any repository-specific sections, then
+  when the plan records them, any repository-specific sections including the
+  optional `## Code repositories` section, then
   `## Log` last.
 - Plain Markdown with `- Key: value` lines and no front matter. The format
   check and other tools find each line by its exact key name and read the
@@ -129,6 +130,25 @@ made from one, keeps them as written here:
 - "Where the work lives" has one row per checkout: its path, its branch, the
   person or agent working there, and its State: in progress, waiting,
   locked, or kept, with the reason. With no checkouts, it has one `None` row.
+
+### Code repositories
+
+- This optional top-level section sits outside `## Current Work` and before
+  `## Log`.
+- It contains one nonempty unordered list with one bare absolute HTTP(S)
+  repository-root URL per bullet. Use one bullet marker and one indentation
+  throughout. Do not add prose, checkboxes or Markdown links. Include the full
+  host and repository path. A trailing slash and a `.git` suffix are allowed.
+- Use a valid host and an optional port from 1 through 65535. Do not add
+  credentials, query strings or fragments. Path segments cannot be `.` or
+  `..`, including when encoded.
+- Add the section when work spans code repositories or the plan lives in a
+  separate planning repository, using known code repository URLs. Keep these
+  URLs as source facts; do not replace them with board aliases or guess a URL.
+- Keep the section and its URL bullets unchanged when rewriting Current Work
+  or moving the packet. Old-packet conversion keeps an existing section intact
+  and places it before Log.
+- The checker validates the URL spelling offline. It does not contact a host.
 
 ### Phases
 

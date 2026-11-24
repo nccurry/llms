@@ -166,6 +166,11 @@ Status changes between Planned and In progress, follow `plc-planning`'s
 set Status to Complete or move the packet to `completed/`; finishing is
 `plc-wrapup`'s job. When the work looks finished, say so and offer it.
 
+Keep any `## Code repositories` section and its URL bullets unchanged when
+rewriting Current Work; it stays outside that block and before Log. When work
+spans repositories or the plan is stored separately, add known code repository
+URLs if the section is missing. Do not guess URLs or use board aliases.
+
 Preserve the selected scope and delivery endpoint in Current Work. Record the
 delivered revision and link to the checks and review evidence that apply to
 it. State what is waiting on CI, review, merge, or another named check, and the

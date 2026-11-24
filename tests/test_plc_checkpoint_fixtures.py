@@ -93,6 +93,10 @@ The record is written in the same transaction as the booking change.
 - [SRD.md](SRD.md)
 - [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
 
+## Code repositories
+
+- https://git.example.test/booking-service
+
 ## Log
 
 - 2026-10-20 Created.
@@ -103,6 +107,7 @@ The record is written in the same transaction as the booking change.
 # line step M5 leaves where the phase table was.
 DONE_WHEN_LINE = "The requirements and their checks are in [SRD.md](SRD.md)."
 POINTER_LINE = "Phase state lives in the README's [Phases](README.md#phases) table."
+CODE_REPOSITORY_SECTION = "## Code repositories\n\n- https://git.example.test/booking-service"
 
 
 # The grow-plan plan after a correct checkpoint. The user approved the
@@ -407,6 +412,11 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertTrue(is_ancestor(app, "plc/audit-log-p1", "origin/main"))
         self.assertEqual(git(worktree, "status", "--short"), "")
 
+    def test_old_shape_conversion_preserves_code_repository_urls(self):
+        packet, readme, _ = self.convert_old_shape()
+        self.assertIn(CODE_REPOSITORY_SECTION, readme)
+        self.assertEqual(shipped_findings(packet), [])
+
     def convert_old_shape(self, change_readme=None, change_plan=None) -> tuple[Path, str, str]:
         """Build old-shape and write the result its grader expects, after
         `change_readme` and `change_plan` (functions from text to text) make
@@ -415,8 +425,11 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         build("old-shape", self.dest)
         app = self.dest / "marina"
         packet = app / "docs/plans/audit-log"
+        original = (packet / "README.md").read_text(encoding="utf-8")
+        self.assertIn(CODE_REPOSITORY_SECTION, original)
         merge = git(app, "rev-parse", "--short", "HEAD")
         readme = CONVERTED_OLD_SHAPE_README.format(merge=merge, done_when=DONE_WHEN_LINE)
+        self.assertIn(CODE_REPOSITORY_SECTION, readme)
         readme = change_readme(readme) if change_readme else readme
         (packet / "README.md").write_text(readme, encoding="utf-8", newline="\n")
         # M7 removes the Lifecycle status line; M5 moves the table out, removes

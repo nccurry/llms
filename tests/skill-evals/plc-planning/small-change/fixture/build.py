@@ -6,6 +6,7 @@ The repo says where plans go and that small work gets a one-file plan; no
 trigger in the planning skill's Adding files rule holds.
 """
 
+import json
 import sys
 from pathlib import Path
 
@@ -71,18 +72,40 @@ requirements, design or implementation file beside the plan gets a folder,
 `<slug>/`, with the plan as its `README.md`.
 """
 
+multi_repo = sys.argv[2:] == ["--multi-repo"]
+if sys.argv[2:] not in ([], ["--multi-repo"]):
+    sys.exit("usage: build.py <empty-destination-folder> [--multi-repo]")
+sys.argv = sys.argv[:2]
 dest = destination()
+files = {
+    "README.md": README,
+    "harbor.py": HARBOR,
+    "tests/__init__.py": "",
+    "tests/test_harbor.py": TESTS,
+    "docs/plans/README.md": PLANS_README,
+}
+if multi_repo:
+    files["docs/code-repositories.md"] = """# Code repositories
+
+The CLI repository is https://git.example.test/harbor.
+The admin console repository is https://github.com/example/harbor-console.
+The requested limit behavior spans both repositories.
+"""
 app = make_repo(
     dest,
     "harbor",
-    {
-        "README.md": README,
-        "harbor.py": HARBOR,
-        "tests/__init__.py": "",
-        "tests/test_harbor.py": TESTS,
-        "docs/plans/README.md": PLANS_README,
-    },
+    files,
     message="feat: list free berths",
 )
 snapshot(dest, [app])
+if multi_repo:
+    (dest / "_code_repository_expect.json").write_text(
+        json.dumps(
+            [
+                "https://git.example.test/harbor",
+                "https://github.com/example/harbor-console",
+            ]
+        ),
+        encoding="utf-8",
+    )
 print(dest)

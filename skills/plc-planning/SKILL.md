@@ -66,6 +66,12 @@ Record the check's actual result only after running it.
      finished plans don't sit beside active ones.
    - Store a durable packet with the repository's other durable planning docs.
      If there is no clear location, state the proposed location before writing.
+   - When work spans code repositories, or the plan lives in a separate
+     planning repository, add the optional Code repositories section before
+     Log. Use the known web URLs of the code repositories, one full HTTP(S)
+     repository-root URL per bullet. Check the task, repository remotes and
+     project docs; do not guess a URL or use a board alias. Omit the section
+     for ordinary same-repository work.
 
 3. Build the selected plan or packet.
    - Start with the README alone, and add SRD.md, SADD.md,

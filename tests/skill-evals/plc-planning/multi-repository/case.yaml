@@ -1,0 +1,15 @@
+schema_version: 1
+skill: plc-planning
+description: The user asks for a small durable plan whose work spans two known code repositories. The section must name their real repository URLs.
+setup: python ../small-change/fixture/build.py <dest> --multi-repo
+working_directory: <dest>/harbor
+prompt: |
+  The harbor limit bug also happens in the admin console. The fix needs to
+  cover both the CLI and the console, but it is a small change that can wait.
+  Write a one-file plan with the checks needed for both repositories. Use the
+  repository URLs in docs/code-repositories.md. Do not change code yet. I am
+  @alex; put me down as the owner.
+max_turns: 30
+check: python ../check_plan.py <dest>
+graders:
+  - graders/outcome.md

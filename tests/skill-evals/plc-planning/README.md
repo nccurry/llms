@@ -7,6 +7,7 @@ Markdown graders.
 
 | Case | What it checks |
 | --- | --- |
+| [multi-repository](multi-repository/case.yaml) | A small plan spanning two code repositories lists the known web URLs from repository docs and checks both parts |
 | [small-change](small-change/case.yaml) | A durable plan for a small, bounded change is one file, `plc-<slug>.md`, in the shared PLC template: no SRD, SADD or implementation plan, no code changes, and no diagrams padding the plan |
 | [substantial-phase](substantial-phase/case.yaml) | A substantial phase makes scope, steps and acceptance easy to find without copying template instructions |
 | [growing-evidence](growing-evidence/case.yaml) | Checkpoint, explicitly invoked execution and wrapup preserve provenance, prior results, limits and pending acceptance |

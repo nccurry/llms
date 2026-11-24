@@ -29,6 +29,9 @@ an ID from the ## Phases table, its merge request is !12, #34 or a full URL,
 and its State is Open, Merged @ <commit> or Closed — <reason>. HTML comments
 and fenced code blocks are ignored. An optional Priority line in Current Work
 starts with High, Medium or Low; a packet without one is Medium.
+An optional ## Code repositories section, before ## Log, holds one nonempty
+unordered list with one bare absolute HTTP(S) repository-root URL per item.
+Its syntax is checked without network access.
 
 --strict also checks the five rules across fields:
   1. Status matches the lifecycle folder.
@@ -75,11 +78,13 @@ Python API, for tools that load this file by path:
 """
 
 import argparse
+import ipaddress
 import re
 import sys
 from itertools import pairwise
 from pathlib import Path
 from typing import NamedTuple
+from urllib.parse import unquote_to_bytes, urlsplit
 
 # Each canonical word, mapped to the older spellings it accepts.
 PACKET_WORDS = {
@@ -159,6 +164,24 @@ THEMATIC_BREAK = re.compile(r" {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$")
 # A line that starts a new item in ## Done when: a list item or a heading.
 ITEM_START = re.compile(r" {0,3}(?:[-*+]|\d{1,9}[.)])(?:\s|$)|#")
 TAG = re.compile(r"<[^>]*>")
+MARKDOWN_HEADING = re.compile(r"^ {0,3}(#{1,6})[\t ]+(.*?)[\t ]*$")
+CODE_REPOSITORY_BULLET = re.compile(r"^ {0,3}[-*+][ \t]+(https?://\S+)[ \t]*$", re.IGNORECASE)
+DNS_LABEL = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?")
+IPV4_HOST = re.compile(r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}")
+BAD_PERCENT = re.compile(r"%(?![0-9A-Fa-f]{2})")
+CODE_REPOSITORY_DUPLICATE = "Code repositories: duplicate section"
+CODE_REPOSITORY_EMPTY = "Code repositories: expected a nonempty unordered list of repository URLs"
+CODE_REPOSITORY_ITEM = "Code repositories: expected a bare absolute HTTP(S) repository-root URL"
+CODE_REPOSITORY_ORDER = "Code repositories: section must appear before ## Log"
+CODE_REPOSITORY_OMITTED = "Code repositories: additional format problems omitted"
+MAX_HOST_LENGTH = 253
+MAX_HOST_LABEL_LENGTH = 63
+MAX_IPV4_OCTET = 255
+MAX_REPOSITORY_PORT = 65535
+MAX_CODE_REPOSITORY_ISSUES = 1000
+TOP_LEVEL_HEADING_LEVEL = 2
+ASCII_CONTROL_LIMIT = 0x20
+ASCII_DELETE = 0x7F
 LINK_TARGET = re.compile(r"\]\([^)]*\)")
 DIVIDER = re.compile(r"^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$")
 PIPE = re.compile(r"(?<!\\)\|")
@@ -361,6 +384,168 @@ def sections(lines):
 def named(parts, name):
     """The sections whose heading is name, ignoring case."""
     return [part for part in parts if part.name.lower() == name]
+
+
+def is_repository_host(host, authority):
+    """Whether a parsed URL host has a usable IP or DNS spelling."""
+    if ":" in host:
+        if not authority.startswith("["):
+            return False
+        try:
+            ipaddress.IPv6Address(host)
+        except ValueError:
+            return False
+        return True
+
+    if IPV4_HOST.fullmatch(host):
+        octets = host.split(".")
+        return all(len(octet) == 1 or not octet.startswith("0") for octet in octets) and all(
+            int(octet) <= MAX_IPV4_OCTET for octet in octets
+        )
+    if re.fullmatch(r"[0-9.]+", host):
+        return False
+
+    try:
+        ascii_host = host.encode("idna").decode("ascii")
+    except UnicodeError:
+        return False
+    if ascii_host.endswith("."):
+        ascii_host = ascii_host[:-1]
+    if not ascii_host or len(ascii_host) > MAX_HOST_LENGTH:
+        return False
+    labels = ascii_host.split(".")
+    if not all(
+        len(label) <= MAX_HOST_LABEL_LENGTH and DNS_LABEL.fullmatch(label) for label in labels
+    ):
+        return False
+    last = labels[-1]
+    return not re.fullmatch(r"[0-9]+|0x[0-9a-f]+", last, re.IGNORECASE)
+
+
+def valid_repository_url(value):
+    """Whether value is an offline-checkable HTTP(S) repository-root URL."""
+    if any(
+        character.isspace()
+        or character == "\\"
+        or ord(character) < ASCII_CONTROL_LIMIT
+        or ord(character) == ASCII_DELETE
+        for character in value
+    ):
+        return False
+    if "?" in value or "#" in value or BAD_PERCENT.search(value):
+        return False
+    try:
+        parsed = urlsplit(value)
+        host = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return False
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc or not host:
+        return False
+    if parsed.username is not None or parsed.password is not None or "%" in parsed.netloc:
+        return False
+
+    authority = parsed.netloc
+    if authority.startswith("["):
+        closing = authority.find("]")
+        if closing < 0:
+            return False
+        port_text = authority[closing + 1 :]
+        if port_text and not re.fullmatch(r":[0-9]+", port_text):
+            return False
+        has_port = bool(port_text)
+    else:
+        if authority.count(":") > 1:
+            return False
+        has_port = ":" in authority
+        port_text = authority.rsplit(":", 1)[1] if has_port else ""
+        if has_port and not re.fullmatch(r"[0-9]+", port_text):
+            return False
+    if has_port and (port is None or not 1 <= port <= MAX_REPOSITORY_PORT):
+        return False
+    if not is_repository_host(host, authority):
+        return False
+
+    segments = parsed.path.split("/")
+    if not any(segments):
+        return False
+    return not any(unquote_to_bytes(segment) in {b".", b".."} for segment in segments)
+
+
+def check_code_repositories(path, lines):
+    """Check the optional top-level Code repositories section and its URLs."""
+    all_headings = []
+    for index, line in enumerate(lines):
+        match = MARKDOWN_HEADING.fullmatch(line)
+        if match:
+            level = len(match.group(1))
+            heading = re.sub(r"[\t ]+#+[\t ]*$", "", match.group(2)).strip()
+            all_headings.append((index, level, heading))
+
+    headings = [
+        index
+        for index, level, heading in all_headings
+        if level == TOP_LEVEL_HEADING_LEVEL and heading.casefold() == "code repositories"
+    ]
+    if not headings:
+        return []
+    if len(headings) > 1:
+        return [finding(path, headings[1] + 1, CODE_REPOSITORY_DUPLICATE)]
+
+    logs = [
+        index
+        for index, level, heading in all_headings
+        if level == TOP_LEVEL_HEADING_LEVEL and heading.casefold() == "log"
+    ]
+    found = []
+    issue_count = 0
+
+    def report_issue(source_line, message):
+        nonlocal issue_count
+        if issue_count < MAX_CODE_REPOSITORY_ISSUES - 1:
+            found.append(finding(path, source_line, message))
+        elif issue_count == MAX_CODE_REPOSITORY_ISSUES - 1:
+            found.append(finding(path, source_line, CODE_REPOSITORY_OMITTED))
+        issue_count += 1
+
+    first_log = min(logs, default=None)
+    start = headings[0]
+    if first_log is not None and start > first_log:
+        report_issue(start + 1, CODE_REPOSITORY_ORDER)
+
+    end = next(
+        (
+            index
+            for index, level, _ in all_headings
+            if index > start and level <= TOP_LEVEL_HEADING_LEVEL
+        ),
+        len(lines),
+    )
+    content = [(index, lines[index]) for index in range(start + 1, end) if lines[index].strip()]
+    if not content:
+        report_issue(start + 1, CODE_REPOSITORY_EMPTY)
+        return found
+
+    first_non_list = False
+    first_bullet = None
+    for index, line in content:
+        if issue_count >= MAX_CODE_REPOSITORY_ISSUES:
+            continue
+        item = CODE_REPOSITORY_BULLET.fullmatch(line)
+        if not item:
+            if not first_non_list:
+                first_non_list = True
+                report_issue(index + 1, CODE_REPOSITORY_ITEM)
+            continue
+        marker = item.group(0).lstrip()[:1]
+        indent = len(line) - len(line.lstrip(" "))
+        if first_bullet is None:
+            first_bullet = (marker, indent)
+        elif first_bullet != (marker, indent):
+            report_issue(index + 1, CODE_REPOSITORY_ITEM)
+        if issue_count < MAX_CODE_REPOSITORY_ISSUES and not valid_repository_url(item.group(1)):
+            report_issue(index + 1, CODE_REPOSITORY_ITEM)
+    return found
 
 
 def cells(line):
@@ -873,6 +1058,7 @@ def check_packet(path, people=(), strict=False, lifecycle=None):
 
     found += check_summary(readme, raw, lines)
     found += check_current_work(readme, lines, parts, people, strict=strict, lifecycle=lifecycle)
+    found += check_code_repositories(readme, lines)
     if not named(parts, "log"):
         found.append(finding(readme, 1, "Log: no ## Log section"))
     found += check_phase_tables(readme, lines, parts, lifecycle, strict)
