@@ -333,7 +333,7 @@ class PacketRulesTest(unittest.TestCase):
         self.assertEqual(self.check(), [])
 
     def repository_section(self, body):
-        newline = chr(10)
+        newline = "\n"
         return edit(
             "## Log",
             newline.join(("## Code repositories", "", body, "", "## Log")),
@@ -342,7 +342,7 @@ class PacketRulesTest(unittest.TestCase):
     def test_code_repositories_are_optional_and_accept_root_urls(self):
         self.assertEqual(self.check(), [])
         section = self.repository_section(
-            chr(10).join(
+            "\n".join(
                 (
                     "- https://github.com/example/harbor-api",
                     "- https://git.example.test:8443/platform/group/ledger.git/",
@@ -368,7 +368,7 @@ class PacketRulesTest(unittest.TestCase):
                 self.assertFalse(fc.valid_repository_url(value))
 
     def test_code_repositories_report_each_malformed_bullet_and_marker_change(self):
-        body = chr(10).join(("- bad", "- still not a URL", "* https://git.example/platform/repo"))
+        body = "\n".join(("- bad", "- still not a URL", "* https://git.example/platform/repo"))
         readme = self.repository_section(body)
         start = readme.splitlines().index("- bad") + 1
         self.assertEqual(
@@ -381,7 +381,7 @@ class PacketRulesTest(unittest.TestCase):
         )
 
     def test_code_repositories_require_a_path_after_normalization(self):
-        body = chr(10).join(
+        body = "\n".join(
             (
                 "- https://git.example/team/.git",
                 "- https://git.example/team/repo//",
@@ -415,7 +415,7 @@ class PacketRulesTest(unittest.TestCase):
         duplicate = self.repository_section("- https://github.com/example/harbor")
         duplicate = edit(
             "## Log",
-            chr(10).join(
+            "\n".join(
                 (
                     "## Code repositories",
                     "",
@@ -438,8 +438,8 @@ class PacketRulesTest(unittest.TestCase):
 
         after_log = (
             VALID.rstrip()
-            + chr(10) * 2
-            + chr(10).join(
+            + "\n\n"
+            + "\n".join(
                 (
                     "## Code repositories",
                     "",
@@ -459,7 +459,7 @@ class PacketRulesTest(unittest.TestCase):
         )
 
     def test_code_repository_duplicate_headings_stop_at_the_second_heading(self):
-        readme = chr(10).join(
+        readme = "\n".join(
             (
                 VALID.rstrip(),
                 "",
@@ -507,7 +507,7 @@ class PacketRulesTest(unittest.TestCase):
                 )
                 findings = self.check(text)
                 self.assertEqual(findings, [f"{R}:{line}: {fc.CODE_REPOSITORY_ITEM}"])
-                self.assertNotIn("secret", chr(10).join(findings))
+                self.assertNotIn("secret", "\n".join(findings))
 
     def test_code_repositories_require_one_bare_unordered_list(self):
         for body, offending in (
@@ -515,9 +515,7 @@ class PacketRulesTest(unittest.TestCase):
             ("- [Harbor](https://github.com/example/harbor)", "- [Harbor]"),
             ("1. https://github.com/example/harbor", "1."),
             (
-                chr(10).join(
-                    ("Choose the repositories:", "", "- https://github.com/example/harbor")
-                ),
+                "\n".join(("Choose the repositories:", "", "- https://github.com/example/harbor")),
                 "Choose the repositories:",
             ),
         ):
@@ -535,7 +533,7 @@ class PacketRulesTest(unittest.TestCase):
 
     def test_code_repository_item_findings_follow_source_order(self):
         bad_url = "- https://github.com/team/repo?token=secret"
-        text = self.repository_section(chr(10).join((bad_url, "extra prose", bad_url)))
+        text = self.repository_section("\n".join((bad_url, "extra prose", bad_url)))
         expected_lines = [
             index
             for index, value in enumerate(text.splitlines(), 1)
@@ -548,7 +546,7 @@ class PacketRulesTest(unittest.TestCase):
 
     def test_code_repository_item_findings_stop_after_one_thousand(self):
         bad_url = "- https://github.com/team/repo?token=secret"
-        text = self.repository_section(chr(10).join([bad_url] * 1001))
+        text = self.repository_section("\n".join([bad_url] * 1001))
         item_lines = [index for index, value in enumerate(text.splitlines(), 1) if value == bad_url]
         findings = self.check(text)
         self.assertEqual(len(findings), 1000)
@@ -560,11 +558,11 @@ class PacketRulesTest(unittest.TestCase):
             findings[-1],
             f"{R}:{item_lines[999]}: {fc.CODE_REPOSITORY_OMITTED}",
         )
-        self.assertNotIn("secret", chr(10).join(findings))
+        self.assertNotIn("secret", "\n".join(findings))
 
     def test_code_repositories_reject_disjoint_list_blocks(self):
         text = self.repository_section(
-            chr(10).join(
+            "\n".join(
                 (
                     "- https://github.com/example/harbor",
                     "* https://github.com/example/harbor-ui",
@@ -581,7 +579,7 @@ class PacketRulesTest(unittest.TestCase):
 
     def test_code_repository_examples_in_comments_and_fences_are_ignored(self):
         text = self.repository_section(
-            chr(10).join(
+            "\n".join(
                 (
                     "<!--",
                     "- https://user:secret@bad_host/team/repo",
@@ -608,7 +606,7 @@ class PacketRulesTest(unittest.TestCase):
 
     def test_code_repository_section_survives_start_checkpoint_and_wrapup(self):
         readme = self.repository_section(
-            chr(10).join(
+            "\n".join(
                 (
                     "- https://git.example.test/platform/harbor-api",
                     "- https://github.com/example/harbor-console",
