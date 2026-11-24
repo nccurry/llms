@@ -1,6 +1,6 @@
 # plc-planning eval cases
 
-Four runnable cases for [`plc-planning`](../../../skills/plc-planning/SKILL.md),
+Runnable cases for [`plc-planning`](../../../skills/plc-planning/SKILL.md),
 in the same shape as the [plc-checkpoint cases](../plc-checkpoint/README.md):
 a `case.yaml`, a `fixture/build.py` that creates a git repository, and
 Markdown graders.

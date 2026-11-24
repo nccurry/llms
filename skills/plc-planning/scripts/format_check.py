@@ -172,6 +172,7 @@ BAD_PERCENT = re.compile(r"%(?![0-9A-Fa-f]{2})")
 CODE_REPOSITORY_DUPLICATE = "Code repositories: duplicate section"
 CODE_REPOSITORY_EMPTY = "Code repositories: expected a nonempty unordered list of repository URLs"
 CODE_REPOSITORY_ITEM = "Code repositories: expected a bare absolute HTTP(S) repository-root URL"
+CODE_REPOSITORY_LIST = "Code repositories: use the same bullet marker and indentation throughout"
 CODE_REPOSITORY_ORDER = "Code repositories: section must appear before ## Log"
 CODE_REPOSITORY_OMITTED = "Code repositories: additional format problems omitted"
 MAX_HOST_LENGTH = 253
@@ -549,7 +550,7 @@ def check_code_repositories(path, lines):
         if first_bullet is None:
             first_bullet = (marker, indent)
         elif first_bullet != (marker, indent):
-            report_issue(index + 1, CODE_REPOSITORY_ITEM)
+            report_issue(index + 1, CODE_REPOSITORY_LIST)
         if issue_count < MAX_CODE_REPOSITORY_ISSUES and not valid_repository_url(item[3].strip()):
             report_issue(index + 1, CODE_REPOSITORY_ITEM)
     return found

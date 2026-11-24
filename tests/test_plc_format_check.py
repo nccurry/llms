@@ -373,7 +373,11 @@ class PacketRulesTest(unittest.TestCase):
         start = readme.splitlines().index("- bad") + 1
         self.assertEqual(
             self.check(readme),
-            [f"{R}:{start + offset}: {fc.CODE_REPOSITORY_ITEM}" for offset in range(3)],
+            [
+                f"{R}:{start}: {fc.CODE_REPOSITORY_ITEM}",
+                f"{R}:{start + 1}: {fc.CODE_REPOSITORY_ITEM}",
+                f"{R}:{start + 2}: {fc.CODE_REPOSITORY_LIST}",
+            ],
         )
 
     def test_code_repositories_require_a_path_after_normalization(self):
