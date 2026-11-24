@@ -30,6 +30,9 @@ from typing import Any
 MANAGED_SKILLS = [
     "abstraction-quality-audit",
     "application-security-review",
+    "astra-managed-luna-plc-execution",
+    "astra-managed-sol-plc-execution",
+    "astra-managed-terra-plc-execution",
     "audit-codebase",
     "audit-tests",
     "clean-stale-worktrees",
@@ -37,35 +40,46 @@ MANAGED_SKILLS = [
     "correctness-reliability-audit",
     "create-mr-description",
     "dead-code-audit",
-    "dependency-auditor",
     "debug-and-reproduce",
+    "dependency-auditor",
     "design-for-change",
     "docs-sync",
     "explain-technical-choices",
-    "file-hygiene-audit",
+    "fable-managed-haiku-plc-execution",
+    "fable-managed-opus-plc-execution",
+    "fable-managed-sonnet-plc-execution",
     "figma-implement-design",
+    "file-hygiene-audit",
     "frontend-design",
     "frontend-design-review",
     "manage-tickets",
+    "monitored-haiku-plc-execution",
     "monitored-luna-plc-execution",
     "monitored-opus-plc-execution",
     "monitored-sol-plc-execution",
     "monitored-sonnet-plc-execution",
+    "monitored-terra-plc-execution",
+    "opus-managed-haiku-plc-execution",
+    "opus-managed-opus-plc-execution",
+    "opus-managed-sonnet-plc-execution",
     "performance-audit",
     "plain-english",
     "plain-language-audit",
     "plc-alignment-audit",
-    "plc-execution",
-    "plc-planning",
     "plc-checkpoint",
+    "plc-execution",
     "plc-feature-start",
     "plc-mr-review",
+    "plc-planning",
     "plc-wrapup",
-    "review-and-fix-plc",
     "release-readiness",
     "repo-navigation",
     "resolve-review-comments",
     "resume-after-crash",
+    "review-and-fix-plc",
+    "sol-managed-luna-plc-execution",
+    "sol-managed-sol-plc-execution",
+    "sol-managed-terra-plc-execution",
     "test-quality-audit",
     "verify-before-claiming",
     "visual-code-audit",
@@ -75,8 +89,6 @@ MANAGED_SKILLS = [
 # Skills this repo installed before installs were recorded. Each install moves
 # these, and recorded skills that left the repo, into skill-backups.
 RETIRED_SKILLS = [
-    "opus-managed-opus-plc-execution",
-    "opus-managed-sonnet-plc-execution",
     "start-this-up",
     "wrap-this-up",
 ]
@@ -85,6 +97,7 @@ MAX_DESCRIPTION_LENGTH = 1024
 MIN_SHORT_DESCRIPTION_LENGTH = 25
 MAX_SHORT_DESCRIPTION_LENGTH = 64
 MAX_EXTERNAL_DOWNLOAD_BYTES = 2_000_000
+SKILL_INSTALL_TARGETS = frozenset({"codex", "claude", "pi", "opencode"})
 
 NAME_RE = re.compile(r"^[a-z0-9-]{1,64}$")
 LEGACY_BACKUP_RE = re.compile(
@@ -555,6 +568,28 @@ def validate_source(
     errors = [f"{skill['skill']}: {error}" for skill in skills for error in skill["errors"]]
     available = {skill["skill"] for skill in skills if skill["valid"]}
     declared = set(MANAGED_SKILLS) | set(specs)
+    target_rules = manifest.get("skill_targets", {})
+    if not isinstance(target_rules, dict):
+        errors.append("skill_targets must be an object mapping skill names to target lists")
+        target_rules = {}
+    for name, allowed in target_rules.items():
+        if name not in declared:
+            errors.append(f"target owner is not managed: {name}")
+        if (
+            not isinstance(allowed, list)
+            or not allowed
+            or any(
+                not isinstance(target, str) or target not in SKILL_INSTALL_TARGETS
+                for target in allowed
+            )
+            or len(set(allowed)) != len(allowed)
+        ):
+            errors.append(
+                f"{name}: skill targets must be a nonempty list of unique supported targets"
+            )
+    if errors:
+        # Keep dependency checks safe when target configuration is malformed.
+        target_rules = {}
     for owner, dependencies in manifest.get("skill_dependencies", {}).items():
         if owner not in declared:
             errors.append(f"dependency owner is not managed: {owner}")
@@ -568,6 +603,15 @@ def validate_source(
                 errors.append(f"{owner}: required skill dependency is not declared: {name}")
             elif name not in available:
                 errors.append(f"{owner}: required skill dependency is missing or invalid: {name}")
+            else:
+                missing_targets = set(target_rules.get(owner, SKILL_INSTALL_TARGETS)) - set(
+                    target_rules.get(name, SKILL_INSTALL_TARGETS)
+                )
+                if missing_targets:
+                    errors.append(
+                        f"{owner}: dependency {name} is excluded from targets: "
+                        + ", ".join(sorted(missing_targets))
+                    )
     return {
         "command": "validate",
         "source": display_path(source),
@@ -576,6 +620,11 @@ def validate_source(
         "dependencies": manifest.get("skill_dependencies", {}),
         "errors": errors,
     }
+
+
+def skill_names_for_target(names: list[str], target: str, manifest: dict[str, Any]) -> list[str]:
+    rules = manifest.get("skill_targets", {})
+    return [name for name in names if name not in rules or target in rules[name]]
 
 
 def resolve_targets(args: argparse.Namespace) -> dict[str, Path]:
@@ -947,6 +996,14 @@ def install_skills(
         )
     sources = {name: source / name for name in MANAGED_SKILLS}
     sources.update({name: external_source / name for name in external_specs(manifest)})
+    target_skills = {
+        target: skill_names_for_target(list(sources), target, manifest) for target in targets
+    }
+    owners_by_directory: dict[Path, str] = {}
+    for target, directory in targets.items():
+        owner = owners_by_directory.setdefault(directory.resolve(), target)
+        if target_skills[target] != target_skills[owner]:
+            raise ValueError(f"{owner} and {target} share {directory} but select different skills")
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     run_id = f"{timestamp}-{os.getpid()}-{time.time_ns()}"
     target_results: dict[str, Any] = {}
@@ -956,9 +1013,9 @@ def install_skills(
         for target_name, target_dir in targets.items():
             legacy_backups = archive_legacy_backups(target_name, target_dir, dry_run, list(sources))
             skills: list[dict[str, Any]] = []
-            for skill_name, source_skill in sources.items():
+            for skill_name in target_skills[target_name]:
                 result = install_skill(
-                    source_skill,
+                    sources[skill_name],
                     target_dir / skill_name,
                     target_name,
                     dry_run=dry_run,
@@ -993,12 +1050,13 @@ def install_skills(
     # Retire only after every target installed, so a rollback never needs to
     # bring a retired skill back.
     for target_name, target_dir in targets.items():
+        current_names = target_skills[target_name]
         target_results[target_name]["retired"] = retire_skills(
-            target_name, target_dir, dry_run, timestamp, list(sources)
+            target_name, target_dir, dry_run, timestamp, current_names
         )
         if not dry_run:
             install_record(target_dir).write_text(
-                json.dumps({"skills": sorted(sources)}, indent=2) + "\n",
+                json.dumps({"skills": sorted(current_names)}, indent=2) + "\n",
                 encoding="utf-8",
             )
 
@@ -1012,15 +1070,19 @@ def install_skills(
 
 
 def list_skills(source: Path, targets: dict[str, Path]) -> dict[str, Any]:
+    manifest = dependency_manifest(source)
+    names = MANAGED_SKILLS + list(external_specs(manifest))
     return {
         "command": "list",
         "source": display_path(source),
         "managed_skills": MANAGED_SKILLS,
-        "external_skills": list(external_specs(dependency_manifest(source))),
+        "external_skills": list(external_specs(manifest)),
+        "skill_targets": manifest.get("skill_targets", {}),
         "targets": {
             name: {
                 "skills_dir": display_path(path),
                 "backup_root": display_path(backup_root(path)),
+                "skills": skill_names_for_target(names, name, manifest),
             }
             for name, path in targets.items()
         },
@@ -1041,7 +1103,9 @@ def emit(result: dict[str, Any], output: str) -> None:
             print(f"    backups: {target['backup_root']}")
         print("Skills:")
         for skill in result["managed_skills"]:
-            print(f"  {skill}")
+            allowed = result.get("skill_targets", {}).get(skill)
+            suffix = f" (targets: {', '.join(allowed)})" if allowed else ""
+            print(f"  {skill}{suffix}")
         for skill in result["external_skills"]:
             print(f"  {skill} (pinned external dependency)")
         return

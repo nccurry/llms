@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fable Managed Haiku PLC Execution"
+  short_description: "Run PLC work with Fable managing Haiku agents"
+  default_prompt: "Use $fable-managed-haiku-plc-execution to run this PLC work with a Fable manager, Haiku workers, strict audits, and manager review."

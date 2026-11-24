@@ -90,18 +90,72 @@ the format check are in [plc-planning](../skills/plc-planning/references/shared-
 
 ## Choose an execution model
 
-All four monitored workflows reuse [plc-execution](../skills/plc-execution/SKILL.md).
+All monitored and managed workflows reuse [plc-execution](../skills/plc-execution/SKILL.md).
 The main agent assigns work, reviews the code, and combines the changes.
 
 | Skill | Main agent | Implementation agents | After a verified serious delivery failure |
 |---|---|---|---|
-| [monitored-luna-plc-execution](../skills/monitored-luna-plc-execution/SKILL.md) | Current model | GPT-6 Luna, max | Switch repairs and new implementation agents to GPT-6.1 Sol, medium. |
-| [monitored-sol-plc-execution](../skills/monitored-sol-plc-execution/SKILL.md) | Current model | GPT-6.1 Sol, medium | Repair with Sol. |
+| [monitored-luna-plc-execution](../skills/monitored-luna-plc-execution/SKILL.md) | Current model | GPT-6 Luna, max | Switch repairs and new implementation agents to GPT-6.2 Sol, medium. |
+| [monitored-sol-plc-execution](../skills/monitored-sol-plc-execution/SKILL.md) | Current model | GPT-6.2 Sol, medium | Repair with Sol. |
+| [monitored-terra-plc-execution](../skills/monitored-terra-plc-execution/SKILL.md) | Current model | GPT-6.1 Terra, medium | Repair with Terra. |
 | [monitored-sonnet-plc-execution](../skills/monitored-sonnet-plc-execution/SKILL.md) | Opus | Sonnet | Switch repairs and new implementation agents to Opus. |
 | [monitored-opus-plc-execution](../skills/monitored-opus-plc-execution/SKILL.md) | Opus | Opus | Repair with Opus. |
+| [monitored-haiku-plc-execution](../skills/monitored-haiku-plc-execution/SKILL.md) | Opus | Haiku | Switch repairs and new implementation agents to Opus. |
 
 Your agent app must support the selected models and subagents. Ordinary bugs and review
 corrections stay with the assigned model.
+
+To choose both the manager and worker, use one of these 12 skills. The first
+name selects the manager; the second selects implementation and repair agents.
+These variants keep their selected worker model through serious repairs, with
+no automatic escalation. Audit reviewers use the manager's model unless you
+choose a different reviewer model.
+
+The preset changes how the manager assigns and reviews the work. Use one
+implementation owner for a coupled block and parallel workers for independent
+pieces with separate checks. Carry the selected scope, checked revision, open
+work, and delivery endpoint in the PLC's Current Work so the next session can
+resume from evidence.
+
+| Worker | Assignment and review |
+|---|---|
+| Luna or Haiku | Give a bounded change with specific acceptance checks. Review for missed requirements as well as defects. |
+| Terra | Give a focused change. For visual output, include the reference and verify rendered behavior. |
+| Sol, Sonnet, or Opus | Assign a coherent phase with clear interfaces and failure paths. Check connected behavior at integration. |
+
+Astra and Fable managers spend their effort on design, cross-repository
+contracts, and difficult acceptance decisions. For example, with
+`$sol-managed-luna-plc-execution`, "Implement P2, get CI green, and leave the
+MR for my review" gives Luna a bounded assignment and gives Sol a clear
+stopping point after audit, review, and CI.
+
+| Installed in | Manager | Worker choices |
+|---|---|---|
+| Codex | Astra | [Sol](../skills/astra-managed-sol-plc-execution/SKILL.md), [Terra](../skills/astra-managed-terra-plc-execution/SKILL.md), [Luna](../skills/astra-managed-luna-plc-execution/SKILL.md) |
+| Codex | Sol | [Sol](../skills/sol-managed-sol-plc-execution/SKILL.md), [Terra](../skills/sol-managed-terra-plc-execution/SKILL.md), [Luna](../skills/sol-managed-luna-plc-execution/SKILL.md) |
+| Claude | Opus | [Opus](../skills/opus-managed-opus-plc-execution/SKILL.md), [Sonnet](../skills/opus-managed-sonnet-plc-execution/SKILL.md), [Haiku](../skills/opus-managed-haiku-plc-execution/SKILL.md) |
+| Claude | Fable | [Opus](../skills/fable-managed-opus-plc-execution/SKILL.md), [Sonnet](../skills/fable-managed-sonnet-plc-execution/SKILL.md), [Haiku](../skills/fable-managed-haiku-plc-execution/SKILL.md) |
+
+For example, `$astra-managed-terra-plc-execution` selects Astra as manager
+and Terra as worker. `$fable-managed-haiku-plc-execution` selects Fable as
+manager and Haiku as worker. The skill verifies the active manager; loading a
+skill cannot switch an unsupported host to another model.
+
+The current Codex IDs are `gpt-6.2-astra`, `gpt-6.2-sol`, `gpt-6.1-terra`,
+and `gpt-6-luna`. Sol and Terra workers use medium effort; Luna uses max.
+Managed Codex skills check for newer available versions in the selected family
+before starting. Claude skills use the `opus`, `sonnet`, `haiku`, and `fable`
+aliases, verify the resolved models when exposed, and preserve configured
+Claude effort. See [Claude's model configuration](https://code.claude.com/docs/en/model-config)
+for provider-specific alias resolution.
+
+The installer reads `skill_targets` in `agent-dependencies.json`. Monitored
+Sol/Terra/Luna and Astra/Sol-managed skills install only in Codex; monitored
+Opus/Sonnet/Haiku and Opus/Fable-managed skills install only in Claude.
+Skills without a target restriction install in every selected app, including
+Pi and OpenCode. A later install backs up recorded skills excluded by a target
+change and updates each app's install record. Use `--command list --output json`
+to inspect each app's selected skills and `--dry-run` to preview changes.
 
 ## Example: take a feature through delivery
 

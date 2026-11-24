@@ -1,0 +1,4 @@
+interface:
+  display_name: "Monitored Haiku PLC Execution"
+  short_description: "Run PLC work with Haiku children and Opus review"
+  default_prompt: "Use $monitored-haiku-plc-execution for this PLC work with an Opus parent, Haiku children, and escalation to Opus only for serious delivery failures."

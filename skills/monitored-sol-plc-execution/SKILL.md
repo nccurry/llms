@@ -1,9 +1,11 @@
 ---
 name: monitored-sol-plc-execution
-description: "Run selected PLC work with GPT-6.2 Sol medium child agents and parent review of delivered code. Use when the user requests monitored Sol PLC execution."
+description: "Use when the user requests monitored Sol execution for coherent PLC phases with defined interfaces."
 ---
 
 # Monitored Sol PLC Execution
+
+Apply the [worker guidance for Sol](../plc-execution/references/worker-profiles.md#coherent-phases).
 
 ## Reuse PLC execution
 

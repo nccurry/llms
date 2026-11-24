@@ -13,7 +13,7 @@ satisfy a retry count.
 3. Stop assigning new work to Luna. Let unrelated running children finish and
    review their output normally. Pause the affected writer before replacement;
    preserve its changes/evidence and never allow two writers in its checkout.
-4. Assign a GPT-6.1 Sol medium repair child the rejected diff, confirmed
+4. Assign a GPT-6.2 Sol medium repair child the rejected diff, confirmed
    findings, acceptance criteria, checks, and working skills. Record checkout,
    branch, and base. If the defect is already integrated, base repair on the
    latest integration commit.
@@ -22,7 +22,7 @@ satisfy a retry count.
    report the open repair/decision and follow the base decision rule rather
    than lowering acceptance or inventing a new automatic model tier.
 
-For example: "I switched from GPT-6 Luna (max) to GPT-6.1 Sol (medium). The
+For example: "I switched from GPT-6 Luna (max) to GPT-6.2 Sol (medium). The
 phase 2 delivery loses queued writes on retry, and the regression check
 reproduces it. Sol will repair this branch and handle new implementation
 assignments for the remaining selected work."

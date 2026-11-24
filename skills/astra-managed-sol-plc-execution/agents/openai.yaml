@@ -1,0 +1,4 @@
+interface:
+  display_name: "Astra Managed Sol PLC Execution"
+  short_description: "Run PLC work with Astra managing Sol agents"
+  default_prompt: "Use $astra-managed-sol-plc-execution to run this PLC work with a Astra manager, Sol workers, strict audits, and manager review."

@@ -1,9 +1,11 @@
 ---
 name: monitored-luna-plc-execution
-description: "Run selected PLC work with GPT-6 Luna max child agents, parent review of delivered code, and escalation to GPT-6.1 Sol medium only for serious delivery failures. Use when the user requests monitored Luna PLC execution."
+description: "Use when the user requests monitored Luna execution for bounded PLC changes with explicit checks. Serious delivery failures can escalate to Sol."
 ---
 
 # Monitored Luna PLC Execution
+
+Apply the [worker guidance for Luna](../plc-execution/references/worker-profiles.md#bounded-workers).
 
 ## Reuse PLC execution
 
@@ -27,7 +29,7 @@ integration. A reported PASS or passing CI does not replace that review.
 
 The parent keeps its current model and owns review/integration. Begin
 implementation children with `gpt-6-luna`, reasoning effort `max`.
-After verified quality escalation, use `gpt-6.1-sol`, effort `medium`, for
+After verified quality escalation, use `gpt-6.2-sol`, effort `medium`, for
 repair and new implementation children throughout the remaining selected work.
 Preserve the choice across phases/compaction; do not switch back unless asked.
 

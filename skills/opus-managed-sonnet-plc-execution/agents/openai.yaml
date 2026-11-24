@@ -1,0 +1,4 @@
+interface:
+  display_name: "Opus Managed Sonnet PLC Execution"
+  short_description: "Run PLC work with Opus managing Sonnet agents"
+  default_prompt: "Use $opus-managed-sonnet-plc-execution to run this PLC work with a Opus manager, Sonnet workers, strict audits, and manager review."

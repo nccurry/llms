@@ -14,6 +14,11 @@ enough surrounding code to judge it. Review subsequent repairs too. Check:
 - Names, control flow, boundaries, and dependencies solve needs in this scope.
 - Changes stay within assignment and check/audit claims have real evidence.
 
+Review the original acceptance criteria even when the handoff reports success.
+Check for required behavior missing from the diff. Record which delivered
+revision the checks and audit cover, any evidence still missing, and whether
+the user's delivery endpoint has been reached.
+
 Reproduce checks needed for correctness against the delivered commit in its
 worktree. Coordinate expensive builds so reviewers do not compete for them.
 Verify the combined source before its final-target merge; afterward confirm the

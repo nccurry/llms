@@ -10,7 +10,8 @@ Every assignment includes:
   and any required user approval.
 - Owned files, APIs, and behavior. State allowed exceptions explicitly; the
   default does not permit fixes outside the assignment.
-- Integration route and target. For MR work, identify who opens the MR.
+- Integration route, target, and stopping point. For MR work, identify who
+  opens the MR and whether the requested endpoint is review or merge.
 - Focused/project checks, required audit coverage, and reporting requirements.
 - Completion-map rows and the proof required for each.
 - Absolute paths to plain-english, design-for-change, and verify-before-claiming,
@@ -26,6 +27,8 @@ Every assignment includes:
 Tell the child to read local instructions, source, PLC, goals, and prerequisites
 before editing and report which skill paths it loaded. It must use only its own
 checkout, not the integration checkout, another child's files, or main.
+For a named model preset, apply the worker profile linked from that skill to
+the assignment and review.
 
 The child runs focused checks during work and the project checks covering its
 delivery. After meaningful changes it pauses writers and asks the parent to

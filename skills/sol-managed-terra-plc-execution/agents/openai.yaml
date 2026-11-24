@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sol Managed Terra PLC Execution"
+  short_description: "Run PLC work with Sol managing Terra agents"
+  default_prompt: "Use $sol-managed-terra-plc-execution to run this PLC work with a Sol manager, Terra workers, strict audits, and manager review."

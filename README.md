@@ -42,6 +42,12 @@ checks. Small fixes can go straight from investigation to repair and testing.
 See [skill workflows](docs/skill-workflows.md) for plan examples, model choices,
 and the steps from implementation through delivery.
 
+Choose both models with `$astra-managed-terra-plc-execution` or
+`$fable-managed-haiku-plc-execution`, for example. The installer limits GPT
+execution variants to Codex and Claude execution variants to Claude Code.
+The [model selection table](docs/skill-workflows.md#choose-an-execution-model)
+lists all 12 manager/worker pairs and the monitored variants.
+
 ## Set up a computer
 
 ### 1. Install the prerequisites

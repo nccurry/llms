@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fable Managed Opus PLC Execution"
+  short_description: "Run PLC work with Fable managing Opus agents"
+  default_prompt: "Use $fable-managed-opus-plc-execution to run this PLC work with a Fable manager, Opus workers, strict audits, and manager review."

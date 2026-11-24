@@ -1,0 +1,4 @@
+interface:
+  display_name: "Monitored Terra PLC Execution"
+  short_description: "Run PLC work with Terra 6.1 medium and parent review"
+  default_prompt: "Use $monitored-terra-plc-execution to run this PLC work with Terra 6.1 medium children and parent review."

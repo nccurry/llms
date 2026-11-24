@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sol Managed Sol PLC Execution"
+  short_description: "Run PLC work with Sol managing Sol agents"
+  default_prompt: "Use $sol-managed-sol-plc-execution to run this PLC work with a Sol manager, Sol workers, strict audits, and manager review."

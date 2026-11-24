@@ -1,0 +1,4 @@
+interface:
+  display_name: "Opus Managed Opus PLC Execution"
+  short_description: "Run PLC work with Opus managing Opus agents"
+  default_prompt: "Use $opus-managed-opus-plc-execution to run this PLC work with a Opus manager, Opus workers, strict audits, and manager review."

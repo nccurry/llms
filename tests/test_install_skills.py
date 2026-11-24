@@ -137,6 +137,111 @@ class ExternalRefreshTests(unittest.TestCase):
             self.assertEqual(manifest_file.read_text(), "original pins")
 
 
+class SkillTargetTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.source = self.root / "source"
+        self.names = ["shared", "codex-only", "claude-only"]
+        for name in self.names:
+            skill = self.source / name
+            (skill / "agents").mkdir(parents=True)
+            (skill / "SKILL.md").write_text(
+                f'---\nname: {name}\ndescription: "A test skill."\n---\n'
+            )
+            (skill / "agents" / "openai.yaml").write_text(
+                f'interface:\n  display_name: "{name}"\n'
+                '  short_description: "A skill for installer target tests"\n'
+                f'  default_prompt: "Use ${name} for the test."\n'
+            )
+        self.targets = {
+            host: self.root / host / "skills" for host in ("codex", "claude", "pi", "opencode")
+        }
+        self.manifest = {"skill_targets": {"codex-only": ["codex"], "claude-only": ["claude"]}}
+        self.managed = patch.object(installer, "MANAGED_SKILLS", self.names)
+        self.managed.start()
+        self.addCleanup(self.managed.stop)
+        self.addCleanup(self.temp.cleanup)
+
+    def install(self, dry_run=False):
+        return installer.install_skills(self.source, self.targets, dry_run, manifest=self.manifest)
+
+    def test_install_and_records_include_only_allowed_skills(self):
+        result = self.install()
+        for host, target in self.targets.items():
+            with self.subTest(host=host):
+                expected = ["shared"]
+                if host in {"codex", "claude"}:
+                    expected.append(f"{host}-only")
+                self.assertEqual(sorted(p.name for p in target.iterdir()), sorted(expected))
+                self.assertEqual(installer.recorded_skills(target), sorted(expected))
+                self.assertTrue(all(s["verified"] for s in result["targets"][host]["skills"]))
+
+    def test_changing_targets_backs_up_previously_installed_skills(self):
+        self.install()
+        target = self.targets["codex"]
+        original = installer.digest_path(target / "codex-only")
+        (target / "unmanaged").mkdir()
+        self.manifest["skill_targets"]["codex-only"] = ["claude"]
+        result = self.install()
+        self.assertFalse((target / "codex-only").exists())
+        self.assertTrue((target / "unmanaged").exists())
+        retired = result["targets"]["codex"]["retired"]
+        self.assertEqual([s["skill"] for s in retired], ["codex-only"])
+        self.assertEqual(installer.digest_path(Path(retired[0]["destination"])), original)
+        self.assertEqual(installer.recorded_skills(target), ["shared"])
+        self.assertTrue((self.targets["claude"] / "codex-only" / "SKILL.md").is_file())
+
+    def test_dry_run_and_listing_show_the_same_target_selection(self):
+        result = self.install(dry_run=True)
+        with patch.object(installer, "dependency_manifest", return_value=self.manifest):
+            listing = installer.list_skills(self.source, self.targets)
+        for host, target in self.targets.items():
+            with self.subTest(host=host):
+                self.assertFalse(target.exists())
+                self.assertEqual(
+                    [s["skill"] for s in result["targets"][host]["skills"]],
+                    listing["targets"][host]["skills"],
+                )
+
+    def test_rejects_invalid_target_rules(self):
+        for rules in (
+            [],
+            {"unknown-skill": ["codex"]},
+            {"codex-only": []},
+            {"codex-only": "codex"},
+            {"codex-only": ["unknown-host"]},
+            {"codex-only": ["codex", "codex"]},
+            {"codex-only": [{}]},
+        ):
+            with self.subTest(rules=rules):
+                self.manifest["skill_targets"] = rules
+                result = installer.validate_source(self.source, manifest=self.manifest)
+                self.assertFalse(result["valid"], result)
+
+    def test_rejects_dependencies_excluded_from_an_owners_target(self):
+        self.manifest["skill_dependencies"] = {"codex-only": ["claude-only"]}
+        result = installer.validate_source(self.source, manifest=self.manifest)
+        self.assertFalse(result["valid"])
+        self.assertIn(
+            "codex-only: dependency claude-only is excluded from targets: codex", result["errors"]
+        )
+
+    def test_untagged_skills_keep_installing_to_every_target(self):
+        self.manifest = {}
+        self.install()
+        for target in self.targets.values():
+            self.assertEqual(installer.recorded_skills(target), sorted(self.names))
+
+    def test_conflicting_selections_cannot_share_an_install_directory(self):
+        shared_dir = self.root / "shared" / "skills"
+        self.targets["codex"] = shared_dir
+        self.targets["claude"] = shared_dir
+        with self.assertRaisesRegex(ValueError, "share .* but select different skills"):
+            self.install()
+        self.assertFalse(shared_dir.exists())
+
+
 class RetiredSkillTests(unittest.TestCase):
     """Skills that leave the repo move to backups; other installers' skills stay."""
 

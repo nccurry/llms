@@ -166,6 +166,12 @@ Status changes between Planned and In progress, follow `plc-planning`'s
 set Status to Complete or move the packet to `completed/`; finishing is
 `plc-wrapup`'s job. When the work looks finished, say so and offer it.
 
+Preserve the selected scope and delivery endpoint in Current Work. Record the
+delivered revision and link to the checks and review evidence that apply to
+it. State what is waiting on CI, review, merge, or another named check, and the
+next action within the user's authorization. Carry forward the recorded model
+and effort when they matter for resuming a named preset.
+
 Grow the plan first, following `plc-planning`'s
 [Growing a packet](../plc-planning/references/packet-files.md#growing-a-packet) rule: when a
 trigger in its [Adding files](../plc-planning/references/packet-files.md#adding-files) rule

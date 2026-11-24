@@ -8,9 +8,8 @@ description: "Execute selected PLC work when called as $plc-execution or by a ma
 
 ## Invocation and selected work
 
-Use only when the user calls `$plc-execution` or requests
-`monitored-luna-plc-execution`, `monitored-opus-plc-execution`,
-`monitored-sol-plc-execution`, or `monitored-sonnet-plc-execution`.
+Use only when the user calls `$plc-execution` or requests a monitored or
+manager-and-worker PLC execution skill that delegates to this workflow.
 
 Execute the named PLC, phases, sub-phases, related phases, or concrete block.
 A user-defined block is the scope even if it crosses phase boundaries. Phase
@@ -160,10 +159,11 @@ tools leave the dependent step incomplete; continue independent work.
 
 ## Children and worktrees
 
-Assign at least one implementation or discovery child, including for a single
-tightly coupled block. Use more only for independent file ownership and
-contracts. Do not parallelize writers that share an API, schema, data format, or
-unresolved design choice.
+Assign at least one implementation or discovery child. Give a tightly coupled
+block one implementation owner. Add parallel writers only when they have
+separate ownership, settled interfaces, and checks that can prove each
+contribution independently. Give a shared blocker one owner before splitting
+the work it blocks.
 
 The parent creates and checks each child worktree; spawning may reuse the
 caller folder. Use a distinct branch and a new folder under the PLC's campaign

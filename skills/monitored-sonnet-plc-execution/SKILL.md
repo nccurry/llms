@@ -1,10 +1,12 @@
 ---
 name: monitored-sonnet-plc-execution
-description: "Execute selected PLC work with an Opus parent, Sonnet children, strict audits, and parent review. Use when the user requests monitored Sonnet PLC execution or Opus-managed Sonnet execution. Escalate only serious delivery failures to Opus. Requires Claude model selection and subagents."
+description: "Use when the user requests monitored Sonnet execution for coherent PLC phases with defined interfaces. Serious delivery failures can escalate to Opus."
 model: opus
 ---
 
 # Monitored Sonnet PLC Execution
+
+Apply the [worker guidance for Sonnet](../plc-execution/references/worker-profiles.md#coherent-phases).
 
 Read and follow both [PLC execution](../plc-execution/SKILL.md) and the
 [Opus management rules](../plc-execution/references/opus-management.md).

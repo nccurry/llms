@@ -204,6 +204,160 @@
     ],
     "create-mr-description": [
       "manage-tickets"
+    ],
+    "monitored-haiku-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "astra-managed-sol-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "astra-managed-terra-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "astra-managed-luna-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "sol-managed-sol-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "sol-managed-terra-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "sol-managed-luna-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "opus-managed-opus-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "opus-managed-sonnet-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "opus-managed-haiku-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "fable-managed-opus-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "fable-managed-sonnet-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "fable-managed-haiku-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ],
+    "monitored-terra-plc-execution": [
+      "plc-execution",
+      "plain-english",
+      "design-for-change",
+      "verify-before-claiming",
+      "audit-codebase"
+    ]
+  },
+  "skill_targets": {
+    "astra-managed-luna-plc-execution": [
+      "codex"
+    ],
+    "astra-managed-sol-plc-execution": [
+      "codex"
+    ],
+    "astra-managed-terra-plc-execution": [
+      "codex"
+    ],
+    "fable-managed-haiku-plc-execution": [
+      "claude"
+    ],
+    "fable-managed-opus-plc-execution": [
+      "claude"
+    ],
+    "fable-managed-sonnet-plc-execution": [
+      "claude"
+    ],
+    "monitored-haiku-plc-execution": [
+      "claude"
+    ],
+    "monitored-luna-plc-execution": [
+      "codex"
+    ],
+    "monitored-opus-plc-execution": [
+      "claude"
+    ],
+    "monitored-sol-plc-execution": [
+      "codex"
+    ],
+    "monitored-sonnet-plc-execution": [
+      "claude"
+    ],
+    "monitored-terra-plc-execution": [
+      "codex"
+    ],
+    "opus-managed-haiku-plc-execution": [
+      "claude"
+    ],
+    "opus-managed-opus-plc-execution": [
+      "claude"
+    ],
+    "opus-managed-sonnet-plc-execution": [
+      "claude"
+    ],
+    "sol-managed-luna-plc-execution": [
+      "codex"
+    ],
+    "sol-managed-sol-plc-execution": [
+      "codex"
+    ],
+    "sol-managed-terra-plc-execution": [
+      "codex"
     ]
   }
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Astra Managed Luna PLC Execution"
+  short_description: "Run PLC work with Astra managing Luna agents"
+  default_prompt: "Use $astra-managed-luna-plc-execution to run this PLC work with a Astra manager, Luna workers, strict audits, and manager review."

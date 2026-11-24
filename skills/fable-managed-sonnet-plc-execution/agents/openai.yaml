@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fable Managed Sonnet PLC Execution"
+  short_description: "Run PLC work with Fable managing Sonnet agents"
+  default_prompt: "Use $fable-managed-sonnet-plc-execution to run this PLC work with a Fable manager, Sonnet workers, strict audits, and manager review."
