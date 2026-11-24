@@ -358,6 +358,35 @@ class PacketRulesTest(unittest.TestCase):
         compact.write_text(section, encoding="utf-8")
         self.assertEqual(fc.check_packet(compact, strict=True), [])
 
+    def test_code_repositories_report_each_malformed_bullet_and_marker_change(self):
+        body = chr(10).join(("- bad", "- still not a URL", "* https://git.example/platform/repo"))
+        readme = self.repository_section(body)
+        start = readme.splitlines().index("- bad") + 1
+        self.assertEqual(
+            self.check(readme),
+            [f"{R}:{start + offset}: {fc.CODE_REPOSITORY_ITEM}" for offset in range(3)],
+        )
+
+    def test_code_repositories_require_a_path_after_normalization(self):
+        body = chr(10).join(
+            (
+                "- https://git.example/team/.git",
+                "- https://git.example/team/repo//",
+                "- https://git.example/team/%2e%67%69%74",
+            )
+        )
+        readme = self.repository_section(body)
+        start = readme.splitlines().index(body.splitlines()[0]) + 1
+        self.assertEqual(
+            self.check(readme),
+            [f"{R}:{start + offset}: {fc.CODE_REPOSITORY_ITEM}" for offset in range(3)],
+        )
+
+    def test_code_repositories_read_after_a_heading_with_long_internal_whitespace(self):
+        readme = self.repository_section("- https://git.example/team/repo")
+        heading = f"## Notes{' ' * 100_000}for the next phase\n\n## Code repositories  ###"
+        self.assertEqual(self.check(readme.replace("## Code repositories", heading)), [])
+
     def test_code_repositories_empty_duplicate_and_order_findings(self):
         empty = self.repository_section("")
         heading_line = next(

@@ -70,8 +70,8 @@ Delete this note. -->
 
 <!-- Optional when work spans code repositories or this plan is stored separately.
 Use known repository-root URLs, one bare HTTP(S) URL per bullet. Do not use a
-board alias. Replace the invented URL with the real repository URL, or omit the
-whole section when it does not apply.
+board alias. Copy the heading and list out of this comment and replace the
+invented URL with the real repository URL. Omit the section when it does not apply.
 ## Code repositories
 
 - https://git.example.test/example/harbor-api

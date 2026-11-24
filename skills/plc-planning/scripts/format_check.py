@@ -164,8 +164,8 @@ THEMATIC_BREAK = re.compile(r" {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$")
 # A line that starts a new item in ## Done when: a list item or a heading.
 ITEM_START = re.compile(r" {0,3}(?:[-*+]|\d{1,9}[.)])(?:\s|$)|#")
 TAG = re.compile(r"<[^>]*>")
-MARKDOWN_HEADING = re.compile(r"^ {0,3}(#{1,6})[\t ]+(.*?)[\t ]*$")
-CODE_REPOSITORY_BULLET = re.compile(r"^ {0,3}[-*+][ \t]+(https?://\S+)[ \t]*$", re.IGNORECASE)
+MARKDOWN_HEADING = re.compile(r"^ {0,3}(#{1,6})[\t ]+")
+CODE_REPOSITORY_BULLET = re.compile(r"^( {0,3})([-*+])[ \t]+(.*)$")
 DNS_LABEL = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?")
 IPV4_HOST = re.compile(r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}")
 BAD_PERCENT = re.compile(r"%(?![0-9A-Fa-f]{2})")
@@ -469,17 +469,25 @@ def valid_repository_url(value):
     segments = parsed.path.split("/")
     if not any(segments):
         return False
-    return not any(unquote_to_bytes(segment) in {b".", b".."} for segment in segments)
+    if any(unquote_to_bytes(segment) in {b".", b".."} for segment in segments):
+        return False
+
+    def unescape_unreserved(match):
+        character = chr(int(match.group(1), 16))
+        return character if re.fullmatch(r"[A-Za-z0-9._~-]", character) else match[0]
+
+    normalized = re.sub(r"%([0-9A-Fa-f]{2})", unescape_unreserved, parsed.path)
+    return not normalized.removesuffix("/").removesuffix(".git").endswith("/")
 
 
 def check_code_repositories(path, lines):
     """Check the optional top-level Code repositories section and its URLs."""
     all_headings = []
     for index, line in enumerate(lines):
-        match = MARKDOWN_HEADING.fullmatch(line)
+        match = MARKDOWN_HEADING.match(line)
         if match:
             level = len(match.group(1))
-            heading = re.sub(r"[\t ]+#+[\t ]*$", "", match.group(2)).strip()
+            heading = re.sub(r"[\t ]#+$", "", line[match.end() :].strip()).rstrip()
             all_headings.append((index, level, heading))
 
     headings = [
@@ -537,13 +545,13 @@ def check_code_repositories(path, lines):
                 first_non_list = True
                 report_issue(index + 1, CODE_REPOSITORY_ITEM)
             continue
-        marker = item.group(0).lstrip()[:1]
-        indent = len(line) - len(line.lstrip(" "))
+        indent = len(item[1])
+        marker = item[2]
         if first_bullet is None:
             first_bullet = (marker, indent)
         elif first_bullet != (marker, indent):
             report_issue(index + 1, CODE_REPOSITORY_ITEM)
-        if issue_count < MAX_CODE_REPOSITORY_ISSUES and not valid_repository_url(item.group(1)):
+        if issue_count < MAX_CODE_REPOSITORY_ISSUES and not valid_repository_url(item[3].strip()):
             report_issue(index + 1, CODE_REPOSITORY_ITEM)
     return found
 
