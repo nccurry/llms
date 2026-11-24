@@ -578,7 +578,7 @@ class PacketRulesTest(unittest.TestCase):
         )
         self.assertEqual(
             self.check(text),
-            [f"{R}:{second_line}: {fc.CODE_REPOSITORY_ITEM}"],
+            [f"{R}:{second_line}: {fc.CODE_REPOSITORY_LIST}"],
         )
 
     def test_code_repository_examples_in_comments_and_fences_are_ignored(self):
