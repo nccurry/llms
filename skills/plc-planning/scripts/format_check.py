@@ -387,6 +387,17 @@ def named(parts, name):
     return [part for part in parts if part.name.lower() == name]
 
 
+def valid_punycode_label(label):
+    if not label.startswith("xn--"):
+        return True
+    # Check the encoding directly. Python's IDNA 2003 would reject newer valid names.
+    try:
+        decoded = label[4:].encode("ascii").decode("punycode")
+    except UnicodeError:
+        return False
+    return decoded.isprintable() and not decoded.isascii()
+
+
 def is_repository_host(host, authority):
     """Whether a parsed URL host has a usable IP or DNS spelling."""
     if ":" in host:
@@ -415,7 +426,10 @@ def is_repository_host(host, authority):
         return False
     labels = ascii_host.split(".")
     if not all(
-        len(label) <= MAX_HOST_LABEL_LENGTH and DNS_LABEL.fullmatch(label) for label in labels
+        len(label) <= MAX_HOST_LABEL_LENGTH
+        and DNS_LABEL.fullmatch(label)
+        and valid_punycode_label(label)
+        for label in labels
     ):
         return False
     last = labels[-1]

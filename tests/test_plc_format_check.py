@@ -348,6 +348,7 @@ class PacketRulesTest(unittest.TestCase):
                     "- https://git.example.test:8443/platform/group/ledger.git/",
                     "- http://localhost:8080/harbor",
                     "- https://[2001:db8::1]/group/worker",
+                    "- https://xn--fa-hia.example/group/worker",
                 )
             )
         )
@@ -361,6 +362,9 @@ class PacketRulesTest(unittest.TestCase):
     def test_code_repositories_reject_ambiguous_host_and_url_whitespace(self):
         for value in (
             "https://ab\u200dcd.example/org/repo",
+            "https://xn--a.example/org/repo",
+            "https://xn--abc.example/org/repo",
+            "https://xn--zzzz.example/org/repo",
             "https://git.example/org/test\ufeffrepo",
             "https://git.example/org/test\u0085repo",
         ):
