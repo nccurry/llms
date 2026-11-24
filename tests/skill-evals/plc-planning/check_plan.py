@@ -25,11 +25,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from fixture_lib import (
+    code_repository_urls,
     format_check,
     git,
     is_ancestor,
     packet_shape_problems,
-    section_lines,
     status_paths,
     tag_problems,
 )
@@ -53,15 +53,9 @@ def is_plan_file(app: Path, path: str) -> bool:
 
 def code_repository_problems(readme: str, expected: list[str]) -> list[str]:
     """Check that a multi-repository plan names the URLs in its source docs."""
-    bullet = format_check().CODE_REPOSITORY_BULLET
-    urls = [
-        match[3].strip()
-        for line in section_lines(readme, "Code repositories")
-        if (match := bullet.fullmatch(line)) is not None
-    ]
     return (
         []
-        if sorted(urls) == sorted(expected)
+        if sorted(code_repository_urls(readme)) == sorted(expected)
         else ["Code repositories: listed URLs differ from fixture"]
     )
 

@@ -396,6 +396,16 @@ def section_lines(text: str, name: str) -> list[str]:
     return next((lines for heading, lines, _ in _sections(text) if heading == name), [])
 
 
+def code_repository_urls(text: str) -> list[str]:
+    """Bare URLs from the first Code repositories section."""
+    bullet = format_check().CODE_REPOSITORY_BULLET
+    return [
+        match[3].strip()
+        for line in section_lines(text, "Code repositories")
+        if (match := bullet.fullmatch(line)) is not None
+    ]
+
+
 def section_names(text: str) -> list[str]:
     """The `## ` section headings of Markdown text, in order."""
     return [heading for heading, _, _ in _sections(text)]

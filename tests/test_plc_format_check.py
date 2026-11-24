@@ -358,6 +358,15 @@ class PacketRulesTest(unittest.TestCase):
         compact.write_text(section, encoding="utf-8")
         self.assertEqual(fc.check_packet(compact, strict=True), [])
 
+    def test_code_repositories_reject_ambiguous_host_and_url_whitespace(self):
+        for value in (
+            "https://ab\u200dcd.example/org/repo",
+            "https://git.example/org/test\ufeffrepo",
+            "https://git.example/org/test\u0085repo",
+        ):
+            with self.subTest(value=value):
+                self.assertFalse(fc.valid_repository_url(value))
+
     def test_code_repositories_report_each_malformed_bullet_and_marker_change(self):
         body = chr(10).join(("- bad", "- still not a URL", "* https://git.example/platform/repo"))
         readme = self.repository_section(body)

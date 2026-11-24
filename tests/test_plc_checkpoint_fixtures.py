@@ -467,6 +467,12 @@ class PlcCheckpointFixtureTest(unittest.TestCase):
         self.assertIn(f"\n{POINTER_LINE}\n\n## P1: Record changes", plan)
         self.assertNotIn("## Phase Status", plan)
 
+    def test_old_shape_dropping_code_repository_fails(self):
+        self.assert_old_shape_violation(
+            "Code repositories URLs changed",
+            change_readme=lambda text: text.replace(f"{CODE_REPOSITORY_SECTION}\n\n", ""),
+        )
+
     def test_old_shape_p1_merged_while_it_holds_the_call_fails(self):
         def mark_p1_merged(text: str) -> str:
             return text.replace("| In progress — `record`", "| Merged — `record`")

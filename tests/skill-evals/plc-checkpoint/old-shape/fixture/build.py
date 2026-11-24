@@ -144,6 +144,7 @@ expect(
         "plan_has": [POINTER_LINE],
         "plan_lacks": ["## Phase Status"],
         "done_when": DONE_WHEN_LINE,
+        "code_repositories": ["https://git.example.test/booking-service"],
         "lists_no_removed_checkouts": True,
     },
 )

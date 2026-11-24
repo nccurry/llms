@@ -66,6 +66,7 @@ import fixture_lib
 from fixture_lib import (
     LOG_DATE,
     PLACEHOLDER,
+    code_repository_urls,
     is_ancestor,
     listed_checkouts,
     packet_file_hashes,
@@ -238,6 +239,10 @@ def packet_content_problems(
         if text in plan
     ]
     problems += tag_problems(readme, content.get("tags", {}))
+    if "code_repositories" in content and sorted(code_repository_urls(readme)) != sorted(
+        content["code_repositories"]
+    ):
+        problems.append("Code repositories URLs changed")
     if "done_when" in content:
         problems.append(done_when_problem(readme, content["done_when"]))
     if content.get("lists_no_removed_checkouts"):

@@ -133,6 +133,8 @@ made from one, keeps them as written here:
 
 ### Code repositories
 
+Use the ASCII hostname (Punycode) for an internationalized domain.
+
 - This optional top-level section sits outside `## Current Work` and before
   `## Log`.
 - It contains one nonempty unordered list with one bare absolute HTTP(S)

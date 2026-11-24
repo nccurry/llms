@@ -405,10 +405,9 @@ def is_repository_host(host, authority):
     if re.fullmatch(r"[0-9.]+", host):
         return False
 
-    try:
-        ascii_host = host.encode("idna").decode("ascii")
-    except UnicodeError:
+    if not host.isascii():
         return False
+    ascii_host = host.lower()
     if ascii_host.endswith("."):
         ascii_host = ascii_host[:-1]
     if not ascii_host or len(ascii_host) > MAX_HOST_LENGTH:
@@ -426,7 +425,7 @@ def valid_repository_url(value):
     """Whether value is an offline-checkable HTTP(S) repository-root URL."""
     if any(
         character.isspace()
-        or character == "\\"
+        or character in {"\\", "\ufeff"}
         or ord(character) < ASCII_CONTROL_LIMIT
         or ord(character) == ASCII_DELETE
         for character in value
