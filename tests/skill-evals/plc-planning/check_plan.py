@@ -20,7 +20,6 @@ Prints a JSON report and exits 0 when the run passes, 1 otherwise.
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -30,6 +29,7 @@ from fixture_lib import (
     git,
     is_ancestor,
     packet_shape_problems,
+    section_lines,
     status_paths,
     tag_problems,
 )
@@ -53,34 +53,12 @@ def is_plan_file(app: Path, path: str) -> bool:
 
 def code_repository_problems(readme: str, expected: list[str]) -> list[str]:
     """Check that a multi-repository plan names the URLs in its source docs."""
-    checker = format_check()
-    lines = checker.uncommented(checker.unfenced(readme.splitlines()))
-    headings = []
-    for index, line in enumerate(lines):
-        match = re.fullmatch(r" {0,3}(#{1,6})[\t ]+(.*?)[\t ]*", line)
-        if match:
-            title = re.sub(r"[\t ]+#+[\t ]*$", "", match.group(2)).strip()
-            headings.append((index, len(match.group(1)), title))
-    sections = [
-        index
-        for index, level, title in headings
-        if level == 2 and title.casefold() == "code repositories"
+    bullet = format_check().CODE_REPOSITORY_BULLET
+    urls = [
+        match[3].strip()
+        for line in section_lines(readme, "Code repositories")
+        if (match := bullet.fullmatch(line)) is not None
     ]
-    if not sections:
-        return ["Code repositories: missing expected declaration"]
-    if len(sections) > 1:
-        return []
-
-    start = sections[0]
-    end = next(
-        (index for index, level, _ in headings if index > start and level <= 2),
-        len(lines),
-    )
-    urls = []
-    for line in lines[start + 1 : end]:
-        match = re.fullmatch(r" {0,3}[-*+][\t ]+(https?://\S+)[\t ]*", line, re.IGNORECASE)
-        if match:
-            urls.append(match.group(1))
     return (
         []
         if sorted(urls) == sorted(expected)
