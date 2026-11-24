@@ -215,8 +215,8 @@ class SkillTargetTests(unittest.TestCase):
             {"codex-only": [{}]},
         ):
             with self.subTest(rules=rules):
-                self.manifest["skill_targets"] = rules
-                result = installer.validate_source(self.source, manifest=self.manifest)
+                manifest = {**self.manifest, "skill_targets": rules}
+                result = installer.validate_source(self.source, manifest=manifest)
                 self.assertFalse(result["valid"], result)
 
     def test_rejects_dependencies_excluded_from_an_owners_target(self):
