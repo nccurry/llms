@@ -27,6 +27,7 @@ from host_fixture import host_command  # noqa: E402 - sys.path is set above
 ALL_CASES = [
     "direct-mid-stream",
     "complete-moves-plan",
+    "local-plan-drafts",
     "unmet-requirement",
     "failing-checks",
     "active-agent",
@@ -495,6 +496,27 @@ class WrapThisUpFixtureTest(unittest.TestCase):
         self.complete_the_plan(self.finish_p1(), historical="item")
         self.close_merge_checkout()
         self.assertEqual(check(self.dest), OK)
+
+    def test_closed_plan_requires_scoped_draft_cleanup(self):
+        self.build("local-plan-drafts")
+        self.complete_the_plan(self.finish_p1())
+        self.close_merge_checkout()
+
+        duplicate = "docs/plans/planned/digest/README.md"
+        self.assert_failures([f"primary checkout: superseded plan file remains: {duplicate}"])
+        (self.app / duplicate).unlink()
+        self.assertEqual(check(self.dest), OK)
+
+        notes = "docs/plans/planned/digest/NOTES.md"
+        unrelated = "docs/plans/planned/webhooks/README.md"
+        (self.app / notes).unlink()
+        (self.app / unrelated).write_text("# Replaced\n", encoding="utf-8")
+        self.assert_failures(
+            [
+                f"primary checkout: local plan file changed or lost: {path}"
+                for path in (notes, unrelated)
+            ]
+        )
 
     def test_correct_active_agent_result_passes(self):
         self.build("active-agent")

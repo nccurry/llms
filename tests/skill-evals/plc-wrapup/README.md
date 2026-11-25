@@ -1,7 +1,7 @@
 # plc-wrapup eval cases
 
-Seven runnable cases for [`plc-wrapup`](../../../skills/plc-wrapup/SKILL.md).
-Six build the same `notify` repository from
+Eight runnable cases for [`plc-wrapup`](../../../skills/plc-wrapup/SKILL.md).
+Seven build the same `notify` repository from
 [digest_fixture.py](digest_fixture.py): a bare `notify.git` remote, a primary
 checkout, and child worktrees under `notify-wt/digest/`. Its `AGENTS.md` says
 to merge straight into `main`, push, and run `run_tests.py`. The
@@ -14,6 +14,7 @@ mr-for-review case builds the `app` repository and fake GitLab host from
 | --- | --- |
 | [direct-mid-stream](direct-mid-stream/case.yaml) | P2 is unfinished: merge both anyway, keep P2 In progress (or move channel posting to its own row, and then P2 must be Merged or Verified), keep the plan open with P2's remaining work, clean up everything |
 | [complete-moves-plan](complete-moves-plan/case.yaml) | The only phase is done: merge, mark P1 Verified with evidence, mark the plan Complete with the historical-record line, move it to `completed/` |
+| [local-plan-drafts](local-plan-drafts/case.yaml) | Wrap up a completed feature, remove its untracked duplicate plan, and preserve unique notes and an unrelated draft |
 | [unmet-requirement](unmet-requirement/case.yaml) | The only phase passes its tests but misses DIG-003: merge, but keep P1 In progress (or move DIG-003 to its own row, and then P1 must be Merged or Verified), record the gap, and keep the plan open |
 | [failing-checks](failing-checks/case.yaml) | Each branch passes alone but not together: stop and ask |
 | [active-agent](active-agent/case.yaml) | P2 is locked by another session: merge and clean up P1 only |

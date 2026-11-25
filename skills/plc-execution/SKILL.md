@@ -149,6 +149,9 @@ Prefer a separate non-default integration branch/worktree for isolation. Use
 `main`, another default branch, or the source checkout only when the user chose
 it as the clean target. Do not alter or stash a dirty user checkout.
 
+If the packet moves between checkouts, [hand off any local draft](../clean-stale-worktrees/references/cleanup-check.md#hand-off-a-local-plan)
+before editing the destination copy.
+
 Before final-target integration, use the applicable parts of
 [integration safety](references/integration-safety.md) for concurrent updates,
 combined-source verification, platform evidence, or existing failures.

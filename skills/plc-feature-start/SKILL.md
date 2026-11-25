@@ -1,6 +1,6 @@
 ---
 name: plc-feature-start
-description: Starts a single feature by hand, outside plc-execution, which sets up its own worktrees. Creates a feature branch and linked worktree from main, or resumes a backlog plan's existing branch and brings it up to date with main, without disturbing ongoing work in the current checkout. Runs the tests first so later failures aren't blamed on the new work, and records the worktree in the plan's Current Work block when there is a plan; works the same without one. Use when the user says "start this up", "start a new branch/worktree", "create a feature worktree", "set up isolated work for this task", "pick up where we left off on this plan", or asks to begin or resume one feature that should later merge back into main.
+description: Set up or resume a single feature branch and linked worktree, with or without a plan. Use for "start this plan", "create a feature worktree", or "pick up where we left off" when the user wants checkout setup. Managed PLC execution sets up its own worktrees.
 ---
 
 # PLC Feature Start
@@ -109,7 +109,10 @@ git worktree list
 6. Record the checkout path, branch and current commit, owner, and purpose
    in the existing work record or handoff. If it needs a hold, record the
    release condition in the Git lock reason.
-   - If the plan has a Current Work block, update its copy in the new branch.
+    - If the plan has a Current Work block, update the authoritative packet in
+      the new branch or in the separate repository that owns the plan.
+      First [hand off any local draft](../clean-stale-worktrees/references/cleanup-check.md#hand-off-a-local-plan)
+      if the packet is moving between checkouts.
      Follow `plc-checkpoint`'s rewrite rules: add the checkout, branch and
      state to Where the work lives; set Last updated and Next action; change
      Status from Planned to In progress and move the packet as `plc-planning`

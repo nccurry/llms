@@ -1,0 +1,11 @@
+schema_version: 1
+skill: plc-wrapup
+description: "A completed feature has an untracked planning copy in the primary checkout, alongside unique notes and an unrelated draft."
+setup: python fixture/build.py <dest>
+working_directory: <dest>/notify
+prompt: "Wrap up the digest PLC. Merge it down and clean up the leftovers for this work. Keep any unique notes and unrelated plans."
+max_turns: 60
+check: python ../check_wrap.py <dest>
+graders:
+  - ../complete-moves-plan/graders/outcome.md
+  - ../../plc-checkpoint/graders/plan-record.md

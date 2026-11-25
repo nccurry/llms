@@ -1,6 +1,6 @@
 ---
 name: plc-wrapup
-description: "Use when the user is done with a piece of work, or done for now, and wants this session's in-flight work landed and cleaned up - 'wrap this up', 'merge it down', 'we're done', 'close this out' - or wants to drop it unmerged, or finishing after PLC, Luna, Sol, or Opus execution. Merges everything in flight, finished or not, into main directly or through a PR/MR (merged now, or set to merge when CI is green, only when the user says), rewrites the plan's Current Work to its real end state, moves a finished plan to the completed folder, and removes the work's worktrees and branches locally and on the remote. For an update that keeps work going, use plc-checkpoint."
+description: Land or explicitly drop the selected work, update its plan, and clean up its branches and worktrees. Use for "wrap this up", "merge it down", or "close this out". Use plc-checkpoint for a status update while work continues.
 ---
 
 # PLC Wrapup
@@ -61,6 +61,8 @@ List every branch for this work with commits not on `main`: child, repair,
 and integration branches, in the campaign folder or anywhere else
 `git worktree list` shows them.
 
+- Note the selected plan's current and former paths and any recorded draft
+  source for the cleanup check.
 - Commit this task's uncommitted source, test, and doc changes on their own
   branch, after reading the diff. Don't commit scratch notes, logs, or
   output: move anything useful into the plan, and ask about the rest, since
@@ -217,7 +219,8 @@ ticket or comment on it.
 
 After checking the delivery result, run the
 [cleanup check](../clean-stale-worktrees/references/cleanup-check.md) for
-the checkouts and branches in scope. Step 6 already recorded what stays.
+the checkouts, branches, and plan paths in scope. Include the primary checkout
+and any recorded draft source. Step 6 already recorded what stays.
 If a removal step 6 planned fails, record what is left: in an open
 plan, as a row in "Where the work lives"; in a finished plan, as the one
 dated follow-up Log line that `plc-planning`'s
@@ -247,11 +250,12 @@ With no plan, step 8's report is the record.
 - The plan: complete and moved, or open with what's left and the next step.
 - Removed: each worktree, local branch, and remote branch.
 - Kept: each one, with its reason and what releases it.
+- Local plan files removed or retained, with the reason for any retained file.
 
 Call the wrap-up complete only when everything selected is merged, or its
 PR/MR is left ready or set to merge when green, as step 3 chose; the plan
-says what's true; and every checkout for this work is removed or accounted
-for.
+says what's true; and every checkout and local plan copy for this work is
+removed or accounted for.
 
 ## Gotchas
 

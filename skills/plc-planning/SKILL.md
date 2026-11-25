@@ -64,8 +64,10 @@ Record the check's actual result only after running it.
      repository nor the user asks for them. Keep the packet in the
      [lifecycle folder](references/shared-format.md#lifecycle-folders) that matches its status, so
      finished plans don't sit beside active ones.
-   - Store a durable packet with the repository's other durable planning docs.
-     If there is no clear location, state the proposed location before writing.
+    - Store one authoritative packet with the repository's durable planning
+      docs. Use its owning checkout when one exists. If the plan lives in a
+      separate repository, edit it there. If there is no clear location, state
+      the proposed location before writing.
    - When work spans code repositories, or the plan lives in a separate
      planning repository, add the optional Code repositories section before
      Log. Use the known web URLs of the code repositories, one full HTTP(S)

@@ -1,6 +1,6 @@
 ---
 name: plc-checkpoint
-description: Use when the user wants an update on planned or ad-hoc implementation work they will keep working on - "where are we", "catch me up", "what's left", "checkpoint", "is the plan up to date", "tidy up what's done". Reads the plan's Current Work block, checks what changed since in git and PRs, rewrites it where the plan is tracked (including another repo), and cleans up finished task checkouts and eligible branches. Keeps unfinished source and active checkouts and never merges; to merge everything and finish, use plc-wrapup.
+description: Check the status of ongoing work, update its plan, and tidy finished checkouts without merging. Use for "where are we", "what's left", or "checkpoint" when the work will continue. Use plc-wrapup to land or close it.
 ---
 
 # PLC Checkpoint

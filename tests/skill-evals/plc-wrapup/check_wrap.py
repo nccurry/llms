@@ -19,6 +19,8 @@ _expect.json may list:
                     when that commit reached the remote's main
   remote_files      paths that must exist on the remote's main
   absent_remote_files      paths that must not exist on the remote's main
+  removed_local_files      paths that must be gone from the primary checkout
+  kept_local_text          {path: text}: local files that must retain exact text
   remote_text       {path: [text, ...]}: each text must appear in that file
                     on the remote's main
   absent_remote_text       {path: [text, ...]}: no text may appear in that
@@ -249,6 +251,13 @@ class Checker:
         return changed.stdout.split()
 
     def check_files(self) -> None:
+        for path in self.expect.get("removed_local_files", []):
+            if (self.app / path).exists():
+                self.failures.append(f"primary checkout: superseded plan file remains: {path}")
+        for path, text in self.expect.get("kept_local_text", {}).items():
+            local = self.app / path
+            if not local.is_file() or local.read_text(encoding="utf-8") != text:
+                self.failures.append(f"primary checkout: local plan file changed or lost: {path}")
         self.missing += [
             path for path in self.expect.get("remote_files", []) if self.remote_file(path) is None
         ]
