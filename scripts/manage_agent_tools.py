@@ -24,6 +24,7 @@ import urllib.parse
 import urllib.request
 import zipfile
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, NamedTuple, Protocol, cast
@@ -603,15 +604,37 @@ def npm_lock_current() -> bool:
 
 def install_npm_tools(tool: Tool) -> None:
     source = ROOT / "agent-tools/package-lock.json"
-    lock = json.loads(source.read_text(encoding="utf-8"))
-    if lock.get("packages", {}).get("", {}).get("dependencies") != npm_package()["dependencies"]:
+    lock_text = source.read_text(encoding="utf-8")
+    lock = json.loads(lock_text)
+    package = npm_package()
+    if lock.get("packages", {}).get("", {}).get("dependencies") != package["dependencies"]:
         raise RuntimeError("npm lock does not match the declared tool pins; run task tools:lock")
-    update_file(TOOLS / "npm/package.json", json.dumps(npm_package(), indent=2) + "\n")
-    update_file(TOOLS / "npm/package-lock.json", source.read_text(encoding="utf-8"))
-    run(
-        [*npm_command(), "ci", "--prefix", str(TOOLS / "npm"), "--no-audit", "--no-fund"],
-        timeout=1200,
-    )
+
+    TOOLS.mkdir(parents=True, exist_ok=True)
+    destination = TOOLS / "npm"
+    with tempfile.TemporaryDirectory(prefix=".npm-install-", dir=TOOLS) as workspace:
+        staged = Path(workspace) / "npm"
+        staged.mkdir()
+        (staged / "package.json").write_text(json.dumps(package, indent=2) + "\n", encoding="utf-8")
+        (staged / "package-lock.json").write_text(lock_text, encoding="utf-8")
+        run(
+            [*npm_command(), "ci", "--prefix", str(staged), "--no-audit", "--no-fund"],
+            timeout=1200,
+        )
+        previous = None
+        if destination.exists():
+            previous = Path(tempfile.mkdtemp(prefix="npm-backup-", dir=TOOLS)) / "npm"
+            destination.rename(previous)
+        try:
+            staged.rename(destination)
+        except BaseException:
+            if previous is not None and not destination.exists():
+                previous.rename(destination)
+            raise
+        if previous is not None:
+            # Windows can keep files in the retired tree open while agents exit.
+            with suppress(OSError):
+                shutil.rmtree(previous.parent)
 
 
 def lock_npm_tools(group: list[Tool]) -> list[dict[str, Any]]:

@@ -587,6 +587,9 @@ class NpmInstallerTests(TempManifestCase):
             patch.object(setup, "run", side_effect=lambda command, **_: calls.append(command)),
         ):
             self.npm.install(real_tool("gitnexus"))
+        staged = Path(calls[0][4])
+        self.assertNotEqual(staged, self.tools / "npm")
+        self.assertEqual(staged.parent.parent, self.tools)
         self.assertEqual(
             calls,
             [
@@ -595,7 +598,7 @@ class NpmInstallerTests(TempManifestCase):
                     "/npm-cli.js",
                     "ci",
                     "--prefix",
-                    str(self.tools / "npm"),
+                    str(staged),
                     "--no-audit",
                     "--no-fund",
                 ]
@@ -603,6 +606,41 @@ class NpmInstallerTests(TempManifestCase):
         )
         package = json.loads((self.tools / "npm/package.json").read_text(encoding="utf-8"))
         self.assertEqual(package["dependencies"], dependencies)
+
+    def test_npm_ci_failure_keeps_the_previous_install(self) -> None:
+        self.install_files(lock="previous lock\n", package=setup.npm_package())
+        dependencies = setup.npm_package()["dependencies"]
+        self.lock_source.write_text(json.dumps({"packages": {"": {"dependencies": dependencies}}}))
+        prior_file = self.tools / "npm/active-tool"
+        prior_file.write_text("existing binary", encoding="utf-8")
+        with (
+            patch.object(setup, "npm_command", return_value=["/node", "/npm-cli.js"]),
+            patch.object(setup, "run", side_effect=RuntimeError("npm failed")),
+            self.assertRaisesRegex(RuntimeError, "npm failed"),
+        ):
+            self.npm.install(real_tool("gitnexus"))
+        self.assertEqual(prior_file.read_text(encoding="utf-8"), "existing binary")
+        self.assertEqual((self.tools / "npm/package-lock.json").read_text(), "previous lock\n")
+
+    def test_failed_npm_promotion_restores_the_previous_install(self) -> None:
+        self.install_files(lock="previous lock\n", package=setup.npm_package())
+        dependencies = setup.npm_package()["dependencies"]
+        self.lock_source.write_text(json.dumps({"packages": {"": {"dependencies": dependencies}}}))
+        rename = Path.rename
+
+        def reject_staged_install(path: Path, target: Path) -> Path:
+            if path.parent.name.startswith(".npm-install-"):
+                raise PermissionError("cannot publish staged npm directory")
+            return rename(path, target)
+
+        with (
+            patch.object(setup, "npm_command", return_value=["/node", "/npm-cli.js"]),
+            patch.object(setup, "run"),
+            patch.object(Path, "rename", reject_staged_install),
+            self.assertRaisesRegex(PermissionError, "cannot publish"),
+        ):
+            self.npm.install(real_tool("gitnexus"))
+        self.assertEqual((self.tools / "npm/package-lock.json").read_text(), "previous lock\n")
 
     def test_install_refuses_a_lock_that_does_not_match_the_pins(self) -> None:
         self.lock_source.write_text(json.dumps({"packages": {"": {"dependencies": {}}}}))

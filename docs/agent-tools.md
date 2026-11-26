@@ -22,6 +22,8 @@ npm tool versions, run `task tools:lock` and review the lockfile before installi
 The scoped npm override keeps GitNexus on a patched version of `glob` while
 the stable release allows only the affected version. Recheck it when updating
 GitNexus.
+The npm tools install together in a temporary directory. A failed npm run
+leaves the existing tools in place.
 
 Reviewed Serena security overrides also live in `agent-dependencies.json`. uv applies
 these with `--overrides` because Serena 2.1.0 pins older filelock and Werkzeug versions.
