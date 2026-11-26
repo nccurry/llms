@@ -146,7 +146,15 @@ def chat_sandbox_name(name: str, *, temporary: bool) -> str:
 def _persistent_chat_workspace(name: str) -> Path:
     """Return the piw-owned state directory for one persistent chat."""
 
-    return (state_home() / "chats" / normalize_session_name(name)).resolve(strict=False)
+    root = state_home().resolve()
+    workspace = root / "chats" / normalize_session_name(name)
+    if workspace.resolve() != workspace:
+        raise PiwError(
+            f"refusing to use redirected chat workspace {workspace}",
+            code=ExitCode.STATE,
+            kind="invalid_session_state",
+        )
+    return workspace
 
 
 def utc_now() -> str:
@@ -1166,14 +1174,8 @@ class PiwService:
         plan: _BranchPlan,
         branch_config: EffectiveBranchConfig,
     ) -> None:
-        """Create a sandbox clone, prepare its branch, and seed Pi metadata."""
+        """Prepare the branch in a newly owned sandbox and seed Pi metadata."""
 
-        self.sbx.create(
-            name=plan.sandbox,
-            branch_config=branch_config,
-            template=plan.template,
-            timeout_seconds=branch_config.timeout_seconds,
-        )
         self._create_sandbox_branch(plan, branch_config)
         self._apply_host_patch(plan, branch_config)
         self._seed_pi_config(
@@ -1262,11 +1264,17 @@ class PiwService:
                 kind="sandbox_name_conflict",
             )
 
+        self.sbx.create(
+            name=plan.sandbox,
+            branch_config=branch_config,
+            template=plan.template,
+            timeout_seconds=branch_config.timeout_seconds,
+        )
         saved = False
         try:
             self._initialize_branch_sandbox(plan, branch_config)
             record = self._branch_record(plan, branch_config)
-            self.store.save(record)
+            self.store.create(record)
             saved = True
 
             if not batch:
@@ -1368,31 +1376,47 @@ class PiwService:
     ) -> None:
         """Create an empty chat workspace and seed its Pi configuration."""
 
-        plan.workspace.mkdir(mode=0o700, parents=True)
-        self.sbx.create_workspace(
-            name=plan.sandbox,
-            workspace=plan.workspace,
-            session_config=session_config,
-            template=plan.template,
-            timeout_seconds=session_config.timeout_seconds,
-        )
-        self._seed_pi_config(
-            plan.sandbox,
-            models_file=session_config.models_file,
-            settings_file=session_config.settings_file,
-            mcp_file=session_config.mcp_file,
-        )
-        self._validate_pi_config(
-            plan.sandbox,
-            workdir=plan.workspace,
-            has_metadata=any(
-                (
-                    session_config.models_file,
-                    session_config.settings_file,
-                    session_config.mcp_file,
-                )
-            ),
-        )
+        try:
+            plan.workspace.mkdir(mode=0o700, parents=True)
+        except FileExistsError as error:
+            raise PiwError(
+                f"chat workspace for {plan.name!r} already exists",
+                code=ExitCode.SESSION,
+                kind="sandbox_name_conflict",
+            ) from error
+
+        created = False
+        try:
+            self.sbx.create_workspace(
+                name=plan.sandbox,
+                workspace=plan.workspace,
+                session_config=session_config,
+                template=plan.template,
+                timeout_seconds=session_config.timeout_seconds,
+            )
+            created = True
+            self._seed_pi_config(
+                plan.sandbox,
+                models_file=session_config.models_file,
+                settings_file=session_config.settings_file,
+                mcp_file=session_config.mcp_file,
+            )
+            self._validate_pi_config(
+                plan.sandbox,
+                workdir=plan.workspace,
+                has_metadata=any(
+                    (
+                        session_config.models_file,
+                        session_config.settings_file,
+                        session_config.mcp_file,
+                    )
+                ),
+            )
+        except BaseException:
+            if created:
+                self._best_effort_remove(plan.sandbox)
+            shutil.rmtree(plan.workspace, ignore_errors=True)
+            raise
 
     @staticmethod
     def _chat_record(
@@ -1431,11 +1455,11 @@ class PiwService:
     ) -> dict[str, object]:
         """Create saved chat state and retain it after Pi exits or fails."""
 
+        self._initialize_chat_sandbox(plan, session_config)
         saved = False
         try:
-            self._initialize_chat_sandbox(plan, session_config)
             record = self._chat_record(plan, session_config)
-            self.store.save(record)
+            self.store.create(record)
             saved = True
 
             if not batch:
@@ -1463,9 +1487,9 @@ class PiwService:
     ) -> dict[str, object]:
         """Attach Pi once and always remove the temporary chat resources."""
 
+        self._initialize_chat_sandbox(plan, session_config)
         removed = False
         try:
-            self._initialize_chat_sandbox(plan, session_config)
             self._attach_pi(
                 _PiLaunch(
                     sandbox=plan.sandbox,
@@ -1647,7 +1671,7 @@ class PiwService:
         if record.kind is not SessionKind.CHAT:
             raise AssertionError("chat workspace cleanup requires a chat session")
 
-        workspace = Path(record.workspace).resolve(strict=False)
+        workspace = Path(record.workspace)
         expected = _persistent_chat_workspace(record.name)
         if workspace != expected:
             raise PiwError(
@@ -1857,7 +1881,16 @@ class PiwService:
     def clean(self, name: str, *, dry_run: bool, force: bool) -> dict[str, object]:
         """Remove a chat or safely remove a branch session."""
 
-        record = self.store.load(normalize_session_name(name))
+        name = normalize_session_name(name)
+        if dry_run:
+            return self._clean_session(name, dry_run=True, force=force)
+        with self.store.cleanup_lock(name):
+            return self._clean_session(name, dry_run=False, force=force)
+
+    def _clean_session(self, name: str, *, dry_run: bool, force: bool) -> dict[str, object]:
+        """Inspect and act on the session generation loaded under the cleanup lock."""
+
+        record = self.store.load(name)
         sandboxes = {item.name: item for item in self.sbx.list_sandboxes()}
         sandbox = sandboxes.get(record.sandbox)
         if sandbox is None and record.kind is SessionKind.BRANCH:

@@ -45,6 +45,19 @@ def test_state_round_trip_and_permissions(tmp_path: Path) -> None:
         assert store.path_for("sample").stat().st_mode & 0o777 == 0o600
 
 
+def test_create_preserves_an_existing_session_with_the_same_name(tmp_path: Path) -> None:
+    """An initial publish cannot replace a different session's record."""
+
+    store = StateStore(tmp_path)
+    first = record()
+    store.create(first)
+    with pytest.raises(PiwError) as existing:
+        store.create(record(kind=SessionKind.CHAT))
+    assert existing.value.detail.kind == "session_exists"
+    assert store.load(first.name) == first
+    assert list(tmp_path.iterdir()) == [store.path_for(first.name)]
+
+
 def test_state_list_is_sorted_and_delete_is_idempotent(tmp_path: Path) -> None:
     """Inventory order is stable and repeated deletion is safe."""
 

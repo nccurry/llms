@@ -74,12 +74,11 @@ moved to the backup folder on the next install. Skills from other installers are
 never moved. `RETIRED_SKILLS` in `scripts/install_skills.py` lists skills
 removed before installs were recorded.
 
-Normal skill installs check the upstream GitHub default branch for external
-skills, validate the downloaded files, and record the installed commits and
-checksums in `agent-dependencies.json`. All six Ponytail skills are managed this
-way. An upstream lookup failure stops installation; it does not silently use an
-old version. Tool installers manage their own bundled skills and
-integrations; keep one copy of each. Skill validation checks source dependencies.
+Normal skill installs validate external files against the commits and checksums
+pinned in `agent-dependencies.json`. Use `skills:update` to check upstream and
+update those pins. All six Ponytail skills use this process. Tool installers
+manage their own bundled skills and integrations. Skill validation checks
+source dependencies.
 `doctor` checks installed packages and configuration. Try the skills in an agent app
 to check that they work.
 
@@ -115,8 +114,9 @@ already available Python runtime. Use root bootstrap for first-time setup.
 
 ## Recover from a failed install
 
-Keep installer and configuration reports with `OUTPUT=json`. They list backup paths
-and failed checks. Fix the reported prerequisite before retrying. A moved
+Use `OUTPUT=json` to capture the installer error. Dry-run reports show planned
+backup paths and successful install reports show which paths were used. Fix the
+reported prerequisite before retrying. A moved
 checkout needs `agents:configure` again so host launchers point to the current location. To
 restore an earlier managed skill revision, check out that reviewed revision here and rerun
 `skills:install`; retain the external backups until the restored skills are verified.

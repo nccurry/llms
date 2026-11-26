@@ -97,8 +97,10 @@ def in_target(path: str, target: str) -> str:
 
 def local_changes(path: str) -> dict:
     counts = {"staged": 0, "unstaged": 0, "untracked": 0, "conflicted": 0}
-    status = git(path, "status", "--porcelain", "--untracked-files=all").stdout
-    for line in status.splitlines():
+    status = git(path, "status", "--porcelain", "--untracked-files=all")
+    if status.returncode != 0:
+        raise SystemExit(f"cannot read worktree status for {path}: {status.stderr.strip()}")
+    for line in status.stdout.splitlines():
         code = line[:2]
         if code == "??":
             counts["untracked"] += 1
@@ -167,7 +169,9 @@ def build_report(start: str, remote: str, target: str | None, fetch: bool, revie
     entries = parse_worktrees(out(start, "worktree", "list", "--porcelain"))
     primary = Path(entries[0]["path"])
     if fetch and out(primary, "remote"):
-        git(primary, "fetch", "--prune", remote)
+        fetched = git(primary, "fetch", "--prune", remote)
+        if fetched.returncode != 0:
+            raise SystemExit(f"cannot refresh remote {remote!r}: {fetched.stderr.strip()}")
     target_ref = resolve_target(str(primary), remote, target)
     remote_url = out(primary, "remote", "get-url", remote)
     now = int(time.time())

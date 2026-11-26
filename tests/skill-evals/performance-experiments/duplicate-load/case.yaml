@@ -1,0 +1,12 @@
+schema_version: 1
+skill: performance-experiments
+description: Reduce loader calls while preserving how the score changes when its input changes.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/score
+prompt: |
+  Use $performance-experiments to reduce loader calls in score.py. Try at
+  most one candidate. Run python check.py benchmark and python check.py
+  correctness. Leave the result in the experiment worktree for review.
+max_turns: 35
+graders:
+  - graders/outcome.md

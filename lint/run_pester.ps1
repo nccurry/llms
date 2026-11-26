@@ -12,4 +12,7 @@ $configuration.Output.Verbosity = 'Detailed'
 $result = Invoke-Pester -Configuration $configuration
 # A test may have imported another copy of Pester; the run does not count if it did.
 Assert-PinnedModule -Name 'Pester'
-if ($result.Result -ne 'Passed') { exit 1 }
+if ($result.Result -ne 'Passed' -or $result.PassedCount -eq 0) {
+    Write-Error "Pester reported $($result.Result) with $($result.PassedCount) passing tests."
+    exit 1
+}

@@ -16,8 +16,9 @@ user's scope and partial work.
    what evidence is missing; do not invent a successful reproduction.
 3. Trace the failing path and form a falsifiable explanation. Check inputs,
    ownership/state, boundaries, errors, and recent changes that could cause it.
-   Use focused experiments to distinguish explanations rather than accumulating
-   unrelated edits.
+   Before an experiment, state what result would support the suspected cause
+   and what would rule it out. Record the result and use it to choose the next
+   probe.
 4. Apply the smallest coherent fix to the demonstrated cause. Follow project
    conventions for routine choices. Ask only if the repair needs a material
    unresolved requirement, public contract, data migration, security decision,

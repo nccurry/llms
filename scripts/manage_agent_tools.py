@@ -577,12 +577,15 @@ def tools_with(installer: str) -> list[Tool]:
 
 
 def npm_package() -> dict[str, Any]:
-    return {
+    package = {
         "name": "llms-agent-tools",
         "version": "0.0.0",
         "private": True,
         "dependencies": {tool.package: tool.version for tool in tools_with("npm")},
     }
+    if overrides := manifest().get("npm_overrides"):
+        package["overrides"] = overrides
+    return package
 
 
 def npm_lock_current() -> bool:
@@ -1876,7 +1879,7 @@ def skill_health(target: str) -> dict[str, Any]:
     )
     known = installer.resolve_targets(installer.parse_args([]))
     wanted = selected_hosts(target)
-    targets = {host: path for host, path in known.items() if host in wanted}
+    targets = {host: path for host, path in known.items() if host in wanted and validation["valid"]}
     skipped = [
         f"{host}: skills not checked; scripts/install_skills.py does not know this host"
         for host in wanted
@@ -1885,20 +1888,21 @@ def skill_health(target: str) -> dict[str, Any]:
     problems = list(validation["errors"])
     hosts: list[dict[str, Any]] = []
     for host, path in targets.items():
+        selected = installer.skill_names_for_target(list(sources), host, dependencies)
         missing = [
             name
-            for name, src in sources.items()
-            if installer.digest_path(path / name) != installer.digest_path(src)
+            for name in selected
+            if installer.digest_path(path / name) != installer.digest_path(sources[name])
             or not (path / name / "SKILL.md").is_file()
         ]
         roots = adapter_for(host).skill_roots() or [path]
         conflicts = [
             name
-            for name, src in sources.items()
+            for name in selected
             for root in roots
             if root != path
             and (root / name).is_dir()
-            and installer.digest_path(root / name) != installer.digest_path(src)
+            and installer.digest_path(root / name) != installer.digest_path(sources[name])
         ]
         if missing:
             problems.append(
@@ -1914,7 +1918,7 @@ def skill_health(target: str) -> dict[str, Any]:
             {
                 "host": host,
                 "directory": str(path),
-                "expected_count": len(sources),
+                "expected_count": len(selected),
                 "digest_verified": not missing,
                 "conflicts": sorted(set(conflicts)),
                 "runtime_discovery_verified": False,

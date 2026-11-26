@@ -24,7 +24,7 @@ contract for SRD.md. The planning skill's
 [Adding files](../skills/plc-planning/references/packet-files.md#adding-files) rule lists the
 triggers, and its
 [Growing a packet](../skills/plc-planning/references/packet-files.md#growing-a-packet) rule
-turns a one-file plan into a folder when one holds. The files of a packet:
+turns a one-file plan into a folder when one holds.
 
 Keep the parsed fields exact and choose ordinary Markdown for the surrounding
 content: paragraphs explain, headings divide topics, tables compare short

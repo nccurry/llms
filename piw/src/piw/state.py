@@ -3,7 +3,8 @@
 import json
 import os
 import tempfile
-from contextlib import suppress
+from collections.abc import Generator
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import cast
 
@@ -12,7 +13,9 @@ from piw.errors import ExitCode, PiwError
 from piw.models import SecretRecord, SessionRecord
 
 
-def _atomic_write(path: Path, payload: str, error_kind: str, label: str) -> None:
+def _atomic_write(
+    path: Path, payload: str, error_kind: str, label: str, *, create_only: bool = False
+) -> None:
     """Write one user-only state file atomically."""
 
     root = path.parent
@@ -40,7 +43,12 @@ def _atomic_write(path: Path, payload: str, error_kind: str, label: str) -> None
             handle.flush()
             os.fsync(handle.fileno())
 
-        temporary.replace(path)
+        if create_only:
+            os.link(temporary, path)
+            with suppress(OSError):
+                temporary.unlink()
+        else:
+            temporary.replace(path)
     except OSError as error:
         if descriptor >= 0:
             with suppress(OSError):
@@ -48,6 +56,12 @@ def _atomic_write(path: Path, payload: str, error_kind: str, label: str) -> None
         with suppress(OSError):
             temporary.unlink(missing_ok=True)
 
+        if create_only and isinstance(error, FileExistsError):
+            raise PiwError(
+                f"session {path.stem!r} already exists",
+                code=ExitCode.SESSION,
+                kind="session_exists",
+            ) from error
         raise PiwError(
             f"cannot save {label} {path}: {error}",
             code=ExitCode.STATE,
@@ -143,6 +157,18 @@ class StateStore:
 
         return record
 
+    def create(self, record: SessionRecord) -> None:
+        """Publish a new session without replacing another session's record."""
+
+        payload = json.dumps(record.to_json_object(), indent=2, sort_keys=True) + "\n"
+        _atomic_write(
+            self.path_for(record.name),
+            payload,
+            "session_state_write_failed",
+            "session state",
+            create_only=True,
+        )
+
     def save(self, record: SessionRecord) -> None:
         """Save current state, then remove the migrated legacy record."""
 
@@ -157,6 +183,41 @@ class StateStore:
         if legacy:
             with suppress(OSError):
                 legacy.unlink(missing_ok=True)
+
+    @contextmanager
+    def cleanup_lock(self, name: str) -> Generator[None]:
+        """Prevent overlapping clean calls from acting on an old session generation."""
+
+        record = self.path_for(name)
+        lock_path = record.parent / ".locks" / record.name
+        try:
+            lock_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            lock = lock_path.open("a+b")
+        except OSError as error:
+            raise PiwError(
+                f"cannot open cleanup lock for {name!r}: {error}",
+                code=ExitCode.STATE,
+                kind="cleanup_lock_failed",
+            ) from error
+
+        with lock:
+            try:
+                if os.name == "nt":
+                    import msvcrt  # noqa: PLC0415 - only available on Windows
+
+                    lock.seek(0)
+                    msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl  # noqa: PLC0415 - unavailable on Windows
+
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as error:
+                raise PiwError(
+                    f"cannot lock cleanup for {name!r}: {error}",
+                    code=ExitCode.STATE,
+                    kind="cleanup_lock_failed",
+                ) from error
+            yield
 
     def delete(self, name: str) -> None:
         """Delete current and legacy state for one session."""

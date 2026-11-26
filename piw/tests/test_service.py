@@ -542,6 +542,110 @@ def test_clean_refuses_an_unmanaged_chat_workspace(
     assert record.sandbox in runner.sandboxes
 
 
+def test_overlapping_chat_cleanup_preserves_the_session(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A second cleaner cannot capture a session that another cleaner may remove."""
+
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state-home"))
+    service, runner, _ = make_service(tmp_path)
+    service.chat(
+        "busy-chat",
+        service.effective_session_config(),
+        temporary=False,
+        batch=True,
+        dry_run=False,
+    )
+    record = service.store.load("busy-chat")
+    with service.store.cleanup_lock(record.name), pytest.raises(PiwError) as busy:
+        service.clean(record.name, dry_run=False, force=True)
+    assert busy.value.detail.kind == "cleanup_lock_failed"
+    assert Path(record.workspace).is_dir()
+    assert record.sandbox in runner.sandboxes
+    assert service.store.load(record.name) == record
+    assert service.clean(record.name, dry_run=False, force=True)["action"] == "removed"
+
+
+def test_chat_cleanup_rejects_redirected_workspace_before_mutating(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A cleanup target must still resolve to its recorded managed path."""
+
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
+    service, runner, _ = make_service(tmp_path)
+    service.chat(
+        "guarded-chat",
+        service.effective_session_config(),
+        temporary=False,
+        batch=True,
+        dry_run=False,
+    )
+    record = service.store.load("guarded-chat")
+    workspace = Path(record.workspace)
+    original_resolve = Path.resolve
+
+    def resolve(path: Path, strict: bool = False) -> Path:
+        if path == workspace:
+            return tmp_path / "other"
+        return original_resolve(path, strict=strict)
+
+    monkeypatch.setattr(Path, "resolve", resolve)
+    with pytest.raises(PiwError) as rejected:
+        service.clean(record.name, dry_run=False, force=True)
+
+    assert rejected.value.detail.kind == "invalid_session_state"
+    assert service.store.exists(record.name)
+    assert runner.sandboxes[record.sandbox] == "running"
+    assert workspace.exists()
+
+
+def test_chat_workspace_reservation_failure_preserves_existing_work(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A caller that loses the workspace reservation cannot clean it up."""
+
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
+    service, runner, _ = make_service(tmp_path)
+    workspace = tmp_path / "xdg-state" / "piw" / "chats" / "collision"
+    original_mkdir = Path.mkdir
+
+    def reserve(
+        path: Path, mode: int = 0o777, parents: bool = False, exist_ok: bool = False
+    ) -> None:
+        if path == workspace:
+            original_mkdir(path, parents=True)
+            (path / "keep.txt").write_text("existing work", encoding="utf-8")
+        original_mkdir(path, mode=mode, parents=parents, exist_ok=exist_ok)
+
+    monkeypatch.setattr(Path, "mkdir", reserve)
+    with pytest.raises(PiwError) as existing:
+        service.chat(
+            "collision",
+            service.effective_session_config(),
+            temporary=False,
+            batch=True,
+            dry_run=False,
+        )
+
+    assert existing.value.detail.kind == "sandbox_name_conflict"
+    assert (workspace / "keep.txt").read_text(encoding="utf-8") == "existing work"
+    assert not any(call[:2] == ("sbx", "rm") for call in runner.calls)
+    assert not service.store.exists("collision")
+
+
+def test_branch_create_rejection_does_not_remove_by_name(tmp_path: Path) -> None:
+    """Only a successfully created sandbox belongs to the current attempt."""
+
+    service, runner, repo = make_service(tmp_path)
+    config = effective(service, repo, "rejected")
+    runner.create_error = True
+    with pytest.raises(PiwError) as rejected:
+        service.create_branch(name="rejected", branch_config=config, batch=True, dry_run=False)
+
+    assert rejected.value.detail.kind == "sandbox_create_failed"
+    assert not any(call[:2] == ("sbx", "rm") for call in runner.calls)
+
+
 def test_temporary_chat_attaches_then_removes_everything(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

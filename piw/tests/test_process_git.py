@@ -66,10 +66,10 @@ def test_git_client_reads_repository_state(tmp_path: Path) -> None:
     runner = ScenarioRunner(tmp_path)
     git = GitClient(runner)
     assert git.root(tmp_path) == tmp_path
-    assert git.is_clean(tmp_path)
+    assert not git.status(tmp_path).dirty
     assert git.resolve_ref(tmp_path, "HEAD") == "a" * 40
     runner.host_clean = False
-    assert not git.is_clean(tmp_path)
+    assert git.status(tmp_path).dirty
     assert git.status(tmp_path).paths == ("host-change.txt",)
 
 

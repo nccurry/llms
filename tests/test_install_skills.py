@@ -174,7 +174,10 @@ class SkillTargetTests(unittest.TestCase):
                 if host in {"codex", "claude"}:
                     expected.append(f"{host}-only")
                 self.assertEqual(sorted(p.name for p in target.iterdir()), sorted(expected))
-                self.assertEqual(installer.recorded_skills(target), sorted(expected))
+                self.assertEqual(
+                    installer.json.loads(installer.install_record(target).read_text())["skills"],
+                    sorted(expected),
+                )
                 self.assertTrue(all(s["verified"] for s in result["targets"][host]["skills"]))
 
     def test_changing_targets_backs_up_previously_installed_skills(self):
@@ -189,7 +192,9 @@ class SkillTargetTests(unittest.TestCase):
         retired = result["targets"]["codex"]["retired"]
         self.assertEqual([s["skill"] for s in retired], ["codex-only"])
         self.assertEqual(installer.digest_path(Path(retired[0]["destination"])), original)
-        self.assertEqual(installer.recorded_skills(target), ["shared"])
+        self.assertEqual(
+            installer.json.loads(installer.install_record(target).read_text())["skills"], ["shared"]
+        )
         self.assertTrue((self.targets["claude"] / "codex-only" / "SKILL.md").is_file())
 
     def test_dry_run_and_listing_show_the_same_target_selection(self):
@@ -231,7 +236,10 @@ class SkillTargetTests(unittest.TestCase):
         self.manifest = {}
         self.install()
         for target in self.targets.values():
-            self.assertEqual(installer.recorded_skills(target), sorted(self.names))
+            self.assertEqual(
+                installer.json.loads(installer.install_record(target).read_text())["skills"],
+                sorted(self.names),
+            )
 
     def test_conflicting_selections_cannot_share_an_install_directory(self):
         shared_dir = self.root / "shared" / "skills"
@@ -293,7 +301,10 @@ class RetiredSkillTests(unittest.TestCase):
             moved = Path(item["destination"])
             self.assertEqual(moved.parent.parent.parent, installer.backup_root(self.target))
             self.assertEqual((moved / "SKILL.md").read_text(), f"{item['skill']}\n")
-        self.assertEqual(installer.recorded_skills(self.target), ["kept"])
+        self.assertEqual(
+            installer.json.loads(installer.install_record(self.target).read_text())["skills"],
+            ["kept"],
+        )
 
     def test_skills_never_recorded_stay_without_a_record(self):
         self.install()
@@ -306,7 +317,50 @@ class RetiredSkillTests(unittest.TestCase):
         self.assertEqual(self.installed(), ["dropped", "someone-elses", "start-this-up"])
         actions = {r["skill"]: r["action"] for r in result["targets"]["agent"]["retired"]}
         self.assertEqual(actions, {"dropped": "would_retire", "start-this-up": "would_retire"})
-        self.assertEqual(installer.recorded_skills(self.target), ["kept", "dropped"])
+        self.assertEqual(
+            installer.json.loads(installer.install_record(self.target).read_text())["skills"],
+            ["kept", "dropped"],
+        )
+
+    def test_malformed_record_is_rejected_before_installing_or_retiring(self):
+        record = installer.install_record(self.target)
+        record.write_text("{")
+        before = self.installed()
+        with self.assertRaises(ValueError):
+            self.install()
+        self.assertEqual(self.installed(), before)
+        self.assertEqual(record.read_text(), "{")
+
+    def test_cancelled_record_write_restores_added_and_retired_skills(self):
+        self.record("kept", "dropped")
+        before = self.installed()
+        with (
+            patch.object(installer, "write_install_record", side_effect=KeyboardInterrupt),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            self.install()
+        self.assertEqual(self.installed(), before)
+
+    def test_failed_record_write_restores_added_and_retired_skills(self):
+        self.record("kept", "dropped")
+        record = installer.install_record(self.target)
+        previous = record.read_bytes()
+        before = self.installed()
+        with (
+            patch.object(installer, "write_install_record", side_effect=OSError("read only")),
+            self.assertRaisesRegex(OSError, "read only"),
+        ):
+            self.install()
+        self.assertEqual(self.installed(), before)
+        self.assertEqual(record.read_bytes(), previous)
+
+    def test_concurrent_install_cannot_change_the_locked_target(self):
+        with installer.ExitStack() as stack:
+            installer.lock_install_directory(stack, self.target)
+            with self.assertRaisesRegex(RuntimeError, "cannot lock skill installation"):
+                self.install()
+        self.assertEqual(self.installed(), ["dropped", "someone-elses", "start-this-up"])
+        self.assertEqual(self.install()["targets"]["agent"]["skills"][0]["action"], "created")
 
     def test_failed_install_retires_nothing(self):
         self.record("kept", "dropped")
@@ -317,7 +371,10 @@ class RetiredSkillTests(unittest.TestCase):
             self.install()
 
         self.assertEqual(self.installed(), ["dropped", "someone-elses", "start-this-up"])
-        self.assertEqual(installer.recorded_skills(self.target), ["kept", "dropped"])
+        self.assertEqual(
+            installer.json.loads(installer.install_record(self.target).read_text())["skills"],
+            ["kept", "dropped"],
+        )
 
 
 if __name__ == "__main__":

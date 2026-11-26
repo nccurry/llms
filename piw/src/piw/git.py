@@ -139,11 +139,6 @@ class GitClient:
 
         return Path(result.stdout.strip()).resolve()
 
-    def is_clean(self, repo: Path) -> bool:
-        """Return whether tracked and untracked host files are clean."""
-
-        return not self._read(repo, "status", "--porcelain=v1", "--untracked-files=all")
-
     def status(self, repo: Path) -> HostStatus:
         """Return changed paths and unresolved conflicts without changing the host."""
 
@@ -224,10 +219,8 @@ class GitClient:
         raise PiwError(message, code=ExitCode.PREREQUISITE, kind="git_error")
 
     def _local_branch(self, repo: Path, branch: str) -> ExistingBranch | None:
-        """Resolve one exact local branch without DWIM ref matching."""
+        """Resolve a validated local branch name without DWIM ref matching."""
 
-        if not self.is_valid_branch(repo, branch):
-            return None
         full_ref = f"refs/heads/{branch}"
         if not self._ref_exists(repo, full_ref):
             return None

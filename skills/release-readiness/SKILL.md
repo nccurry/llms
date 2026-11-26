@@ -30,6 +30,15 @@ Check:
 - Security and dependency findings have been triaged.
 - Release artifacts, checksums, packages, container tags, or deployment manifests are present when required.
 
+## Production Rollout
+
+When the release includes a production rollout, use the project's deployment
+runbook to identify the rollout stages, who owns each decision, the health
+signals and thresholds to check, and the observation window before advancing.
+Identify what triggers a pause or rollback and how to recover if reverting
+the release would leave incompatible data. Surface missing rollout evidence
+in the readiness decision. A readiness review does not authorize deployment.
+
 ## Routing Boundaries
 
 - Use `docs-sync` for documentation updates outside a release decision.

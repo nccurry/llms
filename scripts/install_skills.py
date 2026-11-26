@@ -24,6 +24,9 @@ import time
 import urllib.parse
 import urllib.request
 from collections import deque
+from collections.abc import Callable
+from contextlib import ExitStack
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +66,7 @@ MANAGED_SKILLS = [
     "opus-managed-opus-plc-execution",
     "opus-managed-sonnet-plc-execution",
     "performance-audit",
+    "performance-experiments",
     "plain-english",
     "plain-language-audit",
     "plc-alignment-audit",
@@ -76,6 +80,7 @@ MANAGED_SKILLS = [
     "repo-navigation",
     "resolve-review-comments",
     "resume-after-crash",
+    "review-agent-session",
     "review-and-fix-plc",
     "sol-managed-luna-plc-execution",
     "sol-managed-sol-plc-execution",
@@ -713,20 +718,45 @@ def install_record(target_dir: Path) -> Path:
     return target_dir.with_name(f".{target_dir.name}-installed.json")
 
 
-def recorded_skills(target_dir: Path) -> list[str]:
-    record = install_record(target_dir)
-    if not record.is_file():
+def recorded_skills(record: Path, contents: bytes | None) -> list[str]:
+    if contents is None:
         return []
-    names = json.loads(record.read_text(encoding="utf-8")).get("skills", [])
-    return [name for name in names if NAME_RE.fullmatch(name)]
+    data = json.loads(contents.decode("utf-8"))
+    names = data.get("skills") if isinstance(data, dict) else None
+    if not isinstance(names, list) or any(
+        not isinstance(name, str) or not NAME_RE.fullmatch(name) for name in names
+    ):
+        raise ValueError(f"invalid skill install record: {record}")
+    return names
+
+
+def write_install_record(path: Path, contents: bytes | None) -> None:
+    if contents is None:
+        path.unlink(missing_ok=True)
+        return
+    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as output:
+        temporary = Path(output.name)
+        try:
+            output.write(contents)
+            output.close()
+            temporary.replace(path)
+        finally:
+            output.close()
+            temporary.unlink(missing_ok=True)
+
+
+def restore_skill_move(source: Path, destination: Path) -> None:
+    if source.exists() or source.is_symlink():
+        raise RuntimeError(f"refusing to overwrite {source}; backup retained at {destination}")
+    shutil.move(str(destination), str(source))
 
 
 def next_available_path(base: Path) -> Path:
-    if not base.exists():
+    if not (base.exists() or base.is_symlink()):
         return base
     for counter in range(2, 1000):
         candidate = base.with_name(f"{base.name}-{counter}")
-        if not candidate.exists():
+        if not (candidate.exists() or candidate.is_symlink()):
             return candidate
     raise RuntimeError(f"could not find a free path for {base}")
 
@@ -744,10 +774,10 @@ def remove_empty_parents(path: Path, stop: Path) -> None:
 
 
 def remove_path(path: Path) -> None:
-    if path.is_dir():
-        shutil.rmtree(path)
-    elif path.exists():
+    if path.is_symlink() or path.is_file():
         path.unlink()
+    elif path.is_dir():
+        shutil.rmtree(path)
 
 
 def rollback_skill(result: dict[str, Any], timestamp: str, target_name: str) -> None:
@@ -759,7 +789,7 @@ def rollback_skill(result: dict[str, Any], timestamp: str, target_name: str) -> 
     backup = Path(result["backup"]) if result["backup"] else None
     errors: list[str] = []
 
-    if destination.exists():
+    if destination.exists() or destination.is_symlink():
         failed_path = next_available_path(
             backup_root(destination.parent) / timestamp / target_name / f"{destination.name}.failed"
         )
@@ -774,9 +804,9 @@ def rollback_skill(result: dict[str, Any], timestamp: str, target_name: str) -> 
                 errors.append(f"could not clear failed installation: {cleanup_error}")
 
     if action == "updated" and backup:
-        if destination.exists():
+        if destination.exists() or destination.is_symlink():
             errors.append("could not restore backup because the destination still exists")
-        elif not backup.exists():
+        elif not (backup.exists() or backup.is_symlink()):
             errors.append(f"backup is missing: {backup}")
         else:
             try:
@@ -794,13 +824,14 @@ def archive_legacy_backups(
     target_name: str,
     target_dir: Path,
     dry_run: bool,
-    managed_names: list[str] | None = None,
+    managed_names: list[str],
+    rollback: list[tuple[str, Callable[[], None]]],
 ) -> list[dict[str, Any]]:
     if not target_dir.is_dir():
         return []
 
     results: list[dict[str, Any]] = []
-    managed = set(MANAGED_SKILLS if managed_names is None else managed_names)
+    managed = set(managed_names)
     for candidate in sorted(target_dir.iterdir()):
         if not candidate.is_dir():
             continue
@@ -821,11 +852,10 @@ def archive_legacy_backups(
         if not dry_run:
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(candidate), str(destination))
+            rollback.append((str(candidate), partial(restore_skill_move, candidate, destination)))
             archived_digest = digest_path(destination)
             verified = source_digest == archived_digest
             if not verified:
-                candidate.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(destination), str(candidate))
                 raise RuntimeError(f"legacy backup digest mismatch for {candidate}")
 
         results.append(
@@ -848,12 +878,13 @@ def retire_skills(
     target_dir: Path,
     dry_run: bool,
     timestamp: str,
-    current_names: list[str],
+    *,
+    retired: list[str],
+    rollback: list[tuple[str, Callable[[], None]]],
 ) -> list[dict[str, Any]]:
     """Move skills this installer put here, but no longer ships, into backups."""
     results: list[dict[str, Any]] = []
-    retired = (set(recorded_skills(target_dir)) | set(RETIRED_SKILLS)) - set(current_names)
-    for skill_name in sorted(retired):
+    for skill_name in retired:
         candidate = target_dir / skill_name
         if not (candidate.exists() or candidate.is_symlink()):
             continue
@@ -865,9 +896,9 @@ def retire_skills(
         if not dry_run:
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(candidate), str(destination))
+            rollback.append((str(candidate), partial(restore_skill_move, candidate, destination)))
             retired_digest = digest_path(destination)
             if retired_digest != source_digest:
-                shutil.move(str(destination), str(candidate))
                 raise RuntimeError(f"retired skill digest mismatch for {candidate}")
         results.append(
             {
@@ -924,29 +955,30 @@ def install_skill(
     stage_base = staging_root(destination.parent) / run_id / target_name / source_skill.name
     stage_path = next_available_path(stage_base)
     previous_moved = False
-    promotion_attempted = False
+    promoted = False
 
+    # Guard failures use the same rollback path as I/O failures.
     try:
         stage_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(source_skill, stage_path)
         if digest_path(stage_path) != source_digest:
-            raise RuntimeError(f"staged skill digest mismatch for {source_skill.name}")  # noqa: TRY301 - the except below rolls back and reports it
+            raise RuntimeError(f"staged skill digest mismatch for {source_skill.name}")  # noqa: TRY301
 
         if destination.exists() or destination.is_symlink():
             if backup_path is None:
-                raise RuntimeError(f"backup path is missing for {destination}")  # noqa: TRY301 - the except below rolls back and reports it
+                raise RuntimeError(f"backup path is missing for {destination}")  # noqa: TRY301
             backup_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(destination), str(backup_path))
             previous_moved = True
 
         destination.parent.mkdir(parents=True, exist_ok=True)
-        promotion_attempted = True
         stage_path.rename(destination)
+        promoted = True
         installed_digest = digest_path(destination)
         if installed_digest != source_digest:
-            raise RuntimeError(f"installed skill digest mismatch for {source_skill.name}")  # noqa: TRY301 - the except below rolls back and reports it
-    except Exception as error:
-        if previous_moved or promotion_attempted:
+            raise RuntimeError(f"installed skill digest mismatch for {source_skill.name}")  # noqa: TRY301
+    except BaseException as error:
+        if promoted:
             rollback_result = {
                 "action": "updated" if previous_moved else "created",
                 "destination": display_path(destination),
@@ -955,6 +987,14 @@ def install_skill(
             }
             try:
                 rollback_skill(rollback_result, timestamp, target_name)
+            except Exception as rollback_error:
+                raise RuntimeError(
+                    f"installation failed for {source_skill.name}: {error}; "
+                    f"rollback failed: {rollback_error}"
+                ) from error
+        elif previous_moved and backup_path is not None:
+            try:
+                restore_skill_move(destination, backup_path)
             except Exception as rollback_error:
                 raise RuntimeError(
                     f"installation failed for {source_skill.name}: {error}; "
@@ -977,6 +1017,27 @@ def install_skill(
         "installed_digest": installed_digest,
         "verified": installed_digest == source_digest,
     }
+
+
+def lock_install_directory(stack: ExitStack, directory: Path) -> None:
+    """Hold a nonblocking OS lock until the target's install is finished."""
+
+    record = install_record(directory)
+    lock_path = record.with_suffix(".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock = stack.enter_context(lock_path.open("a+b"))
+    try:
+        if os.name == "nt":
+            import msvcrt  # noqa: PLC0415 - only available on Windows
+
+            lock.seek(0)
+            msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl  # noqa: PLC0415 - unavailable on Windows
+
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError as error:
+        raise RuntimeError(f"cannot lock skill installation at {directory}: {error}") from error
 
 
 def install_skills(
@@ -1004,14 +1065,39 @@ def install_skills(
         owner = owners_by_directory.setdefault(directory.resolve(), target)
         if target_skills[target] != target_skills[owner]:
             raise ValueError(f"{owner} and {target} share {directory} but select different skills")
+    with ExitStack() as stack:
+        if not dry_run:
+            for directory in sorted(owners_by_directory):
+                lock_install_directory(stack, directory)
+        return apply_skill_install(source, targets, sources, target_skills, dry_run)
+
+
+def apply_skill_install(
+    source: Path,
+    targets: dict[str, Path],
+    sources: dict[str, Path],
+    target_skills: dict[str, list[str]],
+    dry_run: bool,
+) -> dict[str, Any]:
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     run_id = f"{timestamp}-{os.getpid()}-{time.time_ns()}"
     target_results: dict[str, Any] = {}
 
-    completed: list[tuple[str, dict[str, Any]]] = []
+    records: dict[Path, bytes | None] = {}
+    retired_by_target: dict[str, list[str]] = {}
+    for host, directory in targets.items():
+        record = install_record(directory)
+        contents = record.read_bytes() if record.is_file() else None
+        records[record] = contents
+        previous = set(recorded_skills(record, contents)) | set(RETIRED_SKILLS)
+        retired_by_target[host] = sorted(previous - set(target_skills[host]))
+
+    rollback: list[tuple[str, Callable[[], None]]] = []
     try:
         for target_name, target_dir in targets.items():
-            legacy_backups = archive_legacy_backups(target_name, target_dir, dry_run, list(sources))
+            legacy_backups = archive_legacy_backups(
+                target_name, target_dir, dry_run, list(sources), rollback
+            )
             skills: list[dict[str, Any]] = []
             for skill_name in target_skills[target_name]:
                 result = install_skill(
@@ -1024,7 +1110,9 @@ def install_skills(
                 )
                 skills.append(result)
                 if not dry_run and result["action"] in {"created", "updated"}:
-                    completed.append((target_name, result))
+                    rollback.append(
+                        (skill_name, partial(rollback_skill, result, timestamp, target_name))
+                    )
 
             target_results[target_name] = {
                 "target_dir": display_path(target_dir),
@@ -1033,32 +1121,35 @@ def install_skills(
                 "skills": skills,
                 "retired": [],
             }
-    except Exception as error:
+        for target_name, target_dir in targets.items():
+            target_results[target_name]["retired"] = retire_skills(
+                target_name,
+                target_dir,
+                dry_run,
+                timestamp,
+                retired=retired_by_target[target_name],
+                rollback=rollback,
+            )
+            if not dry_run:
+                record = install_record(target_dir)
+                contents = json.dumps({"skills": sorted(target_skills[target_name])}, indent=2)
+                write_install_record(record, (contents + "\n").encode("utf-8"))
+                rollback.append(
+                    (str(record), partial(write_install_record, record, records[record]))
+                )
+    except BaseException as error:
         rollback_errors: list[str] = []
-        for completed_target, result in reversed(completed):
+        for name, undo in reversed(rollback):
             try:
-                rollback_skill(result, timestamp, completed_target)
+                undo()
             except Exception as rollback_error:
-                rollback_errors.append(f"{result['skill']}: {rollback_error}")
+                rollback_errors.append(f"{name}: {rollback_error}")
         if rollback_errors:
             raise RuntimeError(
                 f"installation failed: {error}; transaction rollback failed: "
                 + "; ".join(rollback_errors)
             ) from error
         raise
-
-    # Retire only after every target installed, so a rollback never needs to
-    # bring a retired skill back.
-    for target_name, target_dir in targets.items():
-        current_names = target_skills[target_name]
-        target_results[target_name]["retired"] = retire_skills(
-            target_name, target_dir, dry_run, timestamp, current_names
-        )
-        if not dry_run:
-            install_record(target_dir).write_text(
-                json.dumps({"skills": sorted(current_names)}, indent=2) + "\n",
-                encoding="utf-8",
-            )
 
     return {
         "command": "install",

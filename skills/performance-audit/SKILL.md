@@ -40,6 +40,13 @@ Check for:
 ## Evidence Rules
 
 - Use high confidence for a profile, benchmark, measurement, or complete cost trace.
+- Check that the benchmark completed the expected cases and exercised the
+  intended production path. Use an observed outcome or operation count when
+  setup could silently skip work.
+- Compare revisions using the same harness, workload, and relevant settings.
+  If those change, take a fresh baseline. When a gain is close to normal
+  variation, repeat both measurements. Report an inconclusive result when
+  ordinary variation still explains the difference.
 - Use medium confidence for strong static evidence, such as N+1 I/O or quadratic work on an expected large input.
 - Put low-confidence possibilities under blind spots. Do not block the audit on them.
 - Do not recommend a micro-optimization without a plausible workload and material cost.
@@ -64,3 +71,7 @@ When `audit-codebase` invokes this skill, return scoped findings and validation 
 If fixes are authorized, preserve behavior and add a focused benchmark or performance regression check when practical.
 
 Do not trade clear ownership or correctness for an unmeasured speed claim.
+
+When a measured bottleneck warrants several experiments, recommend
+[`performance-experiments`](../performance-experiments/SKILL.md) and name the
+workload and benchmark the user can pass to it.

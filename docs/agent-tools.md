@@ -19,6 +19,9 @@ Keep native tool versions in mise and agent package and external skill versions 
 `agent-dependencies.json`. Host configurations should use those versions.
 `agent-tools/package-lock.json` records the full npm dependency tree. After changing
 npm tool versions, run `task tools:lock` and review the lockfile before installing.
+The scoped npm override keeps GitNexus on a patched version of `glob` while
+the stable release allows only the affected version. Recheck it when updating
+GitNexus.
 
 Reviewed Serena security overrides also live in `agent-dependencies.json`. uv applies
 these with `--overrides` because Serena 2.1.0 pins older filelock and Werkzeug versions.

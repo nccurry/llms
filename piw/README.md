@@ -225,9 +225,9 @@ absolute path is unchanged; on Windows Docker maps a path such as `C:\Users\name
 `/c/Users/name/project`. `piw` translates work directories, skill arguments, and snapshot targets
 automatically. The primary repository is cloned privately and remains writable. Configure a broad
 reference root when all content below that root is safe for agents to read. When that root contains
-the active repository, `piw` expands it into disjoint sibling mounts so the broad reference cannot
-make the nested private clone read-only. Files directly beside the active path are copied into the
-sandbox as snapshots; editing those copies cannot affect the host files.
+the active repository or chat workspace, `piw` mounts ordinary sibling directories instead of
+mounting over the writable path. It skips sibling symlinks and junctions and copies ordinary
+sibling files as snapshots. Editing a snapshot cannot affect the host file.
 
 Pi does not include MCP support in its core harness. Install a reviewed, pinned MCP client extension
 with `pi.extensions`, then point `pi.mcp_file` at that extension's ordinary non-secret JSON config.

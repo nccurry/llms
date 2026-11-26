@@ -10,6 +10,7 @@ import pytest
 from piw.config import load_config
 from piw.models import AppConfig, SandboxConfig
 from piw.process import SubprocessRunner
+from piw.sandbox import sandbox_guest_path
 from piw.service import PiwService
 from piw.state import SecretStateStore, StateStore
 
@@ -67,7 +68,7 @@ def test_real_chat_lifecycle(
 
         executed = service.execute(name, ("pwd",))
         assert executed["returncode"] == 0
-        assert str(executed["stdout"]).strip() == record.workspace
+        assert str(executed["stdout"]).strip() == sandbox_guest_path(workspace)
 
         assert service.stop(name, dry_run=False)["action"] == "stopped"
         assert service.status(name)["status"] == "stopped"
@@ -76,5 +77,6 @@ def test_real_chat_lifecycle(
             service.clean(name, dry_run=False, force=True)
 
     assert not store.exists(name)
+    assert all(item.name != record.sandbox for item in service.sbx.list_sandboxes())
     assert workspace is not None
     assert not workspace.exists()

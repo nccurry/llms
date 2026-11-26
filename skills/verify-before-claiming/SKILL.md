@@ -18,6 +18,10 @@ child report, or old test run does not prove that the current code passes.
   dependencies, platform/backend, and configuration. Check fresh outputs and
   required execution; filters or nested runners may need case identities/counts,
   skips, and child results checked beyond an outer exit code or passing total.
+- When a required check fails and then passes, retain both results. Compare
+  the revision, command, inputs, and environment. Keep acceptance open while
+  a material conflict remains unexplained or awaits a decision under the
+  project's flaky-test policy.
 - If a needed fact remains unknown, say exactly what is unknown and what check
   would settle it. Keep dependent work or acceptance open; continue safe work
   that does not depend on that fact.

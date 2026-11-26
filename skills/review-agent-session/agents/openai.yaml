@@ -1,0 +1,7 @@
+interface:
+  display_name: "Review Agent Session"
+  short_description: "Find and prevent repeated agent workflow failures"
+  default_prompt: "Use $review-agent-session to find what caused missed checks, repeated work, or scope drift in this PLC run."
+
+policy:
+  allow_implicit_invocation: false

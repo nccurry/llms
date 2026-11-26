@@ -212,10 +212,33 @@ def test_create_snapshots_disjoint_reference_files(tmp_path: Path) -> None:
     assert (
         "sbx",
         "cp",
-        "--follow-link",
         str(note),
         f"piw-repo-example:{sandbox_guest_path(tmp_path)}/",
     ) in runner.calls
+
+
+def test_ancestor_reference_skips_implicit_links(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Implicit references only include ordinary siblings."""
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    sibling = tmp_path / "linked.txt"
+    sibling.write_text("fixture", encoding="utf-8")
+    junction = tmp_path / "junction"
+    junction.mkdir()
+
+    def is_symlink(path: Path) -> bool:
+        return path == sibling
+
+    def is_junction(path: Path) -> bool:
+        return path == junction
+
+    monkeypatch.setattr(Path, "is_symlink", is_symlink)
+    monkeypatch.setattr(Path, "is_junction", is_junction)
+    assert read_only_exposure(workspace, (tmp_path,), ()).snapshots == ()
+    assert read_only_exposure(workspace, (tmp_path,), ()).mounts == ()
 
 
 def test_exec_stop_remove_and_template_lifecycle(tmp_path: Path) -> None:

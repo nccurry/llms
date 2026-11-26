@@ -111,6 +111,13 @@ Record the check's actual result only after running it.
      alone does not prove implementation is available. For moving upstream
      targets, date the inspected revision without silently fixing the
      product target to that snapshot.
+   - Before dividing work into phases, check the source and docs for answers
+     to questions that could change requirements, public behavior, or
+     acceptance. Group independent decisions the user needs to make. Give a
+     recommendation and a concrete behavior example for each, and ask
+     dependent questions after their prerequisites are settled. Record answers
+     in the existing requirements or design. When acceptance needs human
+     judgment, name the reviewer and the artifact they will inspect.
    - Convert an active packet in an older shape to the shared template first,
      following [old-packet conversion](references/old-packet-migration.md).
      Don't add a second status block beside the old one.

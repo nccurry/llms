@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "worktree_report.py"
 spec = importlib.util.spec_from_file_location("worktree_report", SCRIPT)
@@ -20,6 +21,30 @@ def commit(cwd, name, text, message=None):
     (Path(cwd) / name).write_text(text, encoding="utf-8")
     run(cwd, "add", name)
     run(cwd, "commit", "-q", "-m", message or f"change {name}")
+
+
+class GitFailureTests(unittest.TestCase):
+    def test_failed_status_is_not_reported_as_clean(self):
+        result = subprocess.CompletedProcess([], 128, "", "index error")
+        with (
+            patch.object(worktree_report, "git", return_value=result),
+            self.assertRaisesRegex(SystemExit, "cannot read worktree status.*index error"),
+        ):
+            worktree_report.local_changes("checkout")
+
+    def test_failed_fetch_does_not_use_cached_delivery_state(self):
+        with (
+            patch.object(
+                worktree_report, "out", side_effect=["common", "worktree checkout", "origin"]
+            ),
+            patch.object(
+                worktree_report,
+                "git",
+                return_value=subprocess.CompletedProcess([], 128, "", "remote unavailable"),
+            ),
+            self.assertRaisesRegex(SystemExit, "cannot refresh remote.*remote unavailable"),
+        ):
+            worktree_report.build_report("checkout", "origin", None, True, False)
 
 
 class WorktreeReportTest(unittest.TestCase):

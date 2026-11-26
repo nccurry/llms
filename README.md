@@ -13,7 +13,7 @@ design notes, build commands, and rules in the project they describe.
 
 Describe what you want done. Call a skill with `$skill-name`
 in Codex or `/skill-name` in Claude Code. Agents can also choose skills from their
-descriptions. Ask explicitly to use a monitored implementation workflow.
+descriptions. Some skills, including monitored implementation, require an explicit call.
 
 ![Skill workflow: investigate, plan, review the plan, build, audit and repair, then deliver and clean up. Plain English, clear design, and verified claims apply throughout.](docs/images/skill-workflow.svg)
 
@@ -28,6 +28,8 @@ descriptions. Ask explicitly to use a monitored implementation workflow.
 | Start one feature by hand | [plc-feature-start](skills/plc-feature-start/SKILL.md) | “Start this up in a new branch and worktree from main.” |
 | Implement selected plan work | [monitored-sol-plc-execution](skills/monitored-sol-plc-execution/SKILL.md) | “Finish phase 1, including tests and docs. Open an MR; leave it unmerged.” |
 | Review a change thoroughly | [audit-codebase](skills/audit-codebase/SKILL.md) | “Audit this branch against main. Report findings without editing.” |
+| Tune a measured bottleneck | [performance-experiments](skills/performance-experiments/SKILL.md) | `$performance-experiments` “Try up to five changes to reduce config reload p95. Keep the compatibility checks green.” |
+| Learn from a difficult agent run | [review-agent-session](skills/review-agent-session/SKILL.md) | `$review-agent-session` “Review this PLC run for missed checks, repeated work, or scope drift.” |
 | Handle review feedback | [resolve-review-comments](skills/resolve-review-comments/SKILL.md) | “Check the PR feedback against the source and fix valid issues.” |
 | Get open MRs ready for review | [plc-mr-review](skills/plc-mr-review/SKILL.md) | “Get these MRs ready: CI green and comments resolved. Don’t merge.” |
 | Keep tickets in step with the work | [manage-tickets](skills/manage-tickets/SKILL.md) | “Link this plan to PROJ-123 and put the key in the MR title the way this repo does.” |
@@ -123,7 +125,7 @@ tracked file, so commit or discard the change before your next `git pull`.
 | `mise ERROR No version is set for shim: pwsh` | A global mise owns `pwsh` without a version. Run `mise uninstall powershell --all`, then install PowerShell 7 with winget. |
 | Agent tools point to an old folder | Run `agents:configure TARGET=all` through bootstrap from the current checkout. |
 | `mise ERROR mise version ... is required` | A global mise is running this checkout's shims. Run commands through `./bootstrap.sh` or `.tools/bin/task` instead of a global `task`. |
-| A skill install failed | Rerun with `OUTPUT=json`. The report lists backup paths and the failed check. |
+| A skill install failed | Use `OUTPUT=json` for the failure message. A dry run lists planned backup paths. |
 
 ## How setup works
 

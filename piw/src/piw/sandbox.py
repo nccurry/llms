@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import subprocess
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 from typing import Final, cast
@@ -122,11 +123,11 @@ def read_only_exposure(
                 if not current.is_dir():
                     break
                 for child in current.iterdir():
-                    if child.name == segment:
+                    if child.name == segment or child.is_symlink() or child.is_junction():
                         continue
                     if child.is_dir():
                         mounts.add(child)
-                    elif child.is_file() or child.is_symlink():
+                    elif child.is_file():
                         snapshots.add(child)
                 current /= segment
         except OSError as error:
@@ -377,20 +378,25 @@ class SbxClient:
             "sandbox_create_failed",
         )
 
-        for source in exposure.snapshots:
-            self._require(
-                self._run(
-                    (
-                        "sbx",
-                        "cp",
-                        "--follow-link",
-                        str(source),
-                        f"{name}:{sandbox_guest_path(source.parent)}/",
+        try:
+            for source in exposure.snapshots:
+                self._require(
+                    self._run(
+                        (
+                            "sbx",
+                            "cp",
+                            str(source),
+                            f"{name}:{sandbox_guest_path(source.parent)}/",
+                        ),
+                        timeout_seconds=timeout_seconds,
                     ),
-                    timeout_seconds=timeout_seconds,
-                ),
-                "reference_snapshot_failed",
-            )
+                    "reference_snapshot_failed",
+                )
+        except BaseException:
+            # Only this call's successful create makes the sandbox ours to remove.
+            with suppress(PiwError):
+                self.remove(name)
+            raise
 
         return result
 

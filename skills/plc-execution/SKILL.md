@@ -17,6 +17,9 @@ names mentioned as context do not expand that block. Locate the PLC from the
 request and repository; ask when the selected scope cannot be established or
 materially conflicts with it. Use `plc-planning` to create or repair the packet.
 Discovery can run within an existing PLC.
+For read-only discovery, inspect the selected packet and source in place.
+Return the findings and proposed checks without entering the implementation,
+worktree setup, or integration steps.
 
 Before dispatch, read [plain-english](../plain-english/SKILL.md),
 [design-for-change](../design-for-change/SKILL.md), and
@@ -88,6 +91,10 @@ source, and relevant product and design documentation. Use named goals in the
 owning project documents to
 interpret selected requirements; do not guess project facts or silently add
 deliverables. Raise material conflicts under the scope-change rule above.
+At setup and on resume, check whether directions found in old plans, TODOs,
+or tickets still apply to the selected requirements. Use the current plan and
+source to check relevance. Treat unrelated discoveries as follow-ups and
+continue the selected work.
 
 Make one work list, in the session's task list rather than a plan file,
 containing each selected block, prerequisites, owner, files,

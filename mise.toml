@@ -16,4 +16,4 @@ auto_install = false
 [tools]
 task = "3.54.0"
 uv = "0.13.7"
-node = "26.13.0"
+node = "26.13.1"

@@ -1,0 +1,13 @@
+schema_version: 1
+skill: plc-execution
+description: Resume the selected config reload work while an old TODO points to a retired cache design.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/reload
+prompt: |
+  Resume discovery for P1 of docs/plans/in-progress/explicit-reload/README.md.
+  Check the current code and tell me the smallest implementation and how to
+  verify it. Keep this pass read-only.
+max_turns: 25
+check: python ../../plc-checkpoint/check_state.py <dest> --strict
+graders:
+  - graders/outcome.md

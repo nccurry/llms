@@ -20,6 +20,7 @@ the upstream installers and the server list.
 import importlib.util
 import json
 import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -402,6 +403,41 @@ class UnknownSkillHostTests(HostTestCase):
             result["skipped"],
             ["fakehost: skills not checked; scripts/install_skills.py does not know this host"],
         )
+
+
+class SkillHealthTargetTests(unittest.TestCase):
+    def test_doctor_uses_host_specific_skill_selection(self):
+        with tempfile.TemporaryDirectory() as folder:
+            home = Path(folder)
+            target = home / "codex" / "skills"
+            alternate = home / ".agents" / "skills"
+            with (
+                patch.object(Path, "home", return_value=home),
+                patch.dict(os.environ, {"CODEX_HOME": str(target.parent)}),
+            ):
+                initial = setup.skill_health("codex")
+                skills = initial["problems"][-1].split("skills missing or changed: ")[1]
+                names = skills.split(";")[0].split(", ")
+                self.assertIn("performance-experiments", names)
+                self.assertNotIn("monitored-opus-plc-execution", names)
+                alternate_skill = alternate / "monitored-opus-plc-execution"
+                alternate_skill.mkdir(parents=True)
+                (alternate_skill / "SKILL.md").write_text("unmanaged Claude copy")
+                for name in names:
+                    root = ROOT / "skills" / name
+                    if not root.is_dir():
+                        root = ROOT / ".tools" / "external-skills" / name
+                    shutil.copytree(root, target / name)
+                result = setup.skill_health("codex")["hosts"][0]
+                self.assertEqual(result["expected_count"], len(names))
+                self.assertTrue(result["digest_verified"])
+                self.assertEqual(result["conflicts"], [])
+                (target / "performance-experiments" / "SKILL.md").write_text("changed")
+                changed = setup.skill_health("codex")
+                self.assertFalse(changed["hosts"][0]["digest_verified"])
+                self.assertIn(
+                    "skills missing or changed: performance-experiments;", changed["problems"][-1]
+                )
 
 
 if __name__ == "__main__":

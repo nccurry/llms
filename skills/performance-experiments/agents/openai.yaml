@@ -1,0 +1,7 @@
+interface:
+  display_name: "Performance Experiments"
+  short_description: "Test focused changes against a fixed benchmark"
+  default_prompt: "Use $performance-experiments to try up to five changes to reduce config reload p95 while keeping the compatibility tests green."
+
+policy:
+  allow_implicit_invocation: false

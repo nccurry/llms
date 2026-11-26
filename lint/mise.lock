@@ -3,45 +3,45 @@
 lockfile_version = 3
 
 [[tools.powershell]]
-version = "7.6.9"
+version = "7.6.10"
 backend = "aqua:PowerShell/PowerShell"
-specifiers = ["7.6.9"]
+specifiers = ["7.6.10"]
 
 [tools.powershell."platforms.linux-arm64"]
-checksum = "sha256:02eb9991af447c7e7fe881acde195961afd397c40b8eb1c2b3856b84ec2d85f2"
+checksum = "sha256:439432cdecf4418413b9a8f547e3ab4d9b40e8e4258913ec3d15fc92c67a9235"
 checksum_source = "mise-versions"
-url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/powershell-7.6.9-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/PowerShell/PowerShell/releases/assets/675637777"
+url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.10/powershell-7.6.10-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/PowerShell/PowerShell/releases/assets/732743512"
 
 [tools.powershell."platforms.linux-x64"]
-checksum = "sha256:1da6d6d6035d651f20e70ddee7c4c15ac6ab8b9fb40ee92240d91263f28a884b"
+checksum = "sha256:e261cabc91c78a9afe8d1e5f24731ab0d38204735ab2ec94b0af55102652e10d"
 checksum_source = "mise-versions"
-url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/powershell-7.6.9-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/PowerShell/PowerShell/releases/assets/675638183"
+url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.10/powershell-7.6.10-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/PowerShell/PowerShell/releases/assets/732744029"
 
 [tools.powershell."platforms.macos-arm64"]
-checksum = "sha256:a1c7e98ac403da4be5ba75c1c5855af272de7787a91d478c4267466fe58fc1af"
+checksum = "sha256:fb6f1978c7d3266d4ced9391de6519d971ef92bd036e5b8be62f1ccdfbda9477"
 checksum_source = "mise-versions"
-url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/powershell-7.6.9-osx-arm64.tar.gz"
-url_api = "https://api.github.com/repos/PowerShell/PowerShell/releases/assets/675638480"
+url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.10/powershell-7.6.10-osx-arm64.tar.gz"
+url_api = "https://api.github.com/repos/PowerShell/PowerShell/releases/assets/732744392"
 
 [tools.powershell."platforms.macos-x64"]
-checksum = "sha256:a5aa2308a7e9664510a5c93d5b337fd524ff7dc14b8a637fb6144a2bbaa298ae"
+checksum = "sha256:aa55bef6375e7b1a61e860866a38af5f2366ceb4189293e6b73b7777cb1d7793"
 checksum_source = "mise-versions"
-url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/powershell-7.6.9-osx-x64.tar.gz"
-url_api = "https://api.github.com/repos/PowerShell/PowerShell/releases/assets/675638726"
+url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.10/powershell-7.6.10-osx-x64.tar.gz"
+url_api = "https://api.github.com/repos/PowerShell/PowerShell/releases/assets/732744686"
 
 [tools.powershell."platforms.windows-arm64"]
-checksum = "sha256:2157fb002178e606c2a5532c56647118d90d029742f04d4900a71e3b478c2363"
+checksum = "sha256:1d36ecac1d8f5ac9577cfdfc426af41f3e90cbca6c52445e7db167f532b3a7ab"
 checksum_source = "mise-versions"
-url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/PowerShell-7.6.9-win-arm64.zip"
-url_api = "https://api.github.com/repos/PowerShell/PowerShell/releases/assets/675639035"
+url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.10/PowerShell-7.6.10-win-arm64.zip"
+url_api = "https://api.github.com/repos/PowerShell/PowerShell/releases/assets/732744953"
 
 [tools.powershell."platforms.windows-x64"]
-checksum = "sha256:ce7484804c0f0ad4dda10c958e71acdaf7eebfb22505c1b480f89e0e9f1da94d"
+checksum = "sha256:7d871531806eb1646264e4bbabd9f0c30c23355591bc756bb9909448c29ae166"
 checksum_source = "mise-versions"
-url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/PowerShell-7.6.9-win-x64.zip"
-url_api = "https://api.github.com/repos/PowerShell/PowerShell/releases/assets/675639558"
+url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.10/PowerShell-7.6.10-win-x64.zip"
+url_api = "https://api.github.com/repos/PowerShell/PowerShell/releases/assets/732745470"
 
 [[tools.shellcheck]]
 version = "0.11.0"

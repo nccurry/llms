@@ -1,0 +1,12 @@
+schema_version: 1
+skill: review-agent-session
+description: Session blamed a stale cache without checking the tool summary.
+setup: python fixture/build.py <dest>
+working_directory: <dest>/reload
+prompt: |
+  Use $review-agent-session to review session.md. Tell me what caused the
+  premature success claim and propose a replay. Keep the review read-only.
+max_turns: 18
+check: python ../../plc-checkpoint/check_state.py <dest> --strict
+graders:
+  - graders/outcome.md
